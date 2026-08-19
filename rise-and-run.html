@@ -1,0 +1,2437 @@
+<!DOCTYPE html>
+<!--
+  Rise & Run — single-file edition.
+  Everything (styles, logic, the student quiz) is inside this one file.
+  Save it anywhere and double-click it. No other files are needed,
+  no internet connection is needed, and nothing has to be installed.
+-->
+
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rise &amp; Run — a digital manipulative for gradient</title>
+<meta name="description" content="An interactive Cartesian plane for building conceptual understanding of gradient. NSW Stage 5, MA5-LIN-C-01.">
+<style>
+/* =============================================================
+   Rise & Run — stylesheet
+   Sections: 1 tokens · 2 base · 3 topbar · 4 ladder · 5 layout
+             6 plane · 7 cards · 8 meter · 9 drawer · 10 modes
+             11 responsive · 12 accessibility
+   ============================================================= */
+
+/* ---------- 1. Design tokens ------------------------------------------- */
+:root{
+  /* surfaces: cool slate paper, chosen so the blue and orange stay vivid
+     under a classroom projector without glare */
+  --bg:            #e7edf5;
+  --bg-deep:       #dbe4ef;
+  --panel:         #ffffff;
+  --panel-sunk:    #f2f6fb;
+  --edge:          #d3dde9;
+
+  --ink:           #16202e;
+  --ink-soft:      #40536b;
+  --ink-faint:     #7488a1;
+
+  /* mathematics colour code — fixed meaning across the whole app */
+  --rise:          #1f6fdc;   /* vertical change */
+  --rise-wash:     #e2edfc;
+  --run:           #e0700f;   /* horizontal change */
+  --run-wash:      #fdeedd;
+  --interval:      #263449;   /* the interval itself */
+  --grad:          #6b34c9;   /* the ratio built from rise and run */
+  --grad-wash:     #efe7fd;
+  --line2:         #0b8574;   /* comparison line, also dashed */
+  --line2-wash:    #dff2ef;
+  --good:          #0f7a53;
+  --warn:          #a5590c;
+
+  --grid:          #ccd8e6;
+  --grid-strong:   #b3c3d6;
+
+  /* type — humanist display against a neutral UI face, data in mono */
+  --font-display: Optima, Candara, "Gill Sans MT", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-data: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+
+  --r-lg: 20px;
+  --r-md: 14px;
+  --r-sm: 9px;
+
+  --shadow: 0 1px 2px rgba(22,32,46,.05), 0 8px 22px -12px rgba(22,32,46,.28);
+  --shadow-lift: 0 2px 4px rgba(22,32,46,.06), 0 18px 40px -18px rgba(22,32,46,.38);
+
+  --scale: 1;
+  --stroke-line: 5px;
+  --stroke-leg: 6px;
+  --label-size: 19px;
+
+  --t-fast: 140ms cubic-bezier(.2,.7,.3,1);
+  --t-med:  320ms cubic-bezier(.2,.7,.3,1);
+  --t-slow: 620ms cubic-bezier(.24,.8,.28,1);
+}
+
+/* ---------- 2. Base ---------------------------------------------------- */
+*,*::before,*::after{ box-sizing:border-box; }
+
+/* The hidden attribute must beat every layout rule below. Author rules that
+   set `display` otherwise override the browser default for [hidden], which
+   would leave panels — and the full-screen drawer — permanently on screen. */
+[hidden]{ display:none !important; }
+
+html{ font-size: calc(16px * var(--scale)); }
+
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:var(--font-body);
+  color:var(--ink);
+  background:
+    radial-gradient(900px 500px at 12% -8%, #ffffff 0%, rgba(255,255,255,0) 62%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+  background-attachment: fixed;
+  line-height:1.5;
+  -webkit-text-size-adjust:100%;
+}
+
+h1,h2,h3{ font-family:var(--font-display); font-weight:600; letter-spacing:-.01em; margin:0; }
+
+button{ font:inherit; color:inherit; cursor:pointer; }
+
+.sr-only{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+}
+
+.skiplink{
+  position:absolute; left:12px; top:-60px; z-index:60;
+  background:var(--ink); color:#fff; padding:10px 16px; border-radius:0 0 var(--r-sm) var(--r-sm);
+  text-decoration:none; transition:top var(--t-fast);
+}
+.skiplink:focus{ top:0; }
+
+:focus-visible{ outline:3px solid var(--grad); outline-offset:2px; border-radius:4px; }
+
+/* ---------- 3. Top bar ------------------------------------------------- */
+.topbar{
+  display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between;
+  padding:14px clamp(14px,2.4vw,30px);
+  background:rgba(255,255,255,.82);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--edge);
+  position:sticky; top:0; z-index:30;
+}
+.brand{ display:flex; align-items:center; gap:13px; }
+.brand__mark{ width:42px; height:42px; flex:none; background:var(--ink); border-radius:11px; padding:4px; }
+.mk-int{ stroke:#fff; stroke-width:3.4; fill:none; stroke-linecap:round; }
+.mk-run{ stroke:var(--run); stroke-width:3.4; fill:none; stroke-linecap:round; }
+.mk-rise{ stroke:#66a6f5; stroke-width:3.4; fill:none; stroke-linecap:round; }
+.brand__text h1{ font-size:1.32rem; line-height:1.1; }
+.brand__text p{ margin:2px 0 0; font-size:.79rem; color:var(--ink-soft); }
+
+.topbar__tools{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+
+.segmented{ display:flex; background:var(--panel-sunk); border:1px solid var(--edge); border-radius:999px; padding:3px; }
+.seg{
+  border:0; background:transparent; padding:8px 15px; border-radius:999px;
+  font-size:.82rem; font-weight:600; color:var(--ink-soft); transition:all var(--t-fast);
+}
+.seg[aria-pressed="true"]{ background:var(--ink); color:#fff; box-shadow:var(--shadow); }
+
+.tool{
+  border:1px solid var(--edge); background:var(--panel); border-radius:999px;
+  padding:9px 15px; font-size:.82rem; font-weight:600; color:var(--ink-soft);
+  transition:all var(--t-fast);
+}
+.tool:hover{ border-color:var(--ink-faint); color:var(--ink); }
+.tool[aria-pressed="true"]{ background:var(--grad-wash); border-color:var(--grad); color:var(--grad); }
+.tool--accent{ background:var(--ink); border-color:var(--ink); color:#fff; }
+/* the student's way in — deliberately the most visible control up here */
+.tool--quiz{ background:var(--grad); border-color:var(--grad); color:#fff; }
+.tool--quiz:hover{ color:#fff; filter:brightness(1.08); }
+.tool--quiz::before{ content:"▸ "; }
+.tool--accent:hover{ color:#fff; opacity:.9; }
+
+/* ---------- 4. Stage ladder -------------------------------------------- */
+.ladder{ padding:16px clamp(14px,2.4vw,30px) 0; }
+.ladder__list{
+  list-style:none; list-style-type:none; display:grid; grid-template-columns:repeat(4,1fr);
+  gap:10px; margin:0; padding:0;
+}
+.rung{
+  width:100%; text-align:left; border:1px solid var(--edge); background:var(--panel);
+  border-radius:var(--r-md); padding:11px 14px 12px; display:block;
+  position:relative; overflow:hidden; transition:all var(--t-med);
+}
+.rung::before{
+  content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--edge);
+  transition:background var(--t-med);
+}
+.rung__label{ display:block; font-family:var(--font-display); font-weight:600; font-size:1rem; }
+.rung__q{ display:block; font-size:.76rem; color:var(--ink-faint); margin-top:1px; }
+.rung[disabled]{ opacity:.45; cursor:not-allowed; }
+.rung[aria-current="step"]{ background:var(--ink); border-color:var(--ink); box-shadow:var(--shadow-lift); }
+.rung[aria-current="step"] .rung__label{ color:#fff; }
+.rung[aria-current="step"] .rung__q{ color:#a9bdd6; }
+.rung[aria-current="step"]::before{ background:var(--grad); }
+.rung.done::before{ background:var(--good); }
+
+.ladder__gate{
+  display:flex; align-items:center; gap:12px;
+  margin:10px 0 0; font-size:.8rem; color:var(--ink-soft);
+}
+.gate__bar{ flex:1; max-width:230px; height:6px; background:var(--panel); border:1px solid var(--edge); border-radius:99px; overflow:hidden; }
+.gate__fill{ display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--run),var(--grad)); transition:width var(--t-slow); }
+
+/* ---------- 5. Layout --------------------------------------------------- */
+.layout{
+  display:grid;
+  grid-template-columns:min(100%, 80vh) 396px;
+  justify-content:center;
+  gap:18px;
+  padding:16px clamp(14px,2.4vw,30px) 30px;
+  align-items:start;
+}
+
+/* ---------- 6. The plane ------------------------------------------------ */
+.stage-panel{
+  background:var(--panel); border:1px solid var(--edge); border-radius:var(--r-lg);
+  box-shadow:var(--shadow); padding:14px;
+}
+.planebar{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; }
+.planebar__div{ width:1px; height:22px; background:var(--edge); margin:0 3px; }
+.chip{
+  border:1px solid var(--edge); background:var(--panel-sunk); border-radius:999px;
+  padding:8px 14px; font-size:.81rem; font-weight:600; color:var(--ink-soft);
+  transition:all var(--t-fast);
+}
+.chip:hover{ border-color:var(--ink-faint); color:var(--ink); }
+.chip--mode[aria-pressed="true"]{ background:var(--ink); border-color:var(--ink); color:#fff; }
+
+.planewrap{ position:relative; width:100%; margin-inline:auto; }
+#plane{
+  display:block; width:100%; height:auto; aspect-ratio:1 / 1;
+  border-radius:var(--r-md); background:var(--panel-sunk); touch-action:none;
+}
+.plane-hint{
+  position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
+  background:rgba(22,32,46,.86); color:#fff; font-size:.76rem; padding:6px 13px;
+  border-radius:99px; pointer-events:none; transition:opacity var(--t-med);
+}
+.plane-hint.gone{ opacity:0; }
+
+/* grid + axes */
+.grid-line{ stroke:var(--grid); stroke-width:1; }
+.grid-line--five{ stroke:var(--grid-strong); stroke-width:1.4; }
+.axis{ stroke:var(--ink-soft); stroke-width:2.2; }
+.axis-tick{ stroke:var(--ink-soft); stroke-width:1.6; }
+.axis-num{ fill:var(--ink-faint); font:500 12px var(--font-data); text-anchor:middle; }
+.axis-name{ fill:var(--ink-soft); font:600 15px var(--font-display); }
+
+/* interval + triangle */
+.interval{ stroke:var(--interval); stroke-width:var(--stroke-line); stroke-linecap:round; }
+.infinite-line{ stroke:var(--interval); stroke-width:2; stroke-dasharray:3 8; opacity:0; transition:opacity var(--t-med); }
+body.show-infinite .infinite-line, body.mode-slide .infinite-line{ opacity:.55; }
+
+.tri-fill{ fill:var(--ink); opacity:.045; }
+.seg-run{ stroke:var(--run); stroke-width:var(--stroke-leg); stroke-linecap:round; }
+.seg-rise{ stroke:var(--rise); stroke-width:var(--stroke-leg); stroke-linecap:round; }
+.ah-run{ fill:var(--run); }
+.ah-rise{ fill:var(--rise); }
+.right-angle{ fill:none; stroke:var(--ink-faint); stroke-width:2; }
+
+/* the counting overlay: legs fade back so each counted unit stands out */
+.count-fill{ stroke-width:calc(var(--stroke-leg) + 2px); stroke-linecap:round; display:none; }
+.count-fill--rise{ stroke:var(--rise); }
+.count-fill--run{ stroke:var(--run); }
+.layer-tri.counting .seg-rise, .layer-tri.counting .seg-run{ opacity:.22; }
+.layer-tri.counting .count-fill{ display:block; }
+.count-num{ font:700 20px var(--font-data); text-anchor:middle; paint-order:stroke;
+  stroke:var(--panel-sunk); stroke-width:5px; stroke-linejoin:round; }
+.count-num--rise{ fill:var(--rise); }
+.count-num--run{ fill:var(--run); }
+body.projection .count-num{ font-size:27px; }
+
+.ticks line{ stroke-width:2.4; opacity:0; transition:opacity var(--t-fast); }
+.ticks--on line{ opacity:.85; }
+.ticks line.lit{ opacity:1; stroke-width:4; }
+#ticksRun line{ stroke:#fff; }
+#ticksRise line{ stroke:#fff; }
+.tick-count{ font:700 15px var(--font-data); opacity:0; transition:opacity var(--t-fast); }
+.tick-count.lit{ opacity:1; }
+
+.leg-label{ font:600 var(--label-size) var(--font-display); }
+.leg-label--run{ fill:var(--run); text-anchor:middle; }
+.leg-label--rise{ fill:var(--rise); text-anchor:start; }
+
+/* points */
+.pt-halo{ fill:#fff; stroke:var(--edge); stroke-width:2; }
+.pt-dot{ stroke:#fff; stroke-width:3; transition:r var(--t-fast); }
+.pt--a .pt-dot{ fill:var(--interval); }
+.pt--b .pt-dot{ fill:var(--grad); }
+.pt--c .pt-dot{ fill:var(--line2); }
+.pt--d .pt-dot{ fill:var(--line2); }
+.pt{ cursor:grab; }
+.pt.dragging{ cursor:grabbing; }
+.pt:hover .pt-dot, .pt:focus-visible .pt-dot{ r:15; }
+.pt:focus-visible .pt-halo{ stroke:var(--grad); stroke-width:4; }
+.pt-name{ font:700 var(--label-size) var(--font-display); fill:#fff; text-anchor:middle; dominant-baseline:middle; }
+.pt-coord{
+  font:600 14px var(--font-data); fill:var(--ink-soft);
+  paint-order:stroke; stroke:var(--panel-sunk); stroke-width:5px; stroke-linejoin:round;
+}
+
+/* construction + guides */
+.guide{ stroke:var(--ink-faint); stroke-width:1.6; stroke-dasharray:2 6; opacity:0; transition:opacity var(--t-med); }
+body.show-construction .guide{ opacity:.7; }
+.unit-square{ fill:var(--grad); opacity:0; transition:opacity var(--t-med); }
+body.show-construction .unit-square{ opacity:.09; }
+
+/* ghosts (slide-along-the-line mode) */
+.ghost-tri{ fill:none; stroke:var(--ink-faint); stroke-width:1.6; stroke-dasharray:4 5; opacity:.55; }
+.ghost-rise{ stroke:var(--rise); stroke-width:3; opacity:.32; }
+.ghost-run{ stroke:var(--run); stroke-width:3; opacity:.32; }
+.ghost-tag{ font:600 12px var(--font-data); fill:var(--ink-faint); text-anchor:middle; }
+
+/* second line */
+.interval2{ stroke:var(--line2); stroke-width:var(--stroke-line); stroke-linecap:round; stroke-dasharray:14 7; }
+.seg2-rise{ stroke:var(--rise); stroke-width:3.5; opacity:.75; stroke-dasharray:6 4; }
+.seg2-run{ stroke:var(--run); stroke-width:3.5; opacity:.75; stroke-dasharray:6 4; }
+
+/* real world overlay */
+.world-band{ fill:var(--ink); opacity:.16; }
+.world-glyph{ fill:var(--ink); opacity:.82; }
+.world-ground{ fill:var(--ink); opacity:.07; }
+
+/* visibility switches */
+body.hide-labels .layer-labels .pt-name-outer,
+body.hide-labels .pt-name{ display:none; }
+body.hide-coords .pt-coord{ display:none; }
+body.hide-triangle .layer-tri{ display:none; }
+body.hide-grid .layer-grid{ display:none; }
+body.hide-numbers .ro__val,
+body.hide-numbers .coords,
+body.hide-numbers .reps,
+body.hide-numbers .axis-num{ visibility:hidden; }
+
+/* ---------- 7. Cards ---------------------------------------------------- */
+.rail{ display:flex; flex-direction:column; gap:14px; min-width:0; }
+.card{
+  background:var(--panel); border:1px solid var(--edge); border-radius:var(--r-lg);
+  box-shadow:var(--shadow); padding:16px 17px 17px;
+}
+.card__title{ font-size:1.02rem; margin-bottom:11px; }
+.card__lock{ font-size:.83rem; color:var(--ink-faint); margin:0; }
+.card.locked{ background:var(--panel-sunk); border-style:dashed; }
+
+.coords{ display:flex; gap:9px; margin-bottom:12px; flex-wrap:wrap; }
+.coord{
+  font-size:.78rem; font-weight:600; color:var(--ink-soft);
+  background:var(--panel-sunk); border:1px solid var(--edge); border-radius:99px; padding:5px 12px;
+}
+.coord b{ font-family:var(--font-data); color:var(--ink); font-weight:600; }
+.coord--a{ border-left:4px solid var(--interval); }
+.coord--b{ border-left:4px solid var(--grad); }
+
+.readouts{ display:grid; gap:9px; }
+.ro{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  border-radius:var(--r-md); padding:11px 14px; border:1px solid transparent;
+}
+.ro__key{ font-size:.86rem; font-weight:600; display:flex; flex-direction:column; }
+.ro__key small{ font-weight:400; font-size:.72rem; opacity:.75; }
+.ro__val{ font-family:var(--font-data); font-size:1.7rem; font-weight:700; line-height:1; }
+.ro--rise{ background:var(--rise-wash); color:var(--rise); border-color:#c6ddf8; }
+.ro--run{ background:var(--run-wash); color:var(--run); border-color:#f6ddc0; }
+.ro--grad{ background:var(--grad-wash); color:var(--grad); border-color:#dcc9f7; border-style:solid; }
+.ro--grad.locked{ background:var(--panel-sunk); color:var(--ink-faint); border-style:dashed; border-color:var(--edge); }
+.ro--grad .ro__val{ font-size:1.55rem; }
+
+.bars{ margin-top:13px; }
+.bars__cap{ font-size:.76rem; color:var(--ink-faint); margin:0 0 7px; }
+.bar{ position:relative; height:20px; background:var(--panel-sunk); border-radius:99px; margin-bottom:7px; overflow:hidden; }
+.bar__fill{ position:absolute; inset:0 auto 0 0; width:0; border-radius:99px; transition:width var(--t-slow); }
+.bar--rise .bar__fill{ background:var(--rise); }
+.bar--run .bar__fill{ background:var(--run); }
+.bar__tag{ position:absolute; right:10px; top:0; line-height:20px; font-size:.7rem; font-weight:700; color:var(--ink-soft); }
+
+/* Collapsible panel. Folding the numbers away lets the steepness meter and
+   the discussion prompts rise up the rail — useful when a class should be
+   arguing about the picture rather than reading values off it. */
+.fold{ margin:-2px 0 0; }
+.fold__head{
+  display:flex; align-items:center; gap:10px; cursor:pointer;
+  list-style:none; padding:2px 0 2px; border-radius:var(--r-sm);
+}
+.fold__head::-webkit-details-marker{ display:none; }
+.fold__head .card__title{ margin:0; flex:none; }
+.fold__peek{ flex:1; font-size:.78rem; color:var(--ink-faint); text-align:right; }
+.fold:not([open]) .fold__peek::after{ content:"measurements folded away"; }
+/* Once values exist, say so without giving them away. */
+.fold:not([open])[data-ready] .fold__peek::after{ content:"measurements ready — open to see"; }
+.fold:not([open])[data-ready] .fold__peek{ color:var(--grad); font-weight:600; }
+.fold:not([open])[data-ready] .fold__chev{ stroke:var(--grad); animation:nudge 1.6s ease-in-out 3; }
+@keyframes nudge{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(3px); } }
+.fold__chev{
+  width:20px; height:20px; flex:none; fill:none; stroke:var(--ink-faint);
+  stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;
+  transition:transform var(--t-med);
+}
+.fold[open] .fold__chev{ transform:rotate(180deg); }
+.fold__head:hover .fold__chev{ stroke:var(--ink); }
+.fold__head:focus-visible{ outline:3px solid var(--grad); outline-offset:3px; }
+.fold__body{ padding-top:11px; animation:unfold var(--t-med) ease; }
+/* Explicit, so the fold behaves the same everywhere rather than relying on
+   each browser's built-in handling of <details> content. */
+.fold:not([open]) .fold__body{ display:none; }
+@keyframes unfold{ from{ opacity:0; transform:translateY(-6px); } }
+
+.measure-actions{ display:flex; gap:8px; margin-top:13px; flex-wrap:wrap; }
+.fold:not([open]) + .measure-actions{ margin-top:11px; }
+
+.btn{
+  border:1px solid var(--edge); background:var(--panel); border-radius:999px;
+  padding:10px 16px; font-size:.83rem; font-weight:600; color:var(--ink);
+  transition:all var(--t-fast);
+}
+.btn:hover:not(:disabled){ box-shadow:var(--shadow); transform:translateY(-1px); }
+.btn:disabled{ opacity:.42; cursor:not-allowed; }
+.btn--primary{ background:var(--ink); border-color:var(--ink); color:#fff; }
+.btn--ghost{ background:transparent; color:var(--ink-soft); }
+.btn--reveal{ background:var(--grad); border-color:var(--grad); color:#fff; }
+.btn--reveal:not(:disabled){ animation:pulse 2.6s ease-in-out 4; }
+@keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(107,52,201,.34);} 55%{ box-shadow:0 0 0 11px rgba(107,52,201,0);} }
+
+.think__prompt{ margin:0 0 12px; font-size:.95rem; }
+.think__actions{ display:flex; gap:8px; flex-wrap:wrap; }
+
+.predict{ margin-top:13px; border-top:1px solid var(--edge); padding-top:13px; }
+.predict__q{ margin:0 0 10px; font-weight:600; font-size:.92rem; }
+.predict__opts{ display:grid; gap:7px; }
+.predict__opts button{
+  text-align:left; border:1px solid var(--edge); background:var(--panel-sunk);
+  border-radius:var(--r-sm); padding:10px 13px; font-size:.85rem; transition:all var(--t-fast);
+}
+.predict__opts button:hover{ border-color:var(--grad); }
+.predict__opts button.chosen{ background:var(--grad-wash); border-color:var(--grad); font-weight:600; }
+.predict__result{ margin:11px 0 0; font-size:.88rem; padding:11px 13px; border-radius:var(--r-sm); background:var(--panel-sunk); }
+.predict__result.right{ background:#e4f5ee; color:var(--good); }
+.predict__result.think{ background:var(--run-wash); color:var(--warn); }
+
+.card--case{ border-left:4px solid var(--grad); }
+.card--case p{ margin:0; font-size:.9rem; color:var(--ink-soft); }
+
+.reps{ display:grid; gap:7px; }
+.rep{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:8px 12px; background:var(--panel-sunk); border-radius:var(--r-sm); }
+.rep__key{ font-size:.76rem; font-weight:600; color:var(--ink-faint); text-transform:lowercase; }
+.rep__val{ font-family:var(--font-data); font-size:1.02rem; font-weight:700; color:var(--grad); text-align:right; }
+.rep--formula{ background:var(--grad-wash); }
+.rep--formula .rep__val{ font-size:.95rem; }
+.rep.flash{ animation:flash var(--t-slow) 1; }
+@keyframes flash{ 0%{ background:var(--grad); } 100%{ background:var(--panel-sunk); } }
+
+.frac{ display:inline-flex; flex-direction:column; align-items:center; line-height:1.08; vertical-align:middle; }
+.frac span:first-child{ border-bottom:2px solid currentColor; padding:0 5px; }
+.frac .num{ color:var(--rise); }
+.frac .den{ color:var(--run); }
+
+.steppers{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:center; }
+.steppers__cap{ width:100%; font-size:.76rem; color:var(--ink-faint); margin:0; }
+.stepper{ display:flex; align-items:center; gap:7px; background:var(--panel-sunk); border-radius:99px; padding:5px 9px; font-size:.8rem; font-weight:600; }
+.stepper b{ font-family:var(--font-data); min-width:24px; text-align:center; }
+.stepper button{ width:28px; height:28px; border-radius:50%; border:1px solid var(--edge); background:var(--panel); font-size:1rem; line-height:1; }
+.stepper--rise{ color:var(--rise); }
+.stepper--run{ color:var(--run); }
+
+.cmp{ display:grid; gap:8px; }
+.cmp__row{ display:flex; justify-content:space-between; gap:10px; padding:8px 12px; border-radius:var(--r-sm); background:var(--panel-sunk); font-size:.86rem; }
+.cmp__row b{ font-family:var(--font-data); }
+.cmp__row--l1{ border-left:4px solid var(--interval); }
+.cmp__row--l2{ border-left:4px solid var(--line2); }
+.cmp__q{ margin:11px 0 0; font-size:.88rem; color:var(--ink-soft); }
+
+.world__picks{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:11px; }
+.world__fact{ margin:0; font-size:.87rem; color:var(--ink-soft); }
+
+.chal__task{ margin:0 0 11px; font-size:.95rem; font-weight:600; }
+.chal__feedback{ margin:0 0 11px; font-size:.87rem; padding:10px 13px; border-radius:var(--r-sm); background:var(--panel-sunk); }
+.chal__feedback.solved{ background:#e4f5ee; color:var(--good); font-weight:600; }
+.chal__feedback.close{ background:var(--run-wash); color:var(--warn); }
+.chal__actions{ display:flex; gap:8px; flex-wrap:wrap; }
+.chal__hint{ margin:11px 0 0; font-size:.85rem; color:var(--ink-soft); border-left:3px solid var(--run); padding-left:11px; }
+
+/* ---------- 8. Steepness meter ------------------------------------------ */
+.meter{ display:block; width:100%; height:auto; }
+.meter__sky{ fill:var(--panel-sunk); }
+.meter__level{ stroke:var(--edge); stroke-width:2; stroke-dasharray:5 6; }
+.meter__plank{ fill:var(--interval); }
+.meter__ball{ fill:var(--grad); transition:cx var(--t-med), cy var(--t-med); }
+.meter__arc{ fill:none; stroke:var(--grad); stroke-width:4; stroke-linecap:round; opacity:.5; }
+#plank{ transition:transform var(--t-med); transform-box:view-box; transform-origin:0 0; }
+.meter__word{ font-family:var(--font-display); font-size:1.06rem; font-weight:600; margin:9px 0 0; }
+.meter__scale{ display:flex; justify-content:space-between; font-size:.68rem; color:var(--ink-faint); margin-top:5px; }
+.meter__note{ margin:8px 0 0; font-size:.82rem; color:var(--ink-soft); }
+
+/* ---------- 9. Drawer ---------------------------------------------------- */
+.drawer{ position:fixed; inset:0; z-index:50; background:rgba(22,32,46,.42); display:flex; justify-content:flex-end; }
+.drawer__inner{
+  width:min(420px,100%); background:var(--panel); height:100%; overflow:auto;
+  padding:22px; box-shadow:var(--shadow-lift); animation:slideIn var(--t-med);
+}
+@keyframes slideIn{ from{ transform:translateX(30px); opacity:.2; } }
+.drawer__head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+.drawer__grid{ display:grid; gap:9px; }
+.sw{ display:flex; align-items:center; gap:11px; padding:11px 13px; background:var(--panel-sunk); border-radius:var(--r-md); font-size:.89rem; font-weight:600; cursor:pointer; }
+.sw input{ width:19px; height:19px; accent-color:var(--grad); }
+.drawer__foot{ display:flex; gap:8px; flex-wrap:wrap; margin-top:18px; }
+.drawer__tip{ font-size:.8rem; color:var(--ink-faint); margin-top:16px; }
+
+.foot{ padding:0 clamp(14px,2.4vw,30px) 26px; }
+.foot p{ margin:0; font-size:.76rem; color:var(--ink-faint); }
+
+/* ---------- 10. Display modes -------------------------------------------- */
+/* Projection: everything heavier so it reads from the back of the room */
+body.projection{
+  --stroke-line:8px; --stroke-leg:9px; --label-size:26px;
+  --grid:#c2d1e2; --grid-strong:#a4b7cd;
+}
+body.projection .axis-num{ font-size:15px; }
+body.projection .pt-coord{ font-size:18px; }
+body.projection .ro__val{ font-size:2.2rem; }
+body.projection .card__title{ font-size:1.15rem; }
+body.projection .interval{ stroke:#101823; }
+
+/* High contrast: strengthened hues plus dashed second line for CVD safety */
+body.contrast{
+  --bg:#ffffff; --bg-deep:#ffffff; --panel:#ffffff; --panel-sunk:#f4f4f4;
+  --edge:#767676; --ink:#000000; --ink-soft:#1f1f1f; --ink-faint:#3d3d3d;
+  --rise:#0b45a6; --run:#8a3d00; --grad:#4a1a91; --interval:#000000; --line2:#00544a;
+  --grid:#9a9a9a; --grid-strong:#6d6d6d;
+  --rise-wash:#ffffff; --run-wash:#ffffff; --grad-wash:#ffffff;
+  --shadow:0 0 0 1px #000; --shadow-lift:0 0 0 2px #000;
+}
+body.contrast .card, body.contrast .stage-panel{ border-width:2px; border-color:#000; }
+
+/* ---------- 11. Responsive ---------------------------------------------- */
+@media (max-width:1180px){
+  .layout{ grid-template-columns:1fr; }
+  .rail{ max-width:none; }
+}
+@media (max-width:760px){
+  .ladder__list{ grid-template-columns:repeat(2,1fr); }
+  .rung__q{ display:none; }
+  .brand__text p{ display:none; }
+  .topbar{ padding:11px 13px; }
+  .segmented{ order:3; width:100%; }
+  .seg{ flex:1; }
+  .ro__val{ font-size:1.45rem; }
+}
+
+/* ---------- 12. Accessibility ------------------------------------------- */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+}
+body.no-motion *{ transition-duration:.001ms !important; animation:none !important; }
+
+@media print{
+  .topbar,.ladder,.planebar,.drawer,.plane-hint,.rail{ display:none; }
+  .layout{ grid-template-columns:1fr; }
+}
+
+</style>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23172033'/><path d='M7 24 L25 8' stroke='white' stroke-width='3' stroke-linecap='round'/><path d='M7 24 L21 24' stroke='%23E4711B' stroke-width='3' stroke-linecap='round'/><path d='M21 24 L21 12' stroke='%232F7FE8' stroke-width='3' stroke-linecap='round'/></svg>">
+</head>
+<body data-mode="student" data-stage="0">
+
+<a class="skiplink" href="#plane">Skip to the graph</a>
+
+<!-- ══════════════════════════════ TOP BAR ══════════════════════════════ -->
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand__mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+      <path d="M6 33 L34 7" class="mk-int"/>
+      <path d="M6 33 L28 33" class="mk-run"/>
+      <path d="M28 33 L28 11" class="mk-rise"/>
+    </svg>
+    <div class="brand__text">
+      <h1>Rise &amp; Run</h1>
+      <p>Build the idea of gradient before the formula</p>
+    </div>
+  </div>
+
+  <div class="topbar__tools">
+    <button type="button" class="tool tool--quiz" id="btnQuiz">Student Quiz</button>
+    <button type="button" class="tool" data-setmode="teacher" aria-pressed="false"
+            title="Opens every stage at once for whole-class teaching">Teacher demonstration</button>
+    <button type="button" class="tool" id="btnProjection" aria-pressed="false" title="Larger lines and text for the whiteboard">Projection</button>
+    <button type="button" class="tool" id="btnContrast" aria-pressed="false" title="High contrast colours">Contrast</button>
+    <button type="button" class="tool" id="btnTextSize" title="Change interface size">Text size</button>
+    <button type="button" class="tool tool--accent" id="btnDrawer" aria-expanded="false" aria-controls="drawer">Controls</button>
+  </div>
+</header>
+
+<!-- ══════════════════════════════ STAGE LADDER ══════════════════════════════ -->
+<nav class="ladder" aria-label="Learning sequence">
+  <ol class="ladder__list">
+    <li><button type="button" class="rung" data-stage="0" aria-current="step">
+      <span class="rung__label">Look</span>
+      <span class="rung__q">What changes when a point moves?</span></button></li>
+    <li><button type="button" class="rung" data-stage="1" disabled>
+      <span class="rung__label">Count</span>
+      <span class="rung__q">How far up? How far across?</span></button></li>
+    <li><button type="button" class="rung" data-stage="2" disabled>
+      <span class="rung__label">Compare</span>
+      <span class="rung__q">Which change matters more?</span></button></li>
+    <li><button type="button" class="rung" data-stage="3" disabled>
+      <span class="rung__label">Rule</span>
+      <span class="rung__q">Why does the formula work?</span></button></li>
+  </ol>
+  <p class="ladder__gate" id="gateNote"><span id="gateText">Move point A or point B to begin.</span>
+    <span class="gate__bar" aria-hidden="true"><span class="gate__fill" id="gateFill"></span></span>
+  </p>
+</nav>
+
+<!-- ══════════════════════════════ MAIN LAYOUT ══════════════════════════════ -->
+<main class="layout">
+
+  <!-- ─────────── The Cartesian plane ─────────── -->
+  <section class="stage-panel" aria-label="Cartesian plane">
+    <div class="planebar" role="toolbar" aria-label="Plane modes">
+      <button type="button" class="chip" data-action="reset">Reset</button>
+      <button type="button" class="chip" data-action="random">Random points</button>
+      <span class="planebar__div" aria-hidden="true"></span>
+      <button type="button" class="chip chip--mode" data-toggle="slide" aria-pressed="false">Slide along the line</button>
+      <button type="button" class="chip chip--mode" data-toggle="compare" aria-pressed="false">Second line</button>
+      <button type="button" class="chip chip--mode" data-toggle="world" aria-pressed="false">Real world</button>
+    </div>
+
+    <div class="planewrap">
+      <svg id="plane" viewBox="0 0 760 760" role="application"
+           aria-label="Cartesian plane with two draggable points. Use Tab to reach a point, then the arrow keys to move it one unit at a time.">
+        <defs>
+          <marker id="arrowRise" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M1 1 L11 6 L1 11 z" class="ah-rise"/>
+          </marker>
+          <marker id="arrowRun" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M1 1 L11 6 L1 11 z" class="ah-run"/>
+          </marker>
+          <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="8" stroke="currentColor" stroke-width="3"/>
+          </pattern>
+        </defs>
+
+        <g id="gGrid"   class="layer-grid"   aria-hidden="true"></g>
+        <g id="gAxes"   class="layer-axes"   aria-hidden="true"></g>
+        <g id="gWorld"  class="layer-world"  aria-hidden="true"></g>
+        <g id="gGhosts" class="layer-ghosts" aria-hidden="true"></g>
+        <g id="gGuide"  class="layer-guide"  aria-hidden="true"></g>
+        <g id="gLine2"  class="layer-line2"  aria-hidden="true"></g>
+
+        <g id="gTri" class="layer-tri" aria-hidden="true">
+          <path id="triFill" class="tri-fill"/>
+          <line id="segRun"  class="seg-run"  marker-end="url(#arrowRun)"/>
+          <line id="segRise" class="seg-rise" marker-end="url(#arrowRise)"/>
+          <line id="fillRise" class="count-fill count-fill--rise"/>
+          <line id="fillRun"  class="count-fill count-fill--run"/>
+          <g id="ticksRun"  class="ticks"></g>
+          <g id="ticksRise" class="ticks"></g>
+          <path id="rightAngle" class="right-angle"/>
+          <text id="lblRun"  class="leg-label leg-label--run">run</text>
+          <text id="lblRise" class="leg-label leg-label--rise">rise</text>
+        </g>
+
+        <g id="gInterval" aria-hidden="true">
+          <line id="infiniteLine" class="infinite-line"/>
+          <line id="interval" class="interval"/>
+        </g>
+
+        <g id="gPoints"></g>
+        <g id="gLabels" class="layer-labels" aria-hidden="true"></g>
+      </svg>
+
+      <div class="plane-hint" id="planeHint">Drag either point. On a keyboard, press Tab then use the arrow keys.</div>
+    </div>
+  </section>
+
+  <!-- ─────────── Right hand rail ─────────── -->
+  <aside class="rail" aria-label="Measurements and activities">
+
+    <!-- Measurements -->
+    <section class="card card--measure">
+      <details class="fold" id="foldMeasure">
+        <summary class="fold__head">
+          <h2 class="card__title">This interval</h2>
+          <span class="fold__peek" aria-hidden="true"></span>
+          <svg class="fold__chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9 L12 15 L18 9"/></svg>
+        </summary>
+
+        <div class="fold__body">
+          <div class="coords">
+            <span class="coord coord--a">A <b id="coordA">(−6, −2)</b></span>
+            <span class="coord coord--b">B <b id="coordB">(2, 4)</b></span>
+          </div>
+
+          <div class="readouts">
+            <div class="ro ro--rise">
+              <span class="ro__key">Rise<small>change up or down</small></span>
+              <span class="ro__val" id="valRise">?</span>
+            </div>
+            <div class="ro ro--run">
+              <span class="ro__key">Run<small>change left or right</small></span>
+              <span class="ro__val" id="valRun">?</span>
+            </div>
+            <div class="ro ro--grad locked" id="roGrad">
+              <span class="ro__key">Gradient<small id="gradSub">locked until the rule is revealed</small></span>
+              <span class="ro__val" id="valGrad">—</span>
+            </div>
+          </div>
+
+          <div class="bars" id="bars" hidden>
+            <p class="bars__cap">How the two changes compare</p>
+            <div class="bar bar--rise"><span class="bar__fill" id="barRise"></span><span class="bar__tag">rise</span></div>
+            <div class="bar bar--run"><span class="bar__fill" id="barRun"></span><span class="bar__tag">run</span></div>
+          </div>
+        </div>
+      </details>
+
+      <div class="measure-actions">
+        <button type="button" class="btn btn--primary" id="btnCount">Count the steps</button>
+        <button type="button" class="btn btn--reveal" id="btnReveal" disabled>Reveal the rule</button>
+      </div>
+    </section>
+
+    <!-- Steepness meter -->
+    <section class="card card--meter">
+      <h2 class="card__title">Steepness meter</h2>
+      <svg class="meter" viewBox="0 0 280 150" aria-hidden="true">
+        <rect class="meter__sky" x="0" y="0" width="280" height="150" rx="14"/>
+        <line class="meter__level" x1="34" y1="86" x2="246" y2="86"/>
+        <g id="plank">
+          <rect class="meter__plank" x="-78" y="-7" width="156" height="14" rx="7"/>
+        </g>
+        <circle id="meterBall" class="meter__ball" r="11"/>
+        <path id="meterArc" class="meter__arc"/>
+      </svg>
+      <p class="meter__word" id="meterWord">Move a point to feel the slope</p>
+      <div class="meter__scale" aria-hidden="true"><span>flat</span><span>gentle</span><span>steep</span><span>very steep</span></div>
+      <p class="meter__note" id="meterNote"></p>
+    </section>
+
+    <!-- Think about it -->
+    <section class="card card--think">
+      <h2 class="card__title">Think about it</h2>
+      <p class="think__prompt" id="thinkPrompt">Drag point B upwards. Watch which measurement changes and which stays put.</p>
+      <div class="think__actions">
+        <button type="button" class="btn btn--ghost" id="btnPredict">Predict before you move</button>
+        <button type="button" class="btn btn--ghost" id="btnNewPrompt">Another question</button>
+      </div>
+
+      <div class="predict" id="predictBox" hidden>
+        <p class="predict__q" id="predictQ"></p>
+        <div class="predict__opts" id="predictOpts" role="group" aria-label="Your prediction"></div>
+        <p class="predict__result" id="predictResult" hidden></p>
+      </div>
+    </section>
+
+    <!-- Special case -->
+    <section class="card card--case" id="caseCard" hidden>
+      <h2 class="card__title" id="caseTitle">Special case</h2>
+      <p id="caseBody"></p>
+    </section>
+
+    <!-- Representations -->
+    <section class="card card--reps locked" id="repsCard">
+      <h2 class="card__title">The same gradient, four ways</h2>
+      <p class="card__lock" id="repsLock">Unlocks once you reveal the rule.</p>
+      <div class="reps" id="repsBody" hidden>
+        <div class="rep"><span class="rep__key">In words</span><span class="rep__val" id="repWords">—</span></div>
+        <div class="rep"><span class="rep__key">Ratio</span><span class="rep__val" id="repRatio">—</span></div>
+        <div class="rep"><span class="rep__key">Fraction</span><span class="rep__val" id="repFrac">—</span></div>
+        <div class="rep"><span class="rep__key">Simplified</span><span class="rep__val" id="repSimp">—</span></div>
+        <div class="rep"><span class="rep__key">Decimal</span><span class="rep__val" id="repDec">—</span></div>
+        <div class="rep rep--formula"><span class="rep__key">Rule</span><span class="rep__val" id="repRule"></span></div>
+      </div>
+      <div class="steppers" id="steppers" hidden>
+        <p class="steppers__cap">Change a number and watch the line move.</p>
+        <div class="stepper stepper--rise">
+          <span>rise</span>
+          <button type="button" data-step="rise" data-by="-1" aria-label="Decrease rise by one">−</button>
+          <b id="stepRise">0</b>
+          <button type="button" data-step="rise" data-by="1" aria-label="Increase rise by one">+</button>
+        </div>
+        <div class="stepper stepper--run">
+          <span>run</span>
+          <button type="button" data-step="run" data-by="-1" aria-label="Decrease run by one">−</button>
+          <b id="stepRun">0</b>
+          <button type="button" data-step="run" data-by="1" aria-label="Increase run by one">+</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Comparison -->
+    <section class="card card--compare" id="compareCard" hidden>
+      <h2 class="card__title">Line 1 against line 2</h2>
+      <div class="cmp" id="cmpBody"></div>
+      <p class="cmp__q" id="cmpQuestion"></p>
+    </section>
+
+    <!-- Real world -->
+    <section class="card card--world" id="worldCard" hidden>
+      <h2 class="card__title">Steepness in the world</h2>
+      <div class="world__picks" id="worldPicks"></div>
+      <p class="world__fact" id="worldFact"></p>
+    </section>
+
+    <!-- Challenges -->
+    <section class="card card--challenge">
+      <h2 class="card__title">Challenge</h2>
+      <p class="chal__task" id="chalTask">Press start for a challenge. Nothing is scored — try as many times as you like.</p>
+      <p class="chal__feedback" id="chalFeedback" hidden></p>
+      <div class="chal__actions">
+        <button type="button" class="btn btn--primary" id="btnChallenge">Start a challenge</button>
+        <button type="button" class="btn btn--ghost" id="btnHint" hidden>Hint</button>
+      </div>
+      <p class="chal__hint" id="chalHint" hidden></p>
+    </section>
+
+  </aside>
+</main>
+
+<!-- ══════════════════════════════ TEACHER DRAWER ══════════════════════════════ -->
+<div class="drawer" id="drawer" hidden>
+  <div class="drawer__inner">
+    <div class="drawer__head">
+      <h2>Display controls</h2>
+      <button type="button" class="btn btn--ghost" id="btnDrawerClose">Close</button>
+    </div>
+    <div class="drawer__grid">
+      <label class="sw"><input type="checkbox" data-vis="labels" checked><span>Point labels</span></label>
+      <label class="sw"><input type="checkbox" data-vis="coords" checked><span>Coordinates</span></label>
+      <label class="sw"><input type="checkbox" data-vis="triangle" checked><span>Right triangle</span></label>
+      <label class="sw"><input type="checkbox" data-vis="numbers" checked><span>Numbers</span></label>
+      <label class="sw"><input type="checkbox" data-vis="riseFirst" checked><span>Draw the rise first</span></label>
+      <label class="sw"><input type="checkbox" data-vis="construction"><span>Construction lines</span></label>
+      <label class="sw"><input type="checkbox" data-vis="infinite"><span>Extend the line</span></label>
+      <label class="sw"><input type="checkbox" data-vis="grid" checked><span>Grid</span></label>
+      <label class="sw"><input type="checkbox" data-vis="snap" checked><span>Snap to whole numbers</span></label>
+    </div>
+    <div class="drawer__foot">
+      <button type="button" class="btn btn--ghost" id="btnResetAll">Reset everything</button>
+      <button type="button" class="btn btn--ghost" data-action="random">Random points</button>
+      <button type="button" class="btn btn--ghost" id="btnUnlockAll">Unlock every stage</button>
+    </div>
+    <p class="drawer__tip">Teacher demonstration mode unlocks all four stages immediately and enlarges every label.</p>
+  </div>
+</div>
+
+<div class="sr-only" id="live" aria-live="polite" aria-atomic="true"></div>
+
+<footer class="foot">
+  <p>NSW Mathematics K–10 · <b>MA5-LIN-C-01</b> — determines the midpoint, gradient and length of an interval, and graphs linear relationships.</p>
+</footer>
+
+<script>
+/* ---------- The student quiz, carried inside this file ------------------
+   Generated by build.py from quiz.html. Edit quiz.html, not this string. */
+const QUIZ_HTML = "<!doctype html>\n<html lang=\"en-AU\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Gradient \u2014 Student Quiz<\/title>\n<style>\n/* ==============================================================\n   Gradient \u2014 Student Quiz\n   Companion to the Rise & Run manipulative. NSW MA5-LIN-C-01.\n\n   UI principle: one question, one plane, nothing else competing.\n   Colour code matches the manipulative exactly, so a student moving\n   between the two never has to relearn what blue and orange mean.\n   ============================================================== */\n\n:root{\n  --bg:#eef2f8;\n  --panel:#ffffff;\n  --sunk:#f4f7fb;\n  --edge:#d7e0ec;\n  --ink:#16202e;\n  --ink-soft:#42556d;\n  --ink-faint:#7688a0;\n\n  --rise:#1f6fdc;  --rise-wash:#e4eefc;\n  --run:#e0700f;   --run-wash:#fdeedd;\n  --grad:#6b34c9;  --grad-wash:#efe7fd;\n  --interval:#263449;\n  --line2:#0b8574; --line2-wash:#ddf1ee;\n  --good:#0f7a53;  --good-wash:#e2f4ec;\n  --warn:#a5590c;  --warn-wash:#fdefdc;\n\n  --grid:#ccd8e6; --grid-strong:#b2c2d5;\n\n  --lvl:#1f6fdc; --lvl-wash:#e4eefc;\n\n  --font-display:Optima,Candara,\"Gill Sans MT\",\"Trebuchet MS\",system-ui,sans-serif;\n  --font-body:system-ui,-apple-system,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;\n  --font-data:ui-monospace,\"SFMono-Regular\",\"Cascadia Mono\",\"Roboto Mono\",Consolas,monospace;\n\n  --r-lg:22px; --r-md:15px; --r-sm:10px;\n  --shadow:0 1px 2px rgba(22,32,46,.05),0 10px 26px -14px rgba(22,32,46,.3);\n  --t:170ms cubic-bezier(.2,.7,.3,1);\n  --t-med:340ms cubic-bezier(.2,.7,.3,1);\n}\n*,*::before,*::after{ box-sizing:border-box; }\n[hidden]{ display:none !important; }\n\nbody{\n  margin:0; font-family:var(--font-body); color:var(--ink); line-height:1.5;\n  background:radial-gradient(900px 520px at 15% -10%,#fff 0%,rgba(255,255,255,0) 60%),\n             linear-gradient(180deg,var(--bg) 0%,#e2e9f3 100%);\n  background-attachment:fixed; min-height:100vh;\n}\nh1,h2,h3{ font-family:var(--font-display); margin:0; font-weight:600; letter-spacing:-.01em; }\nbutton{ font:inherit; color:inherit; cursor:pointer; }\n.sr-only{ position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0; }\n:focus-visible{ outline:3px solid var(--grad); outline-offset:2px; border-radius:5px; }\n\n/* ---------- top bar ---------- */\n.bar{\n  display:flex; align-items:center; gap:14px; flex-wrap:wrap;\n  padding:12px clamp(12px,2.2vw,26px);\n  background:rgba(255,255,255,.85); backdrop-filter:blur(10px);\n  border-bottom:1px solid var(--edge); position:sticky; top:0; z-index:20;\n}\n.bar h1{ font-size:1.12rem; }\n.bar__spacer{ flex:1; }\n.levelchip{\n  display:inline-flex; align-items:center; gap:8px; padding:6px 15px; border-radius:99px;\n  background:var(--lvl-wash); color:var(--lvl); border:1.5px solid currentColor;\n  font-weight:700; font-size:.88rem;\n}\n.levelchip__dot{ width:9px;height:9px;border-radius:50%;background:currentColor; }\n.tbtn{\n  border:1px solid var(--edge); background:var(--panel); border-radius:99px;\n  padding:8px 15px; font-size:.83rem; font-weight:600; color:var(--ink-soft); transition:all var(--t);\n}\n.tbtn:hover{ border-color:var(--ink-faint); color:var(--ink); }\n\n/* ---------- progress ---------- */\n.prog{ padding:12px clamp(12px,2.2vw,26px) 0; display:flex; align-items:center; gap:14px; }\n.prog__track{ flex:1; height:9px; background:var(--panel); border:1px solid var(--edge); border-radius:99px; overflow:hidden; }\n.prog__fill{ display:block; height:100%; width:0; background:var(--lvl); border-radius:99px; transition:width var(--t-med); }\n.prog__count{ font-size:.82rem; font-weight:700; color:var(--ink-soft); font-variant-numeric:tabular-nums; }\n.prog__dots{ display:flex; gap:5px; }\n.dot{ width:11px; height:11px; border-radius:50%; background:var(--edge); transition:background var(--t); }\n.dot.correct{ background:var(--good); }\n.dot.shown{ background:var(--warn); }\n.dot.here{ box-shadow:0 0 0 3px var(--grad-wash); background:var(--grad); }\n\n/* ---------- layout ---------- */\n.main{\n  display:grid; grid-template-columns:min(100%,58vh) minmax(0,1fr);\n  justify-content:center; gap:16px;\n  padding:14px clamp(12px,2.2vw,26px) 34px; align-items:start;\n}\n/* How much room the plane gets depends on how much the student may use it.\n   Sweet and Mild explore, so the plane is large. Medium reads a fixed\n   diagram, so it is smaller. Spicy works from numbers, so it is gone. */\nbody[data-plane=\"interactive\"] .main{ grid-template-columns:min(100%,78vh) minmax(330px,1fr); }\nbody[data-plane=\"figure\"] .main{ grid-template-columns:min(100%,46vh) minmax(330px,1fr); }\nbody[data-plane=\"none\"] .main{ grid-template-columns:min(100%,760px); }\nbody[data-plane=\"figure\"] #planeCard{ opacity:.98; }\nbody[data-plane=\"figure\"] #svg{ cursor:default; }\n.card{\n  background:var(--panel); border:1px solid var(--edge); border-radius:var(--r-lg);\n  box-shadow:var(--shadow); padding:15px 16px 16px;\n}\n\n/* ---------- plane ---------- */\n.planetools{ display:flex; gap:7px; flex-wrap:wrap; margin-bottom:10px; align-items:center; }\n.ptool{\n  border:1px solid var(--edge); background:var(--sunk); border-radius:99px;\n  padding:6px 12px; font-size:.78rem; font-weight:600; color:var(--ink-soft); transition:all var(--t);\n}\n.ptool[aria-pressed=\"true\"]{ background:var(--ink); border-color:var(--ink); color:#fff; }\n.ptool--warn{ background:var(--warn-wash); border-color:#f0c489; color:var(--warn); }\n#svg{ display:block; width:100%; height:auto; aspect-ratio:1/1; border-radius:var(--r-md); background:var(--sunk); touch-action:none; }\n.planenote{ margin:9px 0 0; font-size:.8rem; color:var(--ink-faint); min-height:1.2em; }\n\n.gl{ stroke:var(--grid); stroke-width:1; }\n.gl5{ stroke:var(--grid-strong); stroke-width:1.4; }\n.ax{ stroke:var(--ink-soft); stroke-width:2.2; }\n.axt{ stroke:var(--ink-soft); stroke-width:1.5; }\n.axn{ fill:var(--ink-faint); font:500 11px var(--font-data); text-anchor:middle; }\n.axname{ fill:var(--ink-soft); font:600 14px var(--font-display); }\n.iv{ stroke:var(--interval); stroke-width:5; stroke-linecap:round; }\n.iv2{ stroke:var(--line2); stroke-width:5; stroke-linecap:round; stroke-dasharray:13 7; }\n.trif{ fill:var(--ink); opacity:.045; }\n.lrise{ stroke:var(--rise); stroke-width:6; stroke-linecap:round; }\n.lrun{ stroke:var(--run); stroke-width:6; stroke-linecap:round; }\n.lrise2{ stroke:var(--rise); stroke-width:3.4; opacity:.7; stroke-dasharray:6 4; }\n.lrun2{ stroke:var(--run); stroke-width:3.4; opacity:.7; stroke-dasharray:6 4; }\n.ra{ fill:none; stroke:var(--ink-faint); stroke-width:2; }\n.legtxt{ font:600 17px var(--font-display); paint-order:stroke; stroke:var(--sunk); stroke-width:5px; stroke-linejoin:round; }\n.legtxt--rise{ fill:var(--rise); }\n.legtxt--run{ fill:var(--run); }\n.tri-badge-bg{ fill:var(--ink); }\n.tri-badge{ font:700 15px var(--font-display); fill:#fff; text-anchor:middle; }\n.ghost{ fill:none; stroke:var(--ink-faint); stroke-width:1.6; stroke-dasharray:4 5; opacity:.6; }\n.ghost-r{ stroke:var(--rise); stroke-width:3; opacity:.3; }\n.ghost-n{ stroke:var(--run); stroke-width:3; opacity:.3; }\n\n.pt{ cursor:grab; }\n.pt.locked{ cursor:default; }\n.pt-halo{ fill:#fff; stroke:var(--edge); stroke-width:2; }\n.pt-dot{ stroke:#fff; stroke-width:3; transition:r var(--t); }\n.pt--A .pt-dot{ fill:var(--interval); }\n.pt--B .pt-dot{ fill:var(--grad); }\n.pt--C .pt-dot,.pt--D .pt-dot{ fill:var(--line2); }\n.pt:not(.locked):hover .pt-dot,.pt:focus-visible .pt-dot{ r:14; }\n.pt:focus-visible .pt-halo{ stroke:var(--grad); stroke-width:4; }\n.pt-name{ font:700 16px var(--font-display); fill:#fff; text-anchor:middle; dominant-baseline:middle; }\n.pt-co{ font:600 12px var(--font-data); fill:var(--ink-soft); paint-order:stroke; stroke:var(--sunk); stroke-width:5px; stroke-linejoin:round; }\n.linetag{ font:700 13px var(--font-display); paint-order:stroke; stroke:var(--sunk); stroke-width:5px; stroke-linejoin:round; }\n\n\n/* ---------- question ---------- */\n.qcard{ display:flex; flex-direction:column; min-height:330px; }\n.qtag{ font-size:.76rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); }\n.qtext{ font-family:var(--font-display); font-size:1.42rem; font-weight:600; margin:7px 0 4px; line-height:1.28; }\n.qsub{ font-size:.9rem; color:var(--ink-soft); margin:0 0 15px; }\n\n.opts{ display:grid; gap:9px; }\n.opt{\n  text-align:left; border:1.5px solid var(--edge); background:var(--sunk);\n  border-radius:var(--r-md); padding:13px 16px; font-size:1rem; font-weight:600;\n  transition:all var(--t); display:flex; align-items:center; gap:11px;\n}\n.opt:hover:not(:disabled){ border-color:var(--grad); background:var(--grad-wash); transform:translateY(-1px); }\n.opt__key{\n  width:26px;height:26px;flex:none;border-radius:50%;background:var(--panel);\n  border:1.5px solid var(--edge); display:grid; place-items:center; font-size:.8rem; font-family:var(--font-data);\n}\n.opt.right{ background:var(--good-wash); border-color:var(--good); color:var(--good); }\n.opt.wrong{ background:var(--warn-wash); border-color:#e8b877; color:var(--warn); }\n.opt:disabled{ cursor:default; }\n.opt.dim{ opacity:.5; }\n\n.entry{ display:flex; gap:9px; align-items:center; flex-wrap:wrap; }\n.entry input{\n  flex:1 1 160px; min-width:130px; font:700 1.32rem var(--font-data); color:var(--ink);\n  padding:12px 15px; border-radius:var(--r-md); border:1.5px solid var(--edge); background:var(--sunk);\n}\n.entry input:focus{ outline:none; border-color:var(--grad); background:#fff; }\n.entry input.right{ border-color:var(--good); background:var(--good-wash); color:var(--good); }\n.entry input.wrong{ border-color:#e8b877; background:var(--warn-wash); color:var(--warn); }\n/* two gradients side by side, so the comparison is the point of the layout */\n.pairbox{ display:grid; gap:10px; }\n.pairrow{\n  display:flex; align-items:center; gap:12px; padding:11px 14px;\n  border:1.5px solid var(--edge); border-radius:var(--r-md); background:var(--sunk);\n}\n.pairrow__badge{\n  width:28px; height:28px; flex:none; border-radius:50%; background:var(--ink); color:#fff;\n  display:grid; place-items:center; font:700 .9rem var(--font-display);\n}\n.pairrow__name{ flex:1; font-weight:600; font-size:.95rem; }\n.pairrow input{\n  width:110px; flex:none; font:700 1.2rem var(--font-data); text-align:center; color:var(--ink);\n  padding:9px 10px; border-radius:var(--r-sm); border:1.5px solid var(--edge); background:var(--panel);\n}\n.pairrow input:focus{ outline:none; border-color:var(--grad); }\n.pairrow input.right{ border-color:var(--good); background:var(--good-wash); color:var(--good); }\n.pairrow input.wrong{ border-color:#e8b877; background:var(--warn-wash); color:var(--warn); }\n\n.keyhints{ display:flex; gap:6px; flex-wrap:wrap; margin-top:9px; }\n.keyhint{ border:1px solid var(--edge); background:var(--panel); border-radius:99px; padding:5px 11px; font:600 .78rem var(--font-data); color:var(--ink-soft); }\n\n.buildbox{\n  border:1.5px dashed var(--grad); background:var(--grad-wash); border-radius:var(--r-md);\n  padding:13px 15px; font-size:.93rem; color:var(--grad); font-weight:600;\n}\n.buildbox.done{ border-style:solid; border-color:var(--good); background:var(--good-wash); color:var(--good); }\n\n.fb{ margin:14px 0 0; padding:12px 15px; border-radius:var(--r-md); font-size:.95rem; font-weight:600; }\n.fb.ok{ background:var(--good-wash); color:var(--good); }\n.fb.no{ background:var(--warn-wash); color:var(--warn); }\n.fb.shown{ background:var(--grad-wash); color:var(--grad); }\n.fb__why{ display:block; font-weight:400; margin-top:6px; color:var(--ink-soft); }\n\n.hintbox{ margin:11px 0 0; padding:11px 14px; border-left:3px solid var(--run); background:var(--run-wash); border-radius:var(--r-sm); font-size:.9rem; color:var(--warn); }\n\n.qfoot{ display:flex; gap:9px; flex-wrap:wrap; margin-top:auto; padding-top:16px; }\n.btn{\n  border:1px solid var(--edge); background:var(--panel); border-radius:99px;\n  padding:11px 19px; font-size:.9rem; font-weight:700; transition:all var(--t);\n}\n.btn:hover:not(:disabled){ transform:translateY(-1px); box-shadow:var(--shadow); }\n.btn:disabled{ opacity:.4; cursor:not-allowed; }\n.btn--go{ background:var(--ink); border-color:var(--ink); color:#fff; }\n.btn--next{ background:var(--grad); border-color:var(--grad); color:#fff; }\n.btn--ghost{ background:transparent; color:var(--ink-soft); }\n\n/* ---------- modals ---------- */\n.veil{ position:fixed; inset:0; background:rgba(22,32,46,.5); z-index:40; display:grid; place-items:center; padding:18px; }\n.modal{\n  background:var(--panel); border-radius:var(--r-lg); box-shadow:0 30px 70px -20px rgba(0,0,0,.5);\n  width:min(560px,100%); max-height:90vh; overflow:auto; padding:24px;\n  animation:pop var(--t-med);\n}\n@keyframes pop{ from{ transform:translateY(14px) scale(.98); opacity:0; } }\n.modal h2{ font-size:1.4rem; margin-bottom:5px; }\n.modal p.lead{ margin:0 0 18px; color:var(--ink-soft); font-size:.93rem; }\n\n.levels{ display:grid; gap:11px; }\n.lvl{\n  display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:var(--r-md);\n  border:1.5px solid var(--edge); background:var(--sunk); text-align:left; width:100%; transition:all var(--t);\n}\n.lvl:hover{ transform:translateY(-2px); box-shadow:var(--shadow); }\n.lvl__heat{ font-size:1.5rem; flex:none; width:34px; text-align:center; }\n.lvl__body{ flex:1; }\n.lvl__name{ font-family:var(--font-display); font-size:1.1rem; font-weight:700; }\n.lvl__desc{ font-size:.83rem; color:var(--ink-soft); }\n.lvl__go{ font-size:.82rem; font-weight:700; color:var(--ink-faint); flex:none; }\n.lvl--sweet{ border-left:6px solid #16a34a; }\n.lvl--mild{ border-left:6px solid #2563eb; }\n.lvl--medium{ border-left:6px solid #f59e0b; }\n.lvl--spicy{ border-left:6px solid #ea580c; }\n\n.cert{ text-align:center; }\n.cert__cup{ font-size:3.4rem; line-height:1; }\n.cert__score{ font-family:var(--font-data); font-size:2.6rem; font-weight:700; color:var(--grad); margin:6px 0 2px; }\n.cert__line{ font-size:1rem; color:var(--ink-soft); }\n.cert__note{ font-size:.86rem; color:var(--ink-faint); margin-top:12px; }\n.modal__acts{ display:flex; gap:9px; flex-wrap:wrap; margin-top:20px; }\n\n.banner{ text-align:center; font-size:.78rem; color:var(--ink-faint); padding:0 16px 22px; }\n.banner a{ color:var(--ink-soft); }\n\n/* ---------- responsive ---------- */\n@media (max-width:1000px){\n  .main,\n  body[data-plane=\"interactive\"] .main,\n  body[data-plane=\"figure\"] .main,\n  body[data-plane=\"none\"] .main{ grid-template-columns:1fr; }\n  .qcard{ min-height:0; }\n}\n@media (max-width:560px){\n  .qtext{ font-size:1.2rem; }\n  .bar h1{ font-size:1rem; }\n  .prog__dots{ display:none; }\n}\n@media (prefers-reduced-motion:reduce){\n  *{ animation-duration:.001ms !important; transition-duration:.001ms !important; }\n}\n<\/style>\n<\/head>\n<body>\n\n<header class=\"bar\">\n  <h1>Gradient Quiz<\/h1>\n  <span class=\"levelchip\" id=\"levelChip\" hidden><span class=\"levelchip__dot\"><\/span><span id=\"levelName\">\u2014<\/span><\/span>\n  <span class=\"bar__spacer\"><\/span>\n  <button type=\"button\" class=\"tbtn\" id=\"btnLevels\">Change level<\/button>\n  <button type=\"button\" class=\"tbtn\" id=\"btnRestart\">Start again<\/button>\n<\/header>\n\n<div class=\"prog\" id=\"progRow\" hidden>\n  <span class=\"prog__count\" id=\"progCount\">1 / 10<\/span>\n  <span class=\"prog__track\"><span class=\"prog__fill\" id=\"progFill\"><\/span><\/span>\n  <span class=\"prog__dots\" id=\"progDots\"><\/span>\n<\/div>\n\n<main class=\"main\" id=\"main\" hidden>\n\n  <!-- the plane travels with every question -->\n  <section class=\"card\" id=\"planeCard\" aria-label=\"Plane\">\n    <div class=\"planetools\" id=\"planetools\">\n      <button type=\"button\" class=\"ptool\" id=\"tNum\" aria-pressed=\"true\">Numbers<\/button>\n      <button type=\"button\" class=\"ptool\" id=\"tTri\" aria-pressed=\"true\">Triangle<\/button>\n      <button type=\"button\" class=\"ptool ptool--warn\" id=\"tExplore\" aria-pressed=\"false\">Explore freely<\/button>\n    <\/div>\n    <svg id=\"svg\" viewBox=\"0 0 560 560\" role=\"application\"\n         aria-label=\"Cartesian plane. Tab to a point, then use the arrow keys to move it.\">\n      <defs>\n        <marker id=\"aRise\" viewBox=\"0 0 12 12\" refX=\"9\" refY=\"6\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><path d=\"M1 1 L11 6 L1 11z\" fill=\"#1f6fdc\"/><\/marker>\n        <marker id=\"aRun\" viewBox=\"0 0 12 12\" refX=\"9\" refY=\"6\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><path d=\"M1 1 L11 6 L1 11z\" fill=\"#e0700f\"/><\/marker>\n      <\/defs>\n      <g id=\"gGrid\"><\/g><g id=\"gAxes\"><\/g><g id=\"gGhost\"><\/g>\n      <g id=\"gL2\"><\/g><g id=\"gTri\"><\/g><g id=\"gIv\"><\/g><g id=\"gPts\"><\/g><g id=\"gLbl\"><\/g>\n    <\/svg>\n    <p class=\"planenote\" id=\"planeNote\"><\/p>\n  <\/section>\n\n  <!-- one question at a time -->\n  <section class=\"card qcard\" aria-live=\"polite\">\n    <span class=\"qtag\" id=\"qTag\">Question 1<\/span>\n    <h2 class=\"qtext\" id=\"qText\">\u2014<\/h2>\n    <p class=\"qsub\" id=\"qSub\"><\/p>\n\n    <div id=\"answerArea\"><\/div>\n    <div class=\"fb\" id=\"fb\" hidden><\/div>\n    <div class=\"hintbox\" id=\"hint\" hidden><\/div>\n\n    <div class=\"qfoot\">\n      <button type=\"button\" class=\"btn btn--go\" id=\"btnCheck\" hidden>Check<\/button>\n      <button type=\"button\" class=\"btn btn--ghost\" id=\"btnHint\">Hint<\/button>\n      <button type=\"button\" class=\"btn btn--ghost\" id=\"btnShow\">Show me<\/button>\n      <button type=\"button\" class=\"btn btn--next\" id=\"btnNext\" hidden>Next \u2192<\/button>\n    <\/div>\n  <\/section>\n<\/main>\n\n<p class=\"banner\" id=\"banner\" hidden>Part of the Rise &amp; Run gradient manipulative \u00b7 NSW MA5-LIN-C-01<\/p>\n\n<!-- level chooser -->\n<div class=\"veil\" id=\"veilLevels\">\n  <div class=\"modal\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"lvlHead\">\n    <h2 id=\"lvlHead\">Choose your level<\/h2>\n    <p class=\"lead\">Ten questions. Nothing is timed, wrong answers cost you nothing, and you can use the plane the whole way through.<\/p>\n    <div class=\"levels\" id=\"levelList\"><\/div>\n  <\/div>\n<\/div>\n\n<!-- certificate -->\n<div class=\"veil\" id=\"veilCert\" hidden>\n  <div class=\"modal\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"certHead\">\n    <div class=\"cert\">\n      <div class=\"cert__cup\">\ud83c\udfc6<\/div>\n      <h2 id=\"certHead\">Finished<\/h2>\n      <div class=\"cert__score\" id=\"certScore\">0 / 10<\/div>\n      <div class=\"cert__line\" id=\"certLine\">\u2014<\/div>\n      <p class=\"cert__note\" id=\"certNote\"><\/p>\n    <\/div>\n    <div class=\"modal__acts\">\n      <button type=\"button\" class=\"btn btn--go\" id=\"btnCopy\">Copy my result<\/button>\n      <button type=\"button\" class=\"btn\" id=\"btnAgain\">Try this level again<\/button>\n      <button type=\"button\" class=\"btn btn--ghost\" id=\"btnBackLevels\">Choose another level<\/button>\n    <\/div>\n  <\/div>\n<\/div>\n\n<div class=\"sr-only\" id=\"live\" aria-live=\"polite\" aria-atomic=\"true\"><\/div>\n\n<script>\n'use strict';\n(() => {\n\n/* ============================================================\n   1. Plane \u2014 a compact, purpose-built version of the manipulative\n      Same colour code and same construction order (rise leaves A).\n   ============================================================ */\n\nconst V = 560, PAD = 34, MIN = -8, MAX = 8;\nconst SPAN = MAX - MIN, U = (V - 2*PAD) / SPAN;\nconst NS = 'http://www.w3.org/2000/svg';\n\nconst X = x => PAD + (x - MIN) * U;\nconst Y = y => PAD + (MAX - y) * U;\nconst invX = px => (px - PAD) / U + MIN;\nconst invY = py => MAX - (py - PAD) / U;\nconst clamp = (v,a,b) => Math.min(b, Math.max(a, v));\nconst gcd = (a,b) => b ? gcd(b, a % b) : Math.abs(a);\n\nconst el = id => document.getElementById(id);\nconst mk = (t, at = {}, txt) => {\n  const n = document.createElementNS(NS, t);\n  for (const k in at) n.setAttribute(k, at[k]);\n  if (txt !== undefined) n.textContent = txt;\n  return n;\n};\n\nconst plane = {\n  A:{x:-4,y:-2}, B:{x:2,y:4}, C:{x:-6,y:4}, D:{x:-2,y:6},\n  showTwo:false, locked:false, numbers:true, triangle:true,\n  ghosts:[], pairTri:null, hidePoints:false, onChange:null\n};\n\nfunction measure(p,q){\n  const rise = q.y - p.y, run = q.x - p.x;\n  return { rise, run,\n    vertical: run === 0 && rise !== 0,\n    degenerate: run === 0 && rise === 0,\n    m: run === 0 ? null : rise / run };\n}\n\n/** Tidy gradient text: whole number, fraction in lowest terms, or undefined. */\nfunction gradText(rise, run){\n  if (run === 0) return rise === 0 ? '\u2014' : 'undefined';\n  if (rise === 0) return '0';\n  const g = gcd(rise, run) || 1;\n  let n = rise/g, d = run/g;\n  if (d < 0) { n = -n; d = -d; }\n  return d === 1 ? String(n) : n + '/' + d;\n}\n\nfunction buildStatic(){\n  const gr = el('gGrid'), ax = el('gAxes');\n  for (let i = MIN; i <= MAX; i++){\n    const c = i % 5 === 0 ? 'gl5' : 'gl';\n    gr.appendChild(mk('line',{class:c,x1:X(i),y1:Y(MIN),x2:X(i),y2:Y(MAX)}));\n    gr.appendChild(mk('line',{class:c,x1:X(MIN),y1:Y(i),x2:X(MAX),y2:Y(i)}));\n  }\n  ax.appendChild(mk('line',{class:'ax',x1:X(MIN),y1:Y(0),x2:X(MAX),y2:Y(0)}));\n  ax.appendChild(mk('line',{class:'ax',x1:X(0),y1:Y(MIN),x2:X(0),y2:Y(MAX)}));\n  for (let i = MIN; i <= MAX; i++){\n    if (!i) continue;\n    ax.appendChild(mk('line',{class:'axt',x1:X(i),y1:Y(0)-4,x2:X(i),y2:Y(0)+4}));\n    ax.appendChild(mk('line',{class:'axt',x1:X(0)-4,y1:Y(i),x2:X(0)+4,y2:Y(i)}));\n    if (i % 2 === 0){\n      ax.appendChild(mk('text',{class:'axn',x:X(i),y:Y(0)+18}, String(i)));\n      ax.appendChild(mk('text',{class:'axn',x:X(0)-14,y:Y(i)+4}, String(i)));\n    }\n  }\n  ax.appendChild(mk('text',{class:'axname',x:X(MAX)-2,y:Y(0)-10,'text-anchor':'end'},'x'));\n  ax.appendChild(mk('text',{class:'axname',x:X(0)+10,y:Y(MAX)+12},'y'));\n\n  ['A','B','C','D'].forEach(name => {\n    const g = mk('g',{class:'pt pt--'+name,tabindex:'0',role:'button','data-pt':name});\n    g.appendChild(mk('circle',{class:'pt-halo',r:19}));\n    g.appendChild(mk('circle',{class:'pt-dot',r:12}));\n    g.appendChild(mk('text',{class:'pt-name'}, name));\n    el('gPts').appendChild(g);\n    el('gLbl').appendChild(mk('text',{class:'pt-co','data-co':name}));\n  });\n}\n\n/** Geometry with the rise leaving A, matching the main manipulative. */\nfunction geom(p,q){\n  return { ax:X(p.x), ay:Y(p.y), bx:X(q.x), by:Y(q.y),\n           cx:X(p.x), cy:Y(q.y), vx:X(p.x), hy:Y(q.y) };\n}\n\nfunction drawPlane(){\n  const {A,B,C,D} = plane;\n  const m = measure(A,B);\n  const g = geom(A,B);\n\n  // interval and triangle\n  el('gIv').textContent = '';\n  el('gIv').appendChild(mk('line',{class:'iv',x1:g.ax,y1:g.ay,x2:g.bx,y2:g.by}));\n\n  const t = el('gTri');\n  t.textContent = '';\n  if (plane.triangle && !plane.pairTri && !m.degenerate){\n    t.appendChild(mk('path',{class:'trif',d:`M${g.ax} ${g.ay} L${g.cx} ${g.cy} L${g.bx} ${g.by} Z`}));\n    if (m.rise !== 0) t.appendChild(mk('line',{class:'lrise',x1:g.ax,y1:g.ay,x2:g.vx,y2:g.cy,'marker-end':'url(#aRise)'}));\n    if (m.run !== 0) t.appendChild(mk('line',{class:'lrun',x1:g.cx,y1:g.hy,x2:g.bx,y2:g.by,'marker-end':'url(#aRun)'}));\n    if (m.rise !== 0 && m.run !== 0){\n      const sx = Math.sign(g.bx - g.cx) || 1, sy = Math.sign(g.ay - g.cy) || 1, s = 13;\n      t.appendChild(mk('path',{class:'ra',d:`M${g.cx+sx*s} ${g.cy} L${g.cx+sx*s} ${g.cy+sy*s} L${g.cx} ${g.cy+sy*s}`}));\n    }\n    const showN = plane.numbers;\n    if (m.rise !== 0){\n      const right = g.bx > g.ax;\n      t.appendChild(mk('text',{class:'legtxt legtxt--rise','text-anchor':right?'end':'start',\n        x:g.vx + (right?-13:13), y:(g.ay+g.cy)/2 + 5},\n        showN ? 'rise ' + m.rise : 'rise'));\n    }\n    if (m.run !== 0){\n      const above = g.by < g.ay;\n      t.appendChild(mk('text',{class:'legtxt legtxt--run','text-anchor':'middle',\n        x:clamp((g.cx+g.bx)/2, PAD+28, V-PAD-28), y:g.hy + (above?-13:24)},\n        showN ? 'run ' + m.run : 'run'));\n    }\n  }\n\n  // second line\n  const l2 = el('gL2');\n  l2.textContent = '';\n  if (plane.showTwo){\n    const h = geom(C,D), m2 = measure(C,D);\n    if (plane.triangle && !m2.degenerate){\n      if (m2.rise !== 0) l2.appendChild(mk('line',{class:'lrise2',x1:h.ax,y1:h.ay,x2:h.vx,y2:h.cy}));\n      if (m2.run !== 0) l2.appendChild(mk('line',{class:'lrun2',x1:h.cx,y1:h.hy,x2:h.bx,y2:h.by}));\n    }\n    l2.appendChild(mk('line',{class:'iv2',x1:h.ax,y1:h.ay,x2:h.bx,y2:h.by}));\n    l2.appendChild(mk('text',{class:'linetag',fill:'var(--line2)',x:(h.ax+h.bx)/2+8,y:(h.ay+h.by)/2-9},'line 2'));\n    el('gIv').appendChild(mk('text',{class:'linetag',fill:'var(--interval)',x:(g.ax+g.bx)/2+8,y:(g.ay+g.by)/2+20},'line 1'));\n  }\n\n  // Two separate triangles standing on one straight line. They are drawn far\n  // enough apart that neither hides the other, so a student can read the rise\n  // and the run of each and work the two gradients out independently.\n  const gh = el('gGhost');\n  gh.textContent = '';\n  if (plane.pairTri){\n    plane.pairTri.forEach((tri, k) => {\n      const q = geom(tri.a, tri.b);\n      const mm = measure(tri.a, tri.b);\n      gh.appendChild(mk('path',{class:'trif',d:`M${q.ax} ${q.ay} L${q.cx} ${q.cy} L${q.bx} ${q.by} Z`}));\n      if (mm.rise !== 0) gh.appendChild(mk('line',{class:'lrise',x1:q.ax,y1:q.ay,x2:q.vx,y2:q.cy,'marker-end':'url(#aRise)'}));\n      if (mm.run !== 0) gh.appendChild(mk('line',{class:'lrun',x1:q.cx,y1:q.hy,x2:q.bx,y2:q.by,'marker-end':'url(#aRun)'}));\n      if (mm.rise !== 0 && mm.run !== 0){\n        const sx = Math.sign(q.bx - q.cx) || 1, sy = Math.sign(q.ay - q.cy) || 1, s2 = 11;\n        gh.appendChild(mk('path',{class:'ra',d:`M${q.cx+sx*s2} ${q.cy} L${q.cx+sx*s2} ${q.cy+sy*s2} L${q.cx} ${q.cy+sy*s2}`}));\n      }\n      const right = q.bx > q.ax;\n      gh.appendChild(mk('text',{class:'legtxt legtxt--rise','text-anchor':right?'end':'start',\n        x:q.vx + (right?-11:11), y:(q.ay+q.cy)/2 + 5}, 'rise ' + mm.rise));\n      const above = q.by < q.ay;\n      gh.appendChild(mk('text',{class:'legtxt legtxt--run','text-anchor':'middle',\n        x:clamp((q.cx+q.bx)/2, PAD+26, V-PAD-26), y:q.hy + (above?-11:22)}, 'run ' + mm.run));\n      // a clear badge so the question can name them\n      const bx2 = (q.ax + q.bx)/2, by2 = (q.ay + q.by)/2;\n      gh.appendChild(mk('circle',{class:'tri-badge-bg',cx:bx2+16,cy:by2+20,r:13}));\n      gh.appendChild(mk('text',{class:'tri-badge',x:bx2+16,y:by2+25}, String(k+1)));\n    });\n  } else {\n    plane.ghosts.forEach(({a,b}) => {\n      const q = geom(a,b);\n      gh.appendChild(mk('path',{class:'ghost',d:`M${q.ax} ${q.ay} L${q.cx} ${q.cy} L${q.bx} ${q.by} Z`}));\n      gh.appendChild(mk('line',{class:'ghost-r',x1:q.ax,y1:q.ay,x2:q.vx,y2:q.cy}));\n      gh.appendChild(mk('line',{class:'ghost-n',x1:q.cx,y1:q.hy,x2:q.bx,y2:q.by}));\n    });\n  }\n\n  // points\n  ['A','B','C','D'].forEach(name => {\n    const node = document.querySelector(`[data-pt=\"${name}\"]`);\n    const co = document.querySelector(`[data-co=\"${name}\"]`);\n    const on = (name === 'A' || name === 'B' || plane.showTwo) && !plane.hidePoints;\n    node.style.display = on ? '' : 'none';\n    co.style.display = on && plane.numbers ? '' : 'none';\n    node.classList.toggle('locked', plane.locked);\n    node.setAttribute('tabindex', plane.locked ? '-1' : '0');\n    const p = plane[name], px = X(p.x), py = Y(p.y);\n    node.querySelectorAll('circle').forEach(c => { c.setAttribute('cx',px); c.setAttribute('cy',py); });\n    const nm = node.querySelector('.pt-name');\n    nm.setAttribute('x',px); nm.setAttribute('y',py+1);\n    node.setAttribute('aria-label', `Point ${name} at ${p.x} comma ${p.y}` + (plane.locked ? ', fixed for this question' : ', arrow keys to move'));\n    const nearR = p.x > MAX - 3, nearT = p.y > MAX - 1;\n    co.setAttribute('text-anchor', nearR ? 'end' : 'start');\n    co.setAttribute('x', px + (nearR ? -22 : 22));\n    co.setAttribute('y', py + (nearT ? 28 : -17));\n    co.textContent = `(${p.x}, ${p.y})`;\n  });\n\n  // No rise / run / gradient panel here on purpose: in a quiz it would hand\n  // over the answer. The arrows carry their own labels when Numbers is on.\n}\n\nfunction pointerPos(e){\n  const p = el('svg').createSVGPoint();\n  p.x = e.clientX; p.y = e.clientY;\n  const q = p.matrixTransform(el('svg').getScreenCTM().inverse());\n  return { x: invX(q.x), y: invY(q.y) };\n}\n\nfunction put(name, x, y){\n  const nx = clamp(Math.round(x), MIN, MAX), ny = clamp(Math.round(y), MIN, MAX);\n  const p = plane[name];\n  if (p.x === nx && p.y === ny) return false;\n  p.x = nx; p.y = ny;\n  return true;\n}\n\nfunction initDrag(){\n  const svg = el('svg');\n  svg.addEventListener('pointerdown', e => {\n    if (plane.locked) return;\n    const g = e.target.closest('.pt');\n    if (!g || g.style.display === 'none') return;\n    const name = g.dataset.pt;\n    g.setPointerCapture(e.pointerId);\n    const move = ev => { const q = pointerPos(ev); if (put(name,q.x,q.y)) { drawPlane(); plane.onChange && plane.onChange(name); } };\n    const up = ev => {\n      g.releasePointerCapture(ev.pointerId);\n      g.removeEventListener('pointermove',move);\n      g.removeEventListener('pointerup',up);\n      g.removeEventListener('pointercancel',up);\n    };\n    g.addEventListener('pointermove',move);\n    g.addEventListener('pointerup',up);\n    g.addEventListener('pointercancel',up);\n    move(e);\n  });\n  svg.addEventListener('keydown', e => {\n    if (plane.locked) return;\n    const g = e.target.closest('.pt');\n    if (!g) return;\n    const step = {ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,1],ArrowDown:[0,-1]}[e.key];\n    if (!step) return;\n    e.preventDefault();\n    const name = g.dataset.pt, p = plane[name];\n    if (put(name, p.x + step[0], p.y + step[1])) { drawPlane(); plane.onChange && plane.onChange(name); }\n  });\n}\n\n/* ============================================================\n   2. Small helpers\n   ============================================================ */\n\nconst rnd = (a,b) => Math.floor(Math.random()*(b-a+1))+a;\nconst pick = arr => arr[rnd(0,arr.length-1)];\nconst shuffle = a => { const c=[...a]; for(let i=c.length-1;i>0;i--){const j=rnd(0,i);[c[i],c[j]]=[c[j],c[i]];} return c; };\nconst say = msg => { el('live').textContent = msg; };\n\n/** Place A and B so the interval has exactly this rise and run. */\nfunction fit(rise, run){\n  const lo = MIN + 1, hi = MAX - 1;\n  const ax = rnd(Math.max(lo, lo - Math.min(0,run)), Math.min(hi, hi - Math.max(0,run)));\n  const ay = rnd(Math.max(lo, lo - Math.min(0,rise)), Math.min(hi, hi - Math.max(0,rise)));\n  return { A:{x:ax,y:ay}, B:{x:ax+run,y:ay+rise} };\n}\n\n/** A ratio in lowest terms, scaled by k, for equivalence work. */\nfunction scaled(rise, run, k){ return { rise: rise*k, run: run*k }; }\n\n/* ============================================================\n   3. Question bank\n      Each generator returns a question object. Levels below choose\n      a fixed *sequence* of these, so every student walks the same\n      conceptual path with different numbers.\n   ============================================================ */\n\nconst Q = {};\n\n/* ---- counting and direction (Sweet) ---- */\n\nQ.countRise = () => {\n  const run = rnd(2,5), rise = rnd(2,6);\n  const {A,B} = fit(rise, run);\n  return {\n    plane:{A,B,numbers:false,triangle:true},\n    text:'How far does the line go UP from A to B?',\n    sub:'Count the blue arrow, one square at a time.',\n    kind:'mc',\n    options:shuffle([rise, run, rise+1, Math.max(1,rise-1)].filter((v,i,s)=>s.indexOf(v)===i)).map(v=>({label:v+' units',value:v})),\n    answer:rise,\n    hints:['The blue arrow is the rise. Start at A and count the squares upwards.',\n           'Look at the y numbers of A and B. How many steps apart are they?'],\n    why:`A is at height ${A.y} and B is at height ${B.y}, so the rise is ${rise}.`\n  };\n};\n\nQ.countRun = () => {\n  const run = rnd(2,6), rise = rnd(2,5);\n  const {A,B} = fit(rise, run);\n  return {\n    plane:{A,B,numbers:false,triangle:true},\n    text:'How far does the line go ACROSS from A to B?',\n    sub:'Count the orange arrow, one square at a time.',\n    kind:'mc',\n    options:shuffle([run, rise, run+1, Math.max(1,run-1)].filter((v,i,s)=>s.indexOf(v)===i)).map(v=>({label:v+' units',value:v})),\n    answer:run,\n    hints:['The orange arrow is the run. Count the squares sideways.',\n           'Compare the x numbers of A and B.'],\n    why:`A is at x = ${A.x} and B is at x = ${B.x}, so the run is ${run}.`\n  };\n};\n\nQ.direction = () => {\n  const mode = pick(['up','down','flat']);\n  const run = rnd(3,6);\n  const rise = mode === 'up' ? rnd(2,5) : mode === 'down' ? -rnd(2,5) : 0;\n  const {A,B} = fit(rise, run);\n  return {\n    plane:{A,B,numbers:true,triangle:true},\n    text:'Reading from left to right, what does this line do?',\n    kind:'mc',\n    options:[{label:'Goes uphill',value:'up'},{label:'Goes downhill',value:'down'},{label:'Stays flat',value:'flat'}],\n    answer:mode,\n    hints:['Put your finger on the left end of the line and slide it right.',\n           'If the line climbs it is uphill, if it drops it is downhill, if it stays level it is flat.'],\n    why: mode === 'up' ? 'It climbs as you move right, so it is uphill. Later you will call this a positive gradient.'\n       : mode === 'down' ? 'It drops as you move right, so it is downhill. Later you will call this a negative gradient.'\n       : 'There is no rise at all, so the line is flat.'\n  };\n};\n\nQ.whichSteeper = () => {\n  const gentle = pick([[1,4],[1,3],[2,5]]);\n  const steep = pick([[3,1],[4,1],[5,2]]);\n  const first = Math.random() < 0.5;\n  const one = first ? gentle : steep, two = first ? steep : gentle;\n  const a = fit(one[0], one[1]);\n  const b = fit(two[0], two[1]);\n  return {\n    plane:{A:a.A,B:a.B,C:b.A,D:b.B,showTwo:true,numbers:true,triangle:true},\n    text:'Which line is steeper?',\n    sub:'Line 1 is the solid dark line. Line 2 is the dashed green line.',\n    kind:'mc',\n    options:[{label:'Line 1',value:1},{label:'Line 2',value:2},{label:'They are the same',value:0}],\n    answer:first ? 2 : 1,\n    hints:['Steeper means it climbs more for the same distance across.',\n           'Compare each rise with its own run, not with the other line.'],\n    why:`The steeper line climbs ${steep[0]} for every ${steep[1]} across. The other only climbs ${gentle[0]} for every ${gentle[1]}.`\n  };\n};\n\nQ.buildFlat = () => ({\n  plane:{A:{x:-4,y:1},B:{x:3,y:-3},numbers:true,triangle:true,free:true},\n  text:'Drag the points to make a flat line.',\n  sub:'Use the plane on the left. Watch the rise as you go.',\n  kind:'build',\n  test:m => m.rise === 0 && m.run !== 0,\n  hints:['Flat means the line does not climb at all.',\n         'Give A and B the same y number. The rise should read 0.'],\n  why:'A flat line has a rise of 0. Zero divided by any run is 0, so its gradient is 0.'\n});\n\n/* ---- forming the ratio (Mild) ---- */\n\nQ.gradientWhole = () => {\n  const m = pick([2,3,4]), run = pick([1,2]);\n  const rise = m * run;\n  const {A,B} = fit(rise, run);\n  return {\n    plane:{A,B,numbers:true,triangle:true},\n    text:'What is the gradient of this line?',\n    sub:'Gradient = rise \u00f7 run.',\n    kind:'num',\n    answer:m,\n    keyhints:['a whole number'],\n    hints:['The rise and the run are written on the arrows.',\n           `Work out ${rise} \u00f7 ${run}.`],\n    why:`rise \u00f7 run = ${rise} \u00f7 ${run} = ${m}.`\n  };\n};\n\nQ.gradientCount = () => {\n  const m = pick([2,3]), run = pick([2,3]);\n  const rise = m * run;\n  const {A,B} = fit(rise, run);\n  return {\n    plane:{A,B,numbers:false,triangle:true},\n    text:'Work out the gradient of this line.',\n    sub:'The numbers are hidden \u2014 count the arrows yourself. Press \u201cNumbers\u201d on the plane if you get stuck.',\n    kind:'num',\n    answer:m,\n    keyhints:['a whole number'],\n    hints:['Count the blue arrow to find the rise, then the orange arrow to find the run.',\n           'Turn the Numbers button on to check your counting, then divide.'],\n    why:`The rise is ${rise} and the run is ${run}, so the gradient is ${rise} \u00f7 ${run} = ${m}.`\n  };\n};\n\nQ.gradientZero = () => {\n  const run = rnd(3,6);\n  const {A,B} = fit(0, run);\n  return {\n    plane:{A,B,numbers:true,triangle:true},\n    text:'What is the gradient of this flat line?',\n    kind:'num',\n    answer:0,\n    keyhints:['a single number'],\n    hints:['How much does this line rise?',\n           'Zero divided by anything is still zero.'],\n    why:'The rise is 0, so the gradient is 0 \u00f7 run = 0. Zero is a real answer, not \"no gradient\".'\n  };\n};\n\nQ.gradientUndefined = () => {\n  const rise = pick([4,5,6]) * pick([1,-1]);\n  const {A,B} = fit(rise, 0);\n  return {\n    plane:{A,B,numbers:true,triangle:true},\n    text:'This line is vertical. What is its gradient?',\n    kind:'mc',\n    options:shuffle([\n      {label:'Undefined',value:'undef'},\n      {label:'0',value:'zero'},\n      {label:'A very large number',value:'big'},\n      {label:'1',value:'one'}\n    ]),\n    answer:'undef',\n    hints:['What is the run of a vertical line?',\n           'You would have to divide by 0 \u2014 and nothing can be divided by 0.'],\n    why:'The run is 0, and dividing by 0 has no answer. So the gradient is undefined, not just very big.'\n  };\n};\n\nQ.signOfGradient = () => {\n  const down = Math.random() < 0.5;\n  const run = rnd(2,5), rise = (down ? -1 : 1) * rnd(2,5);\n  const {A,B} = fit(rise, run);\n  return {\n    plane:{A,B,numbers:true,triangle:true},\n    text:'Is the gradient of this line positive or negative?',\n    kind:'mc',\n    options:[{label:'Positive',value:'pos'},{label:'Negative',value:'neg'}],\n    answer:down ? 'neg' : 'pos',\n    hints:['Read the line from left to right.',\n           'A line that falls from left to right has a negative gradient.'],\n    why: down ? `The rise is ${rise}, a negative number, so the gradient is negative. The line falls from left to right.`\n              : `The rise is ${rise}, a positive number, so the gradient is positive. The line climbs from left to right.`\n  };\n};\n\nQ.buildGradient = () => {\n  const target = pick([2,3,4]);\n  return {\n    plane:{A:{x:-3,y:-1},B:{x:2,y:0},numbers:true,triangle:true,free:true},\n    text:`Make a line with a gradient of ${target}.`,\n    sub:'Drag A and B. There is more than one right answer.',\n    kind:'build',\n    test:m => m.m === target,\n    hints:[`Gradient ${target} means it goes up ${target} for every 1 across.`,\n           `Try a rise of ${target*2} with a run of 2. That works too.`],\n    why:`Any rise that is ${target} times the run gives a gradient of ${target}.`\n  };\n};\n\n/* ---- fractions, negatives, equivalence (Medium) ---- */\n\nQ.gradientFraction = () => {\n  const [rise, run] = pick([[1,2],[1,4],[3,4],[2,5],[1,5],[3,5]]);\n  const {A,B} = fit(rise, run);\n  return {\n    plane:{A,B,numbers:true,triangle:true}, figureOnly:true,\n    text:'What is the gradient of this line?',\n    sub:'Your answer will be less than 1. A fraction or a decimal is fine.',\n    kind:'num',\n    answer:rise/run,\n    keyhints:['a fraction or a decimal'],\n    hints:['The run is bigger than the rise, so the answer is less than 1.',\n           `rise \u00f7 run = ${rise} \u00f7 ${run}.`],\n    why:`${rise} \u00f7 ${run} = ${rise}/${run}. The line climbs ${rise} for every ${run} across.`\n  };\n};\n\nQ.gradientNegative = () => {\n  const [r, n] = pick([[2,1],[3,1],[4,2],[1,2],[3,2],[2,4]]);\n  const rise = -r, run = n;\n  const {A,B} = fit(rise, run);\n  return {\n    plane:{A,B,numbers:true,triangle:true}, figureOnly:true,\n    text:'What is the gradient of this line?',\n    sub:'Careful with the sign.',\n    kind:'num',\n    answer:rise/run,\n    keyhints:['a fraction or a decimal','a sign if it needs one'],\n    hints:['The line falls from left to right, so the gradient is negative.',\n           `rise \u00f7 run = ${rise} \u00f7 ${run}.`],\n    why:`${rise} \u00f7 ${run} = ${gradText(rise,run)}. The minus sign records the direction, not the steepness.`\n  };\n};\n\nQ.buildFractionGradient = () => {\n  const [rise, run] = pick([[1,2],[1,3],[2,3],[3,4]]);\n  return {\n    plane:{A:{x:-4,y:0},B:{x:1,y:3},numbers:true,triangle:true,free:true},\n    text:`Make a line with a gradient of ${rise}/${run}.`,\n    sub:'Drag A and B until the ratio is right.',\n    kind:'build',\n    test:m => m.m === rise/run,\n    hints:[`That means it goes up ${rise} for every ${run} across.`,\n           `Try a rise of ${rise} with a run of ${run}, or double both.`],\n    why:`Rise ${rise} with run ${run} gives ${rise} \u00f7 ${run} = ${rise}/${run}. Doubling both gives the same gradient.`\n  };\n};\n\nQ.buildNegativeGradient = () => {\n  const target = pick([-2,-3,-1]);\n  return {\n    plane:{A:{x:-3,y:0},B:{x:2,y:2},numbers:true,triangle:true,free:true},\n    text:`Make a line with a gradient of ${target}.`,\n    sub:'It will need to fall from left to right.',\n    kind:'build',\n    test:m => m.m === target,\n    hints:['A negative gradient falls from left to right.',\n           `Put B to the right of A but ${Math.abs(target)} units lower for every 1 across.`],\n    why:`A rise of ${target} with a run of 1 gives ${target}. So does ${target*2} over 2.`\n  };\n};\n\nQ.twoTrianglesSameLine = () => {\n  // one straight line, two triangles standing well apart on it\n  const [run, rise] = pick([[3,1],[2,1],[3,2],[2,-1],[3,-1],[2,3]]);\n  const k1 = 1, gap = 1, k2 = 2;                 // second triangle is twice the first\n  const totalRun = run * (k1 + gap + k2);\n  const totalRise = rise * (k1 + gap + k2);\n  const x0 = -Math.round(totalRun / 2);\n  const y0 = -Math.round(totalRise / 2);\n  const at = t => ({ x: x0 + run*t, y: y0 + rise*t });\n  const A = at(0), B = at(k1), C = at(k1+gap), D = at(k1+gap+k2);\n  const g = rise / run;\n  return {\n    plane:{ A, B:D,                                // the line runs the whole way\n            numbers:true, triangle:false, hidePoints:true,\n            pairTri:[{a:A,b:B},{a:C,b:D}] },\n    figureOnly:true,\n    text:'Two triangles stand on the same straight line. Work out the gradient of each one.',\n    sub:'Read the rise and the run off each triangle, then divide.',\n    kind:'pair',\n    labels:['Triangle 1', 'Triangle 2'],\n    answers:[g, g],\n    keyhints:['a fraction or a decimal'],\n    hints:['Triangle 1 gives ' + (rise*k1) + ' \u00f7 ' + (run*k1) + '. Work that out first.',\n           'Now do the same for triangle 2: ' + (rise*k2) + ' \u00f7 ' + (run*k2) + '. Simplify it.'],\n    why:`Triangle 1 gives ${rise*k1} \u00f7 ${run*k1} = ${gradText(rise*k1,run*k1)}. Triangle 2 gives ${rise*k2} \u00f7 ${run*k2}, which also simplifies to ${gradText(rise,run)}. Different sized triangles, one line, one gradient \u2014 that is why a gradient describes the whole line and not just the bit you measured.`\n  };\n};\n\nQ.matchTheGradient = () => {\n  const [rise, run] = pick([[1,2],[2,3],[3,4],[2,5]]);\n  const k = pick([2,3]);\n  const right = scaled(rise, run, k);\n  const wrongs = [\n    { rise: rise + 1, run: run },\n    { rise: rise, run: run + 1 },\n    { rise: run, run: rise }\n  ].filter(w => w.rise/w.run !== rise/run);\n  const opts = shuffle([right, ...wrongs.slice(0,3)])\n    .map(o => ({ label:`rise ${o.rise}, run ${o.run}`, value:o.rise/o.run }));\n  const {A,B} = fit(rise, run);\n  return {\n    plane:{A,B,numbers:true,triangle:true}, figureOnly:true,\n    text:'Which of these has the SAME gradient as the line shown?',\n    sub:`The line on the plane has rise ${rise} and run ${run}.`,\n    kind:'mc',\n    options:opts,\n    answer:rise/run,\n    hints:['Same gradient means the same ratio, not the same numbers.',\n           `Divide each pair. Which one also gives ${gradText(rise,run)}?`],\n    why:`${right.rise} \u00f7 ${right.run} = ${gradText(rise,run)}, the same as ${rise} \u00f7 ${run}. Both numbers were multiplied by ${k}, so the ratio did not change.`\n  };\n};\n\n/* ---- reasoning (Spicy) ---- */\n\nQ.fromCoordinates = () => {\n  const [rise, run] = pick([[3,4],[-2,3],[5,2],[-4,5],[3,-2],[-6,4]]);\n  const {A,B} = fit(rise, run);\n  return {\n    plane:{A,B,numbers:true,triangle:false},\n    figureOnly:true,\n    text:`Find the gradient of the interval from A(${A.x}, ${A.y}) to B(${B.x}, ${B.y}).`,\n    sub:'Only the two points are plotted. Work it out from the coordinates.',\n    kind:'num',\n    answer:rise/run,\n    keyhints:['a fraction or a decimal','a sign if it needs one'],\n    hints:['Rise is the change in y. Run is the change in x.',\n           `Change in y = ${B.y} \u2212 ${A.y} = ${rise}. Change in x = ${B.x} \u2212 ${A.x} = ${run}.`],\n    why:`rise \u00f7 run = ${rise} \u00f7 ${run} = ${gradText(rise,run)}.`\n  };\n};\n\nQ.steepestOfFour = () => {\n  const set = shuffle([\n    { label:'\u22124', v:-4 }, { label:'3', v:3 },\n    { label:'1/2', v:0.5 }, { label:'\u22122/3', v:-2/3 }\n  ]);\n  return {\n    noPlane:true,\n    text:'Which of these gradients belongs to the steepest line?',\n    sub:'No diagram \u2014 compare the numbers themselves.',\n    kind:'mc',\n    options:set.map(s => ({ label:s.label, value:s.v })),\n    answer:-4,\n    hints:['Steepness does not care which way the line leans.',\n           'Ignore the minus signs and compare the sizes.'],\n    why:'Ignoring signs, the sizes are 4, 3, 1/2 and 2/3. A gradient of \u22124 is the steepest \u2014 it falls 4 for every 1 across.'\n  };\n};\n\nQ.realWorldCompare = () => {\n  const pairs = [\n    { a:{name:'a wheelchair ramp at 1 in 14', v:1/14}, b:{name:'a roof pitched 5 in 12', v:5/12} },\n    { a:{name:'a road sign showing 1 in 8', v:1/8}, b:{name:'a hiking track at 1 in 3', v:1/3} },\n    { a:{name:'a ski run at 2 in 5', v:0.4}, b:{name:'a staircase at 2 in 3', v:2/3} }\n  ];\n  const p = pick(pairs);\n  const first = Math.random() < 0.5;\n  const one = first ? p.a : p.b, two = first ? p.b : p.a;\n  const steeper = p.a.v > p.b.v ? p.a : p.b;\n  return {\n    noPlane:true,\n    text:`Which is steeper: ${one.name}, or ${two.name}?`,\n    sub:'Turn each one into a gradient first, then compare.',\n    kind:'mc',\n    options:[{label:one.name.replace(/^a /,'The '),value:one.v},\n             {label:two.name.replace(/^a /,'The '),value:two.v}],\n    answer:steeper.v,\n    hints:['\"1 in 14\" means it rises 1 for every 14 along \u2014 a gradient of 1 \u00f7 14.',\n           'Work both out as decimals and compare.'],\n    why:`${steeper.name} is steeper, because its gradient is the larger number. Builders and mathematicians are describing the same ratio with different words.`\n  };\n};\n\nQ.buildEquivalent = () => {\n  const [rise, run] = pick([[2,4],[3,6],[2,6],[4,6]]);\n  const target = rise/run;\n  const {A,B} = fit(rise, run);\n  return {\n    plane:{A,B,C:{x:-6,y:5},D:{x:-3,y:7},showTwo:true,numbers:true,triangle:true,free:true,\n           lockFirst:true},\n    text:'Give line 2 the same gradient as line 1, but using a DIFFERENT sized triangle.',\n    sub:'Drag C and D. Line 1 is fixed.',\n    kind:'build',\n    which:'second',\n    test:(m,m2) => m2.m === target && Math.abs(m2.rise) !== Math.abs(m.rise),\n    hints:[`Line 1 has gradient ${gradText(rise,run)}. Line 2 must match it.`,\n           `Try halving both numbers: rise ${rise/2}, run ${run/2}. That is a different triangle with the same ratio.`],\n    why:`Any pair in the ratio ${gradText(rise,run)} works. Different triangles, same gradient \u2014 the lines are parallel.`\n  };\n};\n\nQ.whyUndefined = () => ({\n  plane:{A:{x:-2,y:-4},B:{x:-2,y:4},numbers:true,triangle:true},\n  figureOnly:true,\n  text:'Why does a vertical line have an undefined gradient?',\n  kind:'mc',\n  options:shuffle([\n    {label:'Because the run is 0, and dividing by 0 has no answer',value:'right'},\n    {label:'Because the rise is 0',value:'w1'},\n    {label:'Because it is too steep to measure with a ruler',value:'w2'},\n    {label:'Because the gradient is infinity',value:'w3'}\n  ]),\n  answer:'right',\n  hints:['Look at the run of this line.',\n         'Gradient is rise \u00f7 run. What happens when the run is 0?'],\n  why:'The run is 0. Division by 0 has no answer at all, so we say the gradient is undefined rather than giving it a number.'\n});\n\nQ.explainConstant = () => ({\n  plane:{A:{x:-5,y:-3},B:{x:3,y:3},numbers:true,triangle:true,free:true},\n  text:'A student says \u201ca longer line must have a bigger gradient\u201d. Are they right?',\n  sub:'Slide the points along the same line to test the claim.',\n  kind:'mc',\n  options:shuffle([\n    {label:'No \u2014 length does not matter, only the ratio does',value:'right'},\n    {label:'Yes \u2014 longer lines are always steeper',value:'w1'},\n    {label:'Only if the line goes uphill',value:'w2'}\n  ]),\n  answer:'right',\n  hints:['Make the interval longer while keeping the same direction. Watch the gradient.',\n         'Try rise 2 run 4, then rise 4 run 8. Compare.'],\n  why:'Gradient compares two changes. Make both changes bigger in the same proportion and the ratio \u2014 and the steepness \u2014 stays exactly the same.'\n});\n\n\n/* ---- formula-only work (Medium and Spicy) ----\n   These deliberately give no draggable plane. Medium sees a fixed diagram\n   and must divide; Spicy usually sees nothing but the numbers. */\n\nQ.simplifyRatio = () => {\n  const [rise, run] = pick([[4,6],[6,4],[2,6],[6,8],[9,6],[4,10]]);\n  const {A,B} = fit(rise, run);\n  const g = gcd(rise,run);\n  return {\n    plane:{A,B,numbers:true,triangle:true}, figureOnly:true,\n    text:'What is the gradient of this line? Give it in its simplest form.',\n    sub:'Divide, then simplify.',\n    kind:'num',\n    answer:rise/run,\n    keyhints:['a fraction or a decimal'],\n    hints:['Read the rise and the run off the arrows, then write rise \u00f7 run.',\n           `Both ${rise} and ${run} divide by ${g}.`],\n    why:`${rise} \u00f7 ${run} = ${gradText(rise,run)} once you divide both numbers by ${g}.`\n  };\n};\n\nQ.gradientNoPicture = () => {\n  const [rise, run] = pick([[3,4],[-2,3],[5,2],[-4,5],[3,-2],[-6,4],[7,2],[-3,6]]);\n  const ax = rnd(-6,2), ay = rnd(-5,3);\n  const A = {x:ax, y:ay}, B = {x:ax+run, y:ay+rise};\n  return {\n    noPlane:true,\n    text:`Find the gradient of the interval joining A(${A.x}, ${A.y}) and B(${B.x}, ${B.y}).`,\n    sub:'No diagram this time. Use the formula.',\n    kind:'num',\n    answer:rise/run,\n    keyhints:['a fraction or a decimal','a sign if it needs one'],\n    hints:['Rise is the change in y. Run is the change in x.',\n           `rise = ${B.y} \u2212 ${A.y} = ${rise}, and run = ${B.x} \u2212 ${A.x} = ${run}.`],\n    why:`rise \u00f7 run = ${rise} \u00f7 ${run} = ${gradText(rise,run)}.`\n  };\n};\n\nQ.missingCoordinate = () => {\n  const m = pick([2,3,-2,-3,4]);\n  const run = pick([2,3,4]);\n  const ax = rnd(-5,0), ay = rnd(-3,2);\n  const by = ay + m*run;\n  return {\n    noPlane:true,\n    text:`A line through A(${ax}, ${ay}) has a gradient of ${m}. Point B sits at x = ${ax+run}. What is the y coordinate of B?`,\n    sub:'Work backwards from the formula.',\n    kind:'num',\n    answer:by,\n    keyhints:['a whole number'],\n    hints:[`From A to B the run is ${ax+run} \u2212 ${ax} = ${run}.`,\n           `If gradient = rise \u00f7 run then rise = gradient \u00d7 run = ${m} \u00d7 ${run} = ${m*run}.`],\n    why:`The run is ${run}, so the rise must be ${m} \u00d7 ${run} = ${m*run}. Starting from y = ${ay}, that lands on y = ${by}.`\n  };\n};\n\nQ.sameLineWhichPoint = () => {\n  const [rise, run] = pick([[1,2],[2,3],[3,1],[-1,2],[-2,3],[3,4]]);\n  const ax = rnd(-4,0), ay = rnd(-3,2);\n  const A = {x:ax,y:ay}, B = {x:ax+run,y:ay+rise};\n  const k = pick([2,3]);\n  const right = {x:ax+run*k, y:ay+rise*k};\n  const wrongs = [\n    {x:right.x, y:right.y+1},\n    {x:right.x+1, y:right.y},\n    {x:ax+run*k, y:ay+rise*k-2}\n  ].filter(p => !(p.x===right.x && p.y===right.y));\n  const opts = shuffle([right, ...wrongs.slice(0,3)])\n    .map(p => ({label:`(${p.x}, ${p.y})`, value:`${p.x},${p.y}`}));\n  return {\n    noPlane:true,\n    text:`A line passes through A(${A.x}, ${A.y}) and B(${B.x}, ${B.y}). Which of these points is also on that line?`,\n    sub:'Check the gradient from A to each point.',\n    kind:'mc',\n    options:opts,\n    answer:`${right.x},${right.y}`,\n    hints:[`First find the gradient from A to B: ${rise} \u00f7 ${run} = ${gradText(rise,run)}.`,\n           'A point is on the line only if the gradient from A to it is exactly the same.'],\n    why:`The gradient from A to B is ${gradText(rise,run)}. From A(${A.x}, ${A.y}) to (${right.x}, ${right.y}) the rise is ${rise*k} and the run is ${run*k}, which gives the same gradient.`\n  };\n};\n\nQ.compareTwoGradients = () => {\n  const pairs = [[[3,4],[2,5]],[[1,2],[2,3]],[[5,2],[7,3]],[[-3,4],[2,5]],[[4,3],[5,4]]];\n  const [p, q2] = pick(pairs);\n  const g1 = p[0]/p[1], g2 = q2[0]/q2[1];\n  const steeper = Math.abs(g1) > Math.abs(g2) ? 'first' : 'second';\n  return {\n    noPlane:true,\n    text:`Line 1 has a rise of ${p[0]} and a run of ${p[1]}. Line 2 has a rise of ${q2[0]} and a run of ${q2[1]}. Which line is steeper?`,\n    sub:'Work out both gradients before you decide.',\n    kind:'mc',\n    options:[{label:'Line 1',value:'first'},{label:'Line 2',value:'second'},{label:'They are equally steep',value:'same'}],\n    answer:steeper,\n    hints:['Divide each rise by its own run.',\n           'Steepness ignores the sign \u2014 compare the sizes of the two answers.'],\n    why:`Line 1 gives ${gradText(p[0],p[1])} and line 2 gives ${gradText(q2[0],q2[1])}. Ignoring signs, the ${steeper === 'first' ? 'first' : 'second'} is larger, so it is steeper.`\n  };\n};\n\n/* ============================================================\n   4. The differentiated sequences\n      Each level is a designed path, not a random draw. The numbers\n      change every time; the conceptual order does not.\n   ============================================================ */\n\nconst LEVELS = {\n  sweet: {\n    name:'Sweet', heat:'\ud83c\udf6c', colour:'#16a34a', wash:'#dcfce7',\n    desc:'Counting the rise and the run on a big, fully draggable plane.',\n    blurb:'No formula yet \u2014 just count and look.',\n    access:'interactive',\n    seq:['countRise','countRun','direction','countRise','whichSteeper',\n         'countRun','direction','whichSteeper','countRise','buildFlat']\n  },\n  mild: {\n    name:'Mild', heat:'\ud83c\udf31', colour:'#2563eb', wash:'#dbeafe', access:'interactive',\n    desc:'Dividing rise by run, with the plane still there to explore.',\n    blurb:'Now you turn the two counts into one number.',\n    seq:['gradientWhole','gradientWhole','signOfGradient','gradientZero','gradientCount',\n         'gradientUndefined','buildGradient','gradientWhole','gradientCount','buildGradient']\n  },\n  medium: {\n    name:'Medium', heat:'\ud83c\udf36\ufe0f', colour:'#f59e0b', wash:'#fef3c7', access:'figure',\n    desc:'Fractions, negatives and equivalent ratios \u2014 worked out with the formula.',\n    blurb:'The diagram is fixed now. You do the dividing.',\n    seq:['gradientFraction','gradientNegative','simplifyRatio','twoTrianglesSameLine',\n         'gradientFraction','matchTheGradient','simplifyRatio','gradientNegative',\n         'twoTrianglesSameLine','matchTheGradient']\n  },\n  spicy: {\n    name:'Spicy', heat:'\ud83d\udd25', colour:'#ea580c', wash:'#ffedd5', access:'figure',\n    desc:'Gradients from coordinates alone, with no diagram to lean on.',\n    blurb:'Numbers only. You reason it out.',\n    seq:['fromCoordinates','gradientNoPicture','compareTwoGradients','whyUndefined','realWorldCompare',\n         'gradientNoPicture','steepestOfFour','missingCoordinate','sameLineWhichPoint','missingCoordinate']\n  }\n};\n\nconst QUIZ_LEN = 10;\n\n/* ============================================================\n   5. Quiz engine\n   ============================================================ */\n\nconst S = { levelKey:null, i:0, items:[], score:0, shownCount:0 };\n\nfunction newItem(genKey){\n  const q = Q[genKey]();\n  q.gen = genKey;\n  q.state = 'open';     // open | right | wrong | revealed\n  q.tries = 0;\n  q.hintsUsed = 0;\n  q.typed = '';\n  return q;\n}\n\nfunction startLevel(key){\n  S.levelKey = key; S.i = 0; S.score = 0; S.shownCount = 0;\n  S.items = LEVELS[key].seq.slice(0, QUIZ_LEN).map(newItem);\n  const cfg = LEVELS[key];\n  document.documentElement.style.setProperty('--lvl', cfg.colour);\n  document.documentElement.style.setProperty('--lvl-wash', cfg.wash);\n  el('levelName').textContent = cfg.name;\n  el('levelChip').hidden = false;\n  el('progRow').hidden = false;\n  el('main').hidden = false;\n  el('banner').hidden = false;\n  el('veilLevels').hidden = true;\n  buildDots();\n  loadQuestion();\n  say(`${cfg.name} level started. Question 1 of ${QUIZ_LEN}.`);\n}\n\nfunction buildDots(){\n  const d = el('progDots');\n  d.textContent = '';\n  for (let k = 0; k < QUIZ_LEN; k++){\n    d.appendChild(Object.assign(document.createElement('span'), { className:'dot' }));\n  }\n}\n\nfunction paintProgress(){\n  el('progCount').textContent = `${S.i+1} / ${QUIZ_LEN}`;\n  el('progFill').style.width = `${(S.i / QUIZ_LEN) * 100}%`;\n  [...el('progDots').children].forEach((dot, k) => {\n    const it = S.items[k];\n    dot.className = 'dot'\n      + (it.state === 'right' ? ' correct' : '')\n      + (it.state === 'revealed' ? ' shown' : '')\n      + (k === S.i ? ' here' : '');\n  });\n}\n\nconst cur = () => S.items[S.i];\n\n/**\n * Put the plane into the state this question wants.\n *\n * Three levels of access, so the tool never does the thinking for the student:\n *   interactive  Sweet and Mild \u2014 full drag, toggles, scratch mode, large plane\n *   figure       Medium \u2014 a fixed diagram to read rise and run from, nothing more\n *   none         most of Spicy \u2014 no diagram at all, the formula only\n */\nfunction applyPlane(q){\n  const access = q.noPlane ? 'none'\n    : (LEVELS[S.levelKey].access === 'interactive' && !q.figureOnly) ? 'interactive'\n    : 'figure';\n  q.access = access;\n\n  document.body.dataset.plane = access;\n  el('planeCard').hidden = access === 'none';\n  el('planetools').hidden = access !== 'interactive';\n\n  if (access === 'none'){ plane.onChange = null; return; }\n\n  const p = q.plane;\n  plane.A = {...p.A}; plane.B = {...p.B};\n  plane.C = p.C ? {...p.C} : {x:-6,y:4};\n  plane.D = p.D ? {...p.D} : {x:-2,y:6};\n  plane.showTwo = !!p.showTwo;\n  plane.numbers = p.numbers !== false;\n  plane.triangle = p.triangle !== false;\n  plane.ghosts = p.ghosts ? p.ghosts.map(g => ({a:{...g.a}, b:{...g.b}})) : [];\n  plane.pairTri = p.pairTri ? p.pairTri.map(t => ({a:{...t.a}, b:{...t.b}})) : null;\n  plane.hidePoints = !!p.hidePoints;\n\n  // a figure is never draggable, whatever the question asked for\n  plane.locked = access === 'figure' ? true : !p.free;\n\n  q.snapshot = { A:{...plane.A}, B:{...plane.B}, C:{...plane.C}, D:{...plane.D},\n                 numbers:plane.numbers, triangle:plane.triangle };\n\n  el('tNum').setAttribute('aria-pressed', String(plane.numbers));\n  el('tTri').setAttribute('aria-pressed', String(plane.triangle));\n  el('tExplore').setAttribute('aria-pressed','false');\n  el('tExplore').textContent = 'Explore freely';\n  el('tExplore').hidden = !!p.free;\n\n  el('planeNote').textContent =\n      access === 'figure' ? 'This diagram is fixed. Read the rise and the run from it, then use the formula.'\n    : p.free ? 'Drag A and B, or press Tab then use the arrow keys.'\n    : 'This line is set for the question. Press \u201cExplore freely\u201d if you want to experiment.';\n  drawPlane();\n}\n\nfunction loadQuestion(){\n  const q = cur();\n  paintProgress();\n  applyPlane(q);\n\n  el('qTag').textContent = `Question ${S.i+1} of ${QUIZ_LEN}`;\n  el('qText').textContent = q.text;\n  el('qSub').textContent = q.sub || '';\n  el('qSub').hidden = !q.sub;\n  el('fb').hidden = true;\n  el('hint').hidden = true;\n  el('btnHint').hidden = false;\n  el('btnHint').textContent = 'Hint';\n  el('btnHint').disabled = false;\n  el('btnShow').hidden = false;\n  el('btnShow').disabled = false;\n  el('btnNext').hidden = true;\n  el('btnCheck').hidden = !(q.kind === 'num' || q.kind === 'build' || q.kind === 'pair');\n  el('btnCheck').textContent = q.kind === 'build' ? 'Check my line'\n    : q.kind === 'pair' ? 'Check both' : 'Check';\n\n  buildAnswerArea(q);\n  if (q.state !== 'open') restoreAnswered(q);\n}\n\nfunction buildAnswerArea(q){\n  const box = el('answerArea');\n  box.textContent = '';\n\n  if (q.kind === 'mc'){\n    const wrap = document.createElement('div');\n    wrap.className = 'opts';\n    q.options.forEach((o, k) => {\n      const b = document.createElement('button');\n      b.type = 'button'; b.className = 'opt'; b.dataset.k = k;\n      b.innerHTML = `<span class=\"opt__key\">${String.fromCharCode(65+k)}<\/span><span>${o.label}<\/span>`;\n      b.addEventListener('click', () => answerMC(k));\n      wrap.appendChild(b);\n    });\n    box.appendChild(wrap);\n  }\n\n  if (q.kind === 'num'){\n    const wrap = document.createElement('div');\n    wrap.className = 'entry';\n    const inp = document.createElement('input');\n    inp.id = 'numIn'; inp.autocomplete = 'off'; inp.spellcheck = false;\n    inp.setAttribute('aria-label','Your answer');\n    inp.placeholder = 'Type your answer';\n    inp.value = q.typed || '';\n    inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); answerNum(); } });\n    inp.addEventListener('input', () => { q.typed = inp.value; inp.className = ''; });\n    wrap.appendChild(inp);\n    box.appendChild(wrap);\n    if (q.keyhints){\n      const kh = document.createElement('div');\n      kh.className = 'keyhints';\n      q.keyhints.forEach(t => {\n        const s = document.createElement('span'); s.className = 'keyhint'; s.textContent = t; kh.appendChild(s);\n      });\n      box.appendChild(kh);\n    }\n    setTimeout(() => { if (inp.isConnected) inp.focus(); }, 30);\n  }\n\n  if (q.kind === 'pair'){\n    const wrap = document.createElement('div');\n    wrap.className = 'pairbox';\n    q.labels.forEach((lab, k) => {\n      const row = document.createElement('label');\n      row.className = 'pairrow pairrow--' + (k+1);\n      const badge = document.createElement('span');\n      badge.className = 'pairrow__badge'; badge.textContent = String(k+1);\n      const name = document.createElement('span');\n      name.className = 'pairrow__name'; name.textContent = lab + ' gradient';\n      const inp = document.createElement('input');\n      inp.id = 'pairIn' + k; inp.autocomplete = 'off'; inp.spellcheck = false;\n      inp.placeholder = '?';\n      inp.setAttribute('aria-label', lab + ' gradient');\n      inp.value = (q.typedPair && q.typedPair[k]) || '';\n      inp.addEventListener('input', () => {\n        q.typedPair = q.typedPair || ['',''];\n        q.typedPair[k] = inp.value; inp.className = '';\n      });\n      inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); answerPair(); } });\n      row.append(badge, name, inp);\n      wrap.appendChild(row);\n    });\n    box.appendChild(wrap);\n    if (q.keyhints){\n      const kh = document.createElement('div');\n      kh.className = 'keyhints';\n      q.keyhints.forEach(t => {\n        const sp = document.createElement('span'); sp.className = 'keyhint'; sp.textContent = t; kh.appendChild(sp);\n      });\n      box.appendChild(kh);\n    }\n    // hold a reference rather than looking the id up later: by the time this\n    // fires the student may already have moved to the next question\n    const firstInput = wrap.querySelector('input');\n    setTimeout(() => { if (firstInput && firstInput.isConnected) firstInput.focus(); }, 30);\n  }\n\n  if (q.kind === 'build'){\n    const d = document.createElement('div');\n    d.className = 'buildbox'; d.id = 'buildBox';\n    d.textContent = 'Build it on the plane, then press Check when you think it is right.';\n    box.appendChild(d);\n    // No auto-marking: the student decides when the line is finished, which\n    // keeps the judgement theirs rather than the tool's.\n    plane.onChange = () => {\n      if (q.state === 'wrong'){\n        q.state = 'open';\n        el('fb').hidden = true;\n        el('buildBox').textContent = 'Keep going, then press Check.';\n      }\n    };\n    if (q.plane.lockFirst) lockFirstLine();\n  }\n  if (q.kind !== 'build') plane.onChange = null;\n}\n\n/** For the \"match line 2 to line 1\" task: A and B must not move. */\nfunction lockFirstLine(){\n  ['A','B'].forEach(n => {\n    const g = document.querySelector(`[data-pt=\"${n}\"]`);\n    g.classList.add('locked');\n    g.setAttribute('tabindex','-1');\n    g.dataset.fixed = '1';\n  });\n}\n\n/* ---- marking ---- */\n\n/** Accept 3, -2, 1/2, -3/4, 0.5, .5 and the word undefined. */\nfunction parseNum(raw){\n  if (raw == null) return null;\n  let s = String(raw).trim().toLowerCase().replace(/\\s+/g,'').replace('\u2212','-');\n  if (!s) return null;\n  if (/^undef(ined)?$/.test(s)) return { undef:true };\n  let mm = s.match(/^(-?\\d+)\\/(-?\\d+)$/);\n  if (mm){\n    const d = Number(mm[2]);\n    if (d === 0) return { undef:true };\n    return { v: Number(mm[1]) / d };\n  }\n  if (/^-?(\\d+\\.?\\d*|\\.\\d+)$/.test(s)) return { v: Number(s) };\n  return null;\n}\n\n/**\n * Accept an exact value, or a sensibly rounded decimal. A gradient of 1/3 has\n * no exact decimal form, so a student writing 0.33 has done the mathematics\n * correctly and should not be told they are wrong.\n */\nfunction sameValue(a, b){\n  if (Math.abs(a - b) < 1e-6) return true;\n  const exact = [2,4,5,8,10,20,25,50,100].some(d => Math.abs(b*d - Math.round(b*d)) < 1e-9);\n  return !exact && Math.abs(a - b) <= 0.005;\n}\n\nfunction answerNum(){\n  const q = cur();\n  if (q.state === 'right' || q.state === 'revealed') return;\n  const inp = el('numIn');\n  const parsed = parseNum(inp.value);\n  q.typed = inp.value;\n  q.tries++;\n\n  if (!parsed){\n    inp.className = 'wrong';\n    feedback('no', 'I could not read that. Try a number like 2, \u22123, 1/2 or 0.5.');\n    return;\n  }\n  const ok = parsed.undef ? q.answer === 'undef' : sameValue(parsed.v, Number(q.answer));\n  if (ok){ inp.className = 'right'; markRight(q); }\n  else { inp.className = 'wrong'; markWrong(q); }\n}\n\nfunction answerPair(){\n  const q = cur();\n  if (q.state === 'right' || q.state === 'revealed') return;\n  const inputs = q.answers.map((_, k) => el('pairIn' + k));\n  const parsed = inputs.map(i => parseNum(i.value));\n  q.typedPair = inputs.map(i => i.value);\n  q.tries++;\n\n  if (parsed.some(p => !p)){\n    inputs.forEach((i, k) => { if (!parsed[k]) i.className = 'wrong'; });\n    feedback('no', 'Fill in both boxes with a number, a fraction like 1/3, or a decimal.');\n    return;\n  }\n  const ok = parsed.map((p, k) => p.undef ? false : sameValue(p.v, q.answers[k]));\n  inputs.forEach((i, k) => { i.className = ok[k] ? 'right' : 'wrong'; });\n\n  if (ok.every(Boolean)){ markRight(q); return; }\n  // both filled in and equal to each other, but wrong: they have the idea, not the arithmetic\n  const equalToEachOther = sameValue(parsed[0].v ?? NaN, parsed[1].v ?? NaN);\n  q.state = 'wrong';\n  feedback('no', equalToEachOther\n    ? 'You have spotted that both are the same \u2014 but check the arithmetic on the rise and the run.'\n    : ok[0] ? 'Triangle 1 is right. Look at triangle 2 again.'\n    : ok[1] ? 'Triangle 2 is right. Look at triangle 1 again.'\n    : 'Not yet. Read the rise and the run off each triangle carefully.');\n  if (q.tries >= 2 && q.hintsUsed === 0) showHint();\n}\n\nfunction answerMC(k){\n  const q = cur();\n  if (q.state === 'right' || q.state === 'revealed') return;\n  q.tries++;\n  q.chosen = k;\n  const right = q.options[k].value === q.answer\n    || (typeof q.answer === 'number' && sameValue(q.options[k].value, q.answer));\n  paintOptions(q, k, right);\n  if (right) markRight(q); else markWrong(q);\n}\n\nfunction paintOptions(q, chosenIdx, right){\n  [...el('answerArea').querySelectorAll('.opt')].forEach((b, k) => {\n    b.classList.remove('right','wrong','dim');\n    const isAns = q.options[k].value === q.answer\n      || (typeof q.answer === 'number' && sameValue(q.options[k].value, q.answer));\n    if (k === chosenIdx) b.classList.add(right ? 'right' : 'wrong');\n    if ((q.state === 'right' || q.state === 'revealed') && isAns) b.classList.add('right');\n    b.disabled = q.state === 'right' || q.state === 'revealed';\n    if (b.disabled && !b.classList.contains('right') && !b.classList.contains('wrong')) b.classList.add('dim');\n  });\n}\n\nfunction checkBuild(){\n  const q = cur();\n  if (q.kind !== 'build' || q.state === 'right' || q.state === 'revealed') return;\n  q.tries++;\n  const m = measure(plane.A, plane.B);\n  const m2 = measure(plane.C, plane.D);\n  if (q.test(m, m2)){\n    el('buildBox').classList.add('done');\n    el('buildBox').textContent = 'That works.';\n    markRight(q);\n  } else {\n    el('buildBox').textContent = 'Not there yet \u2014 adjust the points and check again.';\n    markWrong(q);\n  }\n}\n\nfunction markRight(q){\n  q.state = 'right';\n  if (!q.counted){ q.counted = true; S.score++; }\n  feedback('ok', pick(['Correct.','That is it.','Yes \u2014 nicely done.','Right.']), q.why);\n  finishQuestion(q);\n  say('Correct. ' + (q.why || ''));\n}\n\nfunction markWrong(q){\n  q.state = 'wrong';\n  const msg = q.tries >= 2\n    ? 'Still not it \u2014 try a hint, or press \u201cShow me\u201d.'\n    : 'Not quite. Have another go \u2014 nothing is lost.';\n  feedback('no', msg);\n  if (q.tries >= 2 && q.hintsUsed === 0) showHint();\n  say(msg);\n}\n\nfunction revealAnswer(){\n  const q = cur();\n  if (q.state === 'right') return;\n  q.state = 'revealed';\n  S.shownCount++;\n  let text;\n  if (q.kind === 'mc'){\n    const idx = q.options.findIndex(o => o.value === q.answer\n      || (typeof q.answer === 'number' && sameValue(o.value, q.answer)));\n    text = 'The answer is ' + q.options[idx].label + '.';\n    paintOptions(q, q.chosen ?? -1, false);\n  } else if (q.kind === 'num'){\n    text = 'The answer is ' + (q.answer === 'undef' ? 'undefined' : formatAns(q.answer)) + '.';\n    el('numIn').value = q.answer === 'undef' ? 'undefined' : formatAns(q.answer);\n    el('numIn').className = '';\n    el('numIn').disabled = true;\n  } else if (q.kind === 'pair'){\n    text = 'Both triangles give ' + formatAns(q.answers[0]) + '.';\n    q.answers.forEach((a, k) => {\n      const i = el('pairIn' + k);\n      i.value = formatAns(a); i.className = ''; i.disabled = true;\n    });\n  } else {\n    text = 'Here is one line that works.';\n    solveBuild(q);\n  }\n  feedback('shown', text, q.why);\n  finishQuestion(q);\n  say(text + ' ' + (q.why || ''));\n}\n\nfunction formatAns(v){\n  if (Number.isInteger(v)) return String(v);\n  for (let d = 2; d <= 12; d++){\n    const n = v * d;\n    if (Math.abs(n - Math.round(n)) < 1e-9) return `${Math.round(n)}/${d}`;\n  }\n  return String(Math.round(v*1000)/1000);\n}\n\n/** Show a worked example for a build task by finding a valid position. */\nfunction solveBuild(q){\n  const search = () => {\n    for (let ax = MIN; ax <= MAX; ax++) for (let ay = MIN; ay <= MAX; ay++)\n      for (let bx = MIN; bx <= MAX; bx++) for (let by = MIN; by <= MAX; by++){\n        if (q.which === 'second'){\n          const m = measure(plane.A, plane.B);\n          const m2 = measure({x:ax,y:ay},{x:bx,y:by});\n          if (q.test(m, m2)) return { C:{x:ax,y:ay}, D:{x:bx,y:by} };\n        } else {\n          const m = measure({x:ax,y:ay},{x:bx,y:by});\n          if (q.test(m, measure(plane.C, plane.D))) return { A:{x:ax,y:ay}, B:{x:bx,y:by} };\n        }\n      }\n    return null;\n  };\n  const found = search();\n  if (found) Object.assign(plane, found);\n  drawPlane();\n  if (el('buildBox')) el('buildBox').textContent = 'One possible answer is shown on the plane.';\n}\n\nfunction finishQuestion(q){\n  el('btnNext').hidden = false;\n  el('btnNext').textContent = S.i === QUIZ_LEN - 1 ? 'See my result \u2192' : 'Next \u2192';\n  el('btnShow').disabled = true;\n  el('btnHint').disabled = true;\n  el('btnCheck').hidden = true;\n  plane.onChange = null;\n  paintProgress();\n  setTimeout(() => { const b = el('btnNext'); if (b && !b.hidden) b.focus(); }, 40);\n}\n\nfunction restoreAnswered(q){\n  if (q.kind === 'mc') paintOptions(q, q.chosen ?? -1, q.state === 'right');\n  if (q.kind === 'num' && el('numIn')) el('numIn').disabled = q.state !== 'wrong';\n  if (q.kind === 'pair') q.answers.forEach((_, k) => {\n    const i = el('pairIn' + k); if (i) i.disabled = q.state !== 'wrong';\n  });\n  if (q.state === 'right') feedback('ok','Already correct.', q.why);\n  if (q.state === 'revealed') feedback('shown','You looked at this one.', q.why);\n  if (q.state !== 'open') finishQuestion(q);\n}\n\nfunction feedback(kind, msg, why){\n  const f = el('fb');\n  f.hidden = false;\n  f.className = 'fb ' + kind;\n  f.textContent = msg;\n  if (why){\n    const s = document.createElement('span');\n    s.className = 'fb__why'; s.textContent = why;\n    f.appendChild(s);\n  }\n}\n\nfunction showHint(){\n  const q = cur();\n  if (!q.hints || q.hintsUsed >= q.hints.length){\n    el('btnHint').disabled = true;\n    return;\n  }\n  el('hint').hidden = false;\n  el('hint').textContent = q.hints[q.hintsUsed];\n  q.hintsUsed++;\n  el('btnHint').textContent = q.hintsUsed < q.hints.length ? 'Another hint' : 'No more hints';\n  if (q.hintsUsed >= q.hints.length) el('btnHint').disabled = true;\n  say('Hint: ' + el('hint').textContent);\n}\n\nfunction nextQuestion(){\n  if (S.i >= QUIZ_LEN - 1){ showCertificate(); return; }\n  S.i++;\n  loadQuestion();\n}\n\n/* ---- certificate ---- */\n\nfunction showCertificate(){\n  const cfg = LEVELS[S.levelKey];\n  el('progFill').style.width = '100%';\n  el('certScore').textContent = `${S.score} / ${QUIZ_LEN}`;\n  el('certHead').textContent = `${cfg.name} level complete`;\n  const pct = Math.round(S.score / QUIZ_LEN * 100);\n  el('certLine').textContent = pct === 100\n    ? 'Every question, first go or not \u2014 that is the lot.'\n    : pct >= 70 ? 'Solid work. You have the idea.'\n    : pct >= 40 ? 'Good progress. Worth another run at this level.'\n    : 'Have another go \u2014 the questions change every time.';\n  el('certNote').textContent = S.shownCount\n    ? `You used \u201cShow me\u201d on ${S.shownCount} question${S.shownCount>1?'s':''}. Those ones are worth revisiting.`\n    : 'You did not need to reveal a single answer.';\n  el('veilCert').hidden = false;\n  el('btnCopy').focus();\n\n  // hook for Mills Maths Tools result saving, if the page is embedded there\n  if (window.MMTSave) window.MMTSave({\n    tool:'gradient-student-quiz', topic:'linear-relationships',\n    level:cfg.name, levelKey:S.levelKey, score:S.score, total:QUIZ_LEN,\n    percent:pct, masteryTopic:'gradient', types:['level:'+S.levelKey],\n    certificateText:`Gradient \u2014 ${cfg.name}: ${S.score}/${QUIZ_LEN}`\n  });\n}\n\nasync function copyResult(){\n  const cfg = LEVELS[S.levelKey];\n  const d = new Date(), p = n => String(n).padStart(2,'0');\n  const text = `Gradient Quiz \u2014 ${cfg.name}\\nScore: ${S.score} / ${QUIZ_LEN}\\n`\n    + `Completed: ${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;\n  try {\n    await navigator.clipboard.writeText(text);\n    el('btnCopy').textContent = 'Copied';\n    setTimeout(() => el('btnCopy').textContent = 'Copy my result', 1400);\n  } catch { window.prompt('Copy this:', text); }\n}\n\nfunction backToLevels(){\n  el('veilCert').hidden = true;\n  el('veilLevels').hidden = false;\n  el('main').hidden = true;\n  el('progRow').hidden = true;\n  el('levelChip').hidden = true;\n  el('banner').hidden = true;\n  S.levelKey = null;\n}\n\n/* ============================================================\n   6. Wiring\n   ============================================================ */\n\nfunction buildLevelList(){\n  const list = el('levelList');\n  Object.entries(LEVELS).forEach(([key, cfg]) => {\n    const b = document.createElement('button');\n    b.type = 'button';\n    b.className = `lvl lvl--${key}`;\n    b.innerHTML = `<span class=\"lvl__heat\" aria-hidden=\"true\">${cfg.heat}<\/span>\n      <span class=\"lvl__body\"><span class=\"lvl__name\">${cfg.name}<\/span>\n      <span class=\"lvl__desc\">${cfg.desc}<\/span><\/span>\n      <span class=\"lvl__go\">Start \u2192<\/span>`;\n    b.addEventListener('click', () => startLevel(key));\n    list.appendChild(b);\n  });\n}\n\nfunction wire(){\n  el('btnHint').addEventListener('click', showHint);\n  el('btnShow').addEventListener('click', revealAnswer);\n  el('btnNext').addEventListener('click', nextQuestion);\n  el('btnCheck').addEventListener('click', () => {\n    const q = cur();\n    if (q.kind === 'build') checkBuild();\n    else if (q.kind === 'pair') answerPair();\n    else answerNum();\n  });\n  el('btnCopy').addEventListener('click', copyResult);\n  el('btnAgain').addEventListener('click', () => { el('veilCert').hidden = true; startLevel(S.levelKey); });\n  el('btnBackLevels').addEventListener('click', backToLevels);\n  el('btnLevels').addEventListener('click', backToLevels);\n  el('btnRestart').addEventListener('click', () => { if (S.levelKey) startLevel(S.levelKey); });\n\n  el('tNum').addEventListener('click', () => {\n    plane.numbers = !plane.numbers;\n    el('tNum').setAttribute('aria-pressed', String(plane.numbers));\n    drawPlane();\n  });\n  el('tTri').addEventListener('click', () => {\n    plane.triangle = !plane.triangle;\n    el('tTri').setAttribute('aria-pressed', String(plane.triangle));\n    drawPlane();\n  });\n\n  // Explore freely: unlock the plane for scratch work, then put it back.\n  el('tExplore').addEventListener('click', () => {\n    const on = el('tExplore').getAttribute('aria-pressed') !== 'true';\n    el('tExplore').setAttribute('aria-pressed', String(on));\n    el('tExplore').textContent = on ? 'Back to the question' : 'Explore freely';\n    const q = cur();\n    if (on){\n      plane.locked = false;\n      el('planeNote').textContent = 'Scratch mode \u2014 drag anything. Your answer is not affected.';\n    } else {\n      Object.assign(plane, { A:{...q.snapshot.A}, B:{...q.snapshot.B},\n        C:{...q.snapshot.C}, D:{...q.snapshot.D},\n        numbers:q.snapshot.numbers, triangle:q.snapshot.triangle, locked:true });\n      el('tNum').setAttribute('aria-pressed', String(plane.numbers));\n      el('tTri').setAttribute('aria-pressed', String(plane.triangle));\n      el('planeNote').textContent = 'Back to the question line.';\n    }\n    drawPlane();\n  });\n\n  document.addEventListener('keydown', e => {\n    if (e.key === 'Enter' && !el('btnNext').hidden && document.activeElement.tagName !== 'INPUT'){\n      e.preventDefault(); nextQuestion();\n    }\n  });\n}\n\nbuildStatic();\ninitDrag();\nbuildLevelList();\nwire();\ndrawPlane();\n\n})();\n<\/script>\n<\/body>\n<\/html>\n";
+
+/* ==============================================================
+   Rise & Run — a digital manipulative for gradient
+   NSW Mathematics K–10, MA5-LIN-C-01 (gradient component)
+
+   Design rule applied throughout: every feature must improve
+   conceptual understanding while lowering unnecessary load.
+   Nothing here is decorative.
+
+   Contents
+     1  Configuration
+     2  State
+     3  DOM shortcuts
+     4  Mathematics helpers
+     5  Plane construction (static layers)
+     6  Rendering (dynamic layers)
+     7  Pointer and keyboard interaction
+     8  Readouts, bars and representations
+     9  Steepness meter
+    10  Stage ladder and unlocking
+    11  Discovery prompts
+    12  Prediction activities
+    13  Counting animation and the rule reveal
+    14  Modes: slide along the line, second line, real world
+    15  Special cases
+    16  Challenges
+    17  Teacher controls, display switches, accessibility
+    18  Start up
+   ============================================================== */
+
+'use strict';
+
+/* ---------- 1. Configuration ------------------------------------------ */
+
+const CFG = {
+  view: 760,        // SVG user units (square)
+  pad: 42,          // margin inside the SVG
+  min: -10,         // smallest coordinate shown
+  max: 10,          // largest coordinate shown
+  start: { a: { x: -6, y: -2 }, b: { x: 2, y: 4 } },
+  start2: { c: { x: -6, y: 5 }, d: { x: -2, y: 8 } },
+  countMs: 1000    // one number per second while counting the steps
+};
+CFG.span = CFG.max - CFG.min;
+CFG.unit = (CFG.view - 2 * CFG.pad) / CFG.span;
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+/* ---------- 2. State --------------------------------------------------- */
+
+let usedChallenges = [];   // challenge indices already served this session
+
+const state = {
+  pts: {
+    A: { ...CFG.start.a }, B: { ...CFG.start.b },
+    C: { ...CFG.start2.c }, D: { ...CFG.start2.d }
+  },
+  stage: 0,                 // 0 look · 1 count · 2 compare · 3 rule
+  unlocked: 0,              // highest stage the student has earned
+  counted: false,           // rise and run numbers revealed?
+  ruleRevealed: false,
+  teacher: false,
+  modes: { slide: false, compare: false, world: false },
+  slideLine: null,          // {p0,dx,dy} fixed line used by slide mode
+  ghosts: [],               // remembered triangles in slide mode
+  vis: { labels: true, coords: true, triangle: true, numbers: true,
+         construction: false, infinite: false, grid: true, snap: true,
+         riseFirst: true },   // rise leaves A, then the run travels to B
+  explore: { moves: 0, gradients: new Set(), families: new Set() },
+  challenge: null,
+  hintLevel: 0,
+  prediction: null,
+  world: null,
+  animating: false,
+  countTimer: null,
+  countNodes: []
+};
+
+/* ---------- 3. DOM shortcuts ------------------------------------------- */
+
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+const svg = $('#plane');
+const el = {
+  grid: $('#gGrid'), axes: $('#gAxes'), world: $('#gWorld'), ghosts: $('#gGhosts'),
+  guide: $('#gGuide'), line2: $('#gLine2'), points: $('#gPoints'), labels: $('#gLabels'),
+  tri: $('#gTri'), triFill: $('#triFill'), segRun: $('#segRun'), segRise: $('#segRise'),
+  ticksRun: $('#ticksRun'), ticksRise: $('#ticksRise'), rightAngle: $('#rightAngle'),
+  fillRise: $('#fillRise'), fillRun: $('#fillRun'),
+  lblRun: $('#lblRun'), lblRise: $('#lblRise'),
+  interval: $('#interval'), infinite: $('#infiniteLine'),
+  coordA: $('#coordA'), coordB: $('#coordB'),
+  valRise: $('#valRise'), valRun: $('#valRun'), valGrad: $('#valGrad'),
+  roGrad: $('#roGrad'), gradSub: $('#gradSub'),
+  bars: $('#bars'), barRise: $('#barRise'), barRun: $('#barRun'),
+  btnCount: $('#btnCount'), btnReveal: $('#btnReveal'),
+  plank: $('#plank'), ball: $('#meterBall'), arc: $('#meterArc'),
+  meterWord: $('#meterWord'), meterNote: $('#meterNote'),
+  thinkPrompt: $('#thinkPrompt'),
+  predictBox: $('#predictBox'), predictQ: $('#predictQ'),
+  predictOpts: $('#predictOpts'), predictResult: $('#predictResult'),
+  caseCard: $('#caseCard'), caseTitle: $('#caseTitle'), caseBody: $('#caseBody'),
+  repsCard: $('#repsCard'), repsLock: $('#repsLock'), repsBody: $('#repsBody'),
+  steppers: $('#steppers'), stepRise: $('#stepRise'), stepRun: $('#stepRun'),
+  repWords: $('#repWords'), repRatio: $('#repRatio'), repFrac: $('#repFrac'),
+  repSimp: $('#repSimp'), repDec: $('#repDec'), repRule: $('#repRule'),
+  compareCard: $('#compareCard'), cmpBody: $('#cmpBody'), cmpQuestion: $('#cmpQuestion'),
+  worldCard: $('#worldCard'), worldPicks: $('#worldPicks'), worldFact: $('#worldFact'),
+  chalTask: $('#chalTask'), chalFeedback: $('#chalFeedback'), chalHint: $('#chalHint'),
+  btnChallenge: $('#btnChallenge'), btnHint: $('#btnHint'),
+  gateText: $('#gateText'), gateFill: $('#gateFill'),
+  foldMeasure: $('#foldMeasure'),
+  planeHint: $('#planeHint'), live: $('#live'), drawer: $('#drawer')
+};
+
+/* ---------- 4. Mathematics helpers ------------------------------------- */
+
+const x2px = (x) => CFG.pad + (x - CFG.min) * CFG.unit;
+const y2px = (y) => CFG.pad + (CFG.max - y) * CFG.unit;
+const px2x = (px) => (px - CFG.pad) / CFG.unit + CFG.min;
+const px2y = (py) => CFG.max - (py - CFG.pad) / CFG.unit;
+
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const gcd = (a, b) => (b ? gcd(b, a % b) : Math.abs(a));
+
+/** Rise, run and gradient for a pair of points. */
+function measure(p, q) {
+  const rise = q.y - p.y;
+  const run = q.x - p.x;
+  const vertical = run === 0 && rise !== 0;
+  const degenerate = run === 0 && rise === 0;
+  const m = vertical || degenerate ? null : rise / run;
+  return { rise, run, m, vertical, degenerate };
+}
+
+/** Neat display of a gradient: whole number, fraction, or decimal. */
+function gradText(rise, run) {
+  if (run === 0) return 'undefined';
+  if (rise === 0) return '0';
+  const g = gcd(rise, run) || 1;
+  let n = rise / g, d = run / g;
+  if (d < 0) { n = -n; d = -d; }
+  return d === 1 ? String(n) : `${n}/${d}`;
+}
+
+function decText(m) {
+  if (m === null) return 'undefined';
+  return Number.isInteger(m) ? String(m) : (Math.round(m * 1000) / 1000).toString();
+}
+
+/** Which conceptual family does this gradient belong to? */
+function family(mm) {
+  const { rise, run, m, vertical, degenerate } = mm;
+  if (degenerate) return 'none';
+  if (vertical) return 'undefined';
+  if (rise === 0) return 'zero';
+  if (m === 1) return 'one';
+  if (m === -1) return 'minus-one';
+  if (m > 1) return 'steep';
+  if (m > 0) return 'shallow';
+  if (m < -1) return 'steep-neg';
+  return 'shallow-neg';
+}
+
+/* ---------- 5. Plane construction (drawn once) ------------------------- */
+
+/** Parse a snippet of SVG markup into real SVG nodes. */
+function svgFrag(markup) {
+  const doc = new DOMParser().parseFromString(
+    `<svg xmlns="${SVGNS}">${markup}</svg>`, 'image/svg+xml');
+  const frag = document.createDocumentFragment();
+  Array.from(doc.documentElement.childNodes).forEach((n) => frag.appendChild(document.importNode(n, true)));
+  return frag;
+}
+
+function make(tag, attrs = {}, text) {
+  const node = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) node.setAttribute(k, attrs[k]);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function buildGrid() {
+  const frag = document.createDocumentFragment();
+  for (let i = CFG.min; i <= CFG.max; i++) {
+    const strong = i % 5 === 0;
+    const cls = 'grid-line' + (strong ? ' grid-line--five' : '');
+    frag.appendChild(make('line', { class: cls, x1: x2px(i), y1: y2px(CFG.min), x2: x2px(i), y2: y2px(CFG.max) }));
+    frag.appendChild(make('line', { class: cls, x1: x2px(CFG.min), y1: y2px(i), x2: x2px(CFG.max), y2: y2px(i) }));
+  }
+  el.grid.appendChild(frag);
+}
+
+function buildAxes() {
+  const frag = document.createDocumentFragment();
+  frag.appendChild(make('line', { class: 'axis', x1: x2px(CFG.min), y1: y2px(0), x2: x2px(CFG.max), y2: y2px(0) }));
+  frag.appendChild(make('line', { class: 'axis', x1: x2px(0), y1: y2px(CFG.min), x2: x2px(0), y2: y2px(CFG.max) }));
+
+  for (let i = CFG.min; i <= CFG.max; i++) {
+    if (i === 0) continue;
+    frag.appendChild(make('line', { class: 'axis-tick', x1: x2px(i), y1: y2px(0) - 5, x2: x2px(i), y2: y2px(0) + 5 }));
+    frag.appendChild(make('line', { class: 'axis-tick', x1: x2px(0) - 5, y1: y2px(i), x2: x2px(0) + 5, y2: y2px(i) }));
+    if (i % 2 === 0) {
+      frag.appendChild(make('text', { class: 'axis-num', x: x2px(i), y: y2px(0) + 20 }, String(i)));
+      frag.appendChild(make('text', { class: 'axis-num', x: x2px(0) - 15, y: y2px(i) + 4 }, String(i)));
+    }
+  }
+  frag.appendChild(make('text', { class: 'axis-name', x: x2px(CFG.max) - 4, y: y2px(0) - 12, 'text-anchor': 'end' }, 'x'));
+  frag.appendChild(make('text', { class: 'axis-name', x: x2px(0) + 12, y: y2px(CFG.max) + 14 }, 'y'));
+  el.axes.appendChild(frag);
+}
+
+/** Draggable point: a halo, a coloured dot, its letter, and its coordinates. */
+function buildPoint(name) {
+  const g = make('g', {
+    class: `pt pt--${name.toLowerCase()}`, tabindex: '0', role: 'button',
+    'data-pt': name, 'aria-label': `Point ${name}`
+  });
+  g.appendChild(make('circle', { class: 'pt-halo', r: 21 }));
+  g.appendChild(make('circle', { class: 'pt-dot', r: 13 }));
+  g.appendChild(make('text', { class: 'pt-name' }, name));
+  el.points.appendChild(g);
+
+  const coord = make('text', { class: 'pt-coord', 'data-coord': name });
+  el.labels.appendChild(coord);
+  return g;
+}
+
+/* ---------- 6. Rendering ----------------------------------------------- */
+
+function render() {
+  const { A, B, C, D } = state.pts;
+  const m1 = measure(A, B);
+
+  drawPoints();
+  drawTriangle(A, B, m1);
+  drawInterval(A, B);
+  drawGuides(A, B);
+  drawWorld(A, B, m1);
+  drawGhosts();
+  drawSecondLine(C, D);
+
+  updateReadouts(m1);
+  updateMeter(m1);
+  updateReps(m1);
+  updateSpecialCase(m1);
+  updateCompare();
+  checkChallenge(m1);
+}
+
+function drawPoints() {
+  ['A', 'B', 'C', 'D'].forEach((name) => {
+    const g = svg.querySelector(`[data-pt="${name}"]`);
+    if (!g) return;
+    const show = name === 'A' || name === 'B' || state.modes.compare;
+    g.style.display = show ? '' : 'none';
+    const p = state.pts[name];
+    const px = x2px(p.x), py = y2px(p.y);
+    g.querySelectorAll('circle').forEach((c) => { c.setAttribute('cx', px); c.setAttribute('cy', py); });
+    const t = g.querySelector('.pt-name');
+    t.setAttribute('x', px); t.setAttribute('y', py + 1);
+    g.setAttribute('aria-label',
+      `Point ${name} at ${p.x} comma ${p.y}. Arrow keys move it one unit.`);
+
+    const coord = el.labels.querySelector(`[data-coord="${name}"]`);
+    coord.style.display = show ? '' : 'none';
+    coord.textContent = `(${p.x}, ${p.y})`;
+    // flip the label to the inside whenever the point sits near an edge
+    const nearRight = p.x > CFG.max - 4;
+    const nearTop = p.y > CFG.max - 1;
+    coord.setAttribute('text-anchor', nearRight ? 'end' : 'start');
+    coord.setAttribute('x', px + (nearRight ? -26 : 26));
+    coord.setAttribute('y', py + (nearTop ? 34 : -20));
+  });
+}
+
+function drawInterval(A, B) {
+  el.interval.setAttribute('x1', x2px(A.x)); el.interval.setAttribute('y1', y2px(A.y));
+  el.interval.setAttribute('x2', x2px(B.x)); el.interval.setAttribute('y2', y2px(B.y));
+
+  // The infinite line through A and B, clipped to the plane.
+  const dx = B.x - A.x, dy = B.y - A.y;
+  if (dx === 0 && dy === 0) { el.infinite.setAttribute('x1', 0); el.infinite.setAttribute('x2', 0); return; }
+  const big = 60;
+  el.infinite.setAttribute('x1', x2px(A.x - dx * big));
+  el.infinite.setAttribute('y1', y2px(A.y - dy * big));
+  el.infinite.setAttribute('x2', x2px(A.x + dx * big));
+  el.infinite.setAttribute('y2', y2px(A.y + dy * big));
+}
+
+/**
+ * Where the right angle sits, and where each leg lies.
+ * With riseFirst the rise climbs out of A and the run travels across to B;
+ * with it off the run leaves A first. Either construction gives the same
+ * gradient, which is a point worth making with a class.
+ */
+function triGeom(p, q) {
+  const riseFirst = state.vis.riseFirst;
+  const corner = riseFirst ? { x: p.x, y: q.y } : { x: q.x, y: p.y };
+  return {
+    riseFirst, corner,
+    ax: x2px(p.x), ay: y2px(p.y),
+    bx: x2px(q.x), by: y2px(q.y),
+    cx: x2px(corner.x), cy: y2px(corner.y),
+    // the vertical leg always spans A.y to B.y; only its x position changes
+    vx: x2px(riseFirst ? p.x : q.x),
+    // the horizontal leg always spans A.x to B.x; only its y position changes
+    hy: y2px(riseFirst ? q.y : p.y)
+  };
+}
+
+function setLine(node, x1, y1, x2, y2) {
+  node.setAttribute('x1', x1); node.setAttribute('y1', y1);
+  node.setAttribute('x2', x2); node.setAttribute('y2', y2);
+}
+
+/** The right-angled triangle, drawn in the chosen order. */
+function drawTriangle(A, B, mm) {
+  const g = triGeom(A, B);
+  const { ax, ay, bx, by, cx, cy, vx, hy, riseFirst } = g;
+
+  el.triFill.setAttribute('d', `M${ax} ${ay} L${cx} ${cy} L${bx} ${by} Z`);
+
+  if (riseFirst) {
+    setLine(el.segRise, ax, ay, cx, cy);   // up out of A
+    setLine(el.segRun, cx, cy, bx, by);    // then across to B
+  } else {
+    setLine(el.segRun, ax, ay, cx, cy);    // across out of A
+    setLine(el.segRise, cx, cy, bx, by);   // then up to B
+  }
+
+  // right-angle marker, turned to sit inside the triangle
+  const sx = Math.sign((ax !== cx ? ax : bx) - cx) || 1;
+  const sy = Math.sign((ay !== cy ? ay : by) - cy) || 1;
+  const s = 15;
+  el.rightAngle.setAttribute('d',
+    `M${cx + sx * s} ${cy} L${cx + sx * s} ${cy + sy * s} L${cx} ${cy + sy * s}`);
+  el.rightAngle.style.display = mm.rise === 0 || mm.run === 0 ? 'none' : '';
+
+  // captions sit on the outside of each leg so they never cover the grid
+  const runBelow = riseFirst ? by > ay : ay < by;
+  el.lblRun.setAttribute('x', clamp((ax + bx) / 2, CFG.pad + 30, CFG.view - CFG.pad - 30));
+  el.lblRun.setAttribute('y', clamp(hy + (runBelow ? 28 : -16), CFG.pad + 16, CFG.view - CFG.pad - 6));
+  const riseRight = vx < CFG.view - CFG.pad - 70 && (riseFirst ? bx > ax : ax > bx);
+  el.lblRise.setAttribute('text-anchor', riseRight ? 'end' : 'start');
+  el.lblRise.setAttribute('x', vx + (riseRight ? -16 : 16));
+  el.lblRise.setAttribute('y', clamp((ay + by) / 2 + 6, CFG.pad + 16, CFG.view - CFG.pad - 6));
+  el.lblRun.style.display = mm.run === 0 ? 'none' : '';
+  el.lblRise.style.display = mm.rise === 0 ? 'none' : '';
+
+  const showN = state.counted && state.vis.numbers;
+  el.lblRun.textContent = showN ? `run ${mm.run}` : 'run';
+  el.lblRise.textContent = showN ? `rise ${mm.rise}` : 'rise';
+
+  buildTicks(el.ticksRun, mm.run, (i) => ({
+    x: x2px(A.x + Math.sign(mm.run) * i), y: hy, vertical: false
+  }));
+  buildTicks(el.ticksRise, mm.rise, (i) => ({
+    x: vx, y: y2px(A.y + Math.sign(mm.rise) * i), vertical: true
+  }));
+}
+
+/** Unit dividers along a leg — the visual anchor for counting steps. */
+function buildTicks(group, amount, at) {
+  group.textContent = '';
+  const n = Math.abs(amount);
+  if (n < 1 || n > 20) return;
+  for (let i = 1; i < n; i++) {
+    const p = at(i);
+    const half = 7;
+    group.appendChild(make('line', p.vertical
+      ? { x1: p.x - half, y1: p.y, x2: p.x + half, y2: p.y }
+      : { x1: p.x, y1: p.y - half, x2: p.x, y2: p.y + half }));
+  }
+  group.classList.toggle('ticks--on', state.counted || state.vis.construction);
+}
+
+/** Dashed helper lines from each point to the axes, plus one unit square. */
+function drawGuides(A, B) {
+  el.guide.textContent = '';
+  [A, B].forEach((p) => {
+    el.guide.appendChild(make('line', { class: 'guide', x1: x2px(p.x), y1: y2px(p.y), x2: x2px(p.x), y2: y2px(0) }));
+    el.guide.appendChild(make('line', { class: 'guide', x1: x2px(p.x), y1: y2px(p.y), x2: x2px(0), y2: y2px(p.y) }));
+  });
+  // one shaded unit square: the reference "1 across, 1 up"
+  el.guide.appendChild(make('rect', {
+    class: 'unit-square', x: x2px(0), y: y2px(1), width: CFG.unit, height: CFG.unit
+  }));
+}
+
+/* ---------- 7. Interaction --------------------------------------------- */
+
+function svgPoint(evt) {
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+  return { x: px2x(p.x), y: px2y(p.y) };
+}
+
+function place(name, x, y) {
+  let nx = state.vis.snap ? Math.round(x) : Math.round(x * 2) / 2;
+  let ny = state.vis.snap ? Math.round(y) : Math.round(y * 2) / 2;
+  nx = clamp(nx, CFG.min, CFG.max);
+  ny = clamp(ny, CFG.min, CFG.max);
+
+  // In slide mode both points are tied to the original infinite line, so the
+  // triangle can change size while the gradient cannot change at all.
+  if (state.modes.slide && state.slideLine && (name === 'A' || name === 'B')) {
+    const L = state.slideLine;
+    const other = state.pts[name === 'A' ? 'B' : 'A'];
+    let k = Math.round(((nx - L.p0.x) * L.dx + (ny - L.p0.y) * L.dy) / (L.dx * L.dx + L.dy * L.dy));
+    const at = (kk) => ({ x: L.p0.x + kk * L.dx, y: L.p0.y + kk * L.dy });
+    let q = at(k);
+    // stay on the plane, and never land on top of the other point
+    let guard = 0;
+    while ((Math.abs(q.x) > CFG.max || Math.abs(q.y) > CFG.max ||
+           (q.x === other.x && q.y === other.y)) && guard++ < 40) {
+      k -= Math.sign(k) || 1; q = at(k);
+    }
+    if (Math.abs(q.x) > CFG.max || Math.abs(q.y) > CFG.max) return false;
+    nx = q.x; ny = q.y;
+  }
+
+  const p = state.pts[name];
+  if (p.x === nx && p.y === ny) return false;
+  p.x = nx; p.y = ny;
+  return true;
+}
+
+function afterMove(name) {
+  state.explore.moves++;
+  const mm = measure(state.pts.A, state.pts.B);
+  if (mm.m !== null) state.explore.gradients.add(mm.m);
+  state.explore.families.add(family(mm));
+  el.planeHint.classList.add('gone');
+  if (state.countTimer) cancelCount();
+  if (state.modes.slide) rememberGhost();
+  render();
+  updateGate();
+  maybeNewPrompt(name);
+  announce(`Point ${name} at ${state.pts[name].x}, ${state.pts[name].y}.` +
+    (state.counted ? ` Rise ${mm.rise}, run ${mm.run}.` : ''));
+}
+
+function initDragging() {
+  ['A', 'B', 'C', 'D'].forEach(buildPoint);
+
+  svg.addEventListener('pointerdown', (e) => {
+    const g = e.target.closest('.pt');
+    if (!g) return;
+    const name = g.dataset.pt;
+    g.setPointerCapture(e.pointerId);
+    g.classList.add('dragging');
+
+    const move = (ev) => {
+      const p = svgPoint(ev);
+      if (place(name, p.x, p.y)) afterMove(name);
+    };
+    const up = (ev) => {
+      g.classList.remove('dragging');
+      g.releasePointerCapture(ev.pointerId);
+      g.removeEventListener('pointermove', move);
+      g.removeEventListener('pointerup', up);
+      g.removeEventListener('pointercancel', up);
+    };
+    g.addEventListener('pointermove', move);
+    g.addEventListener('pointerup', up);
+    g.addEventListener('pointercancel', up);
+    move(e);
+  });
+
+  // Keyboard: every point is reachable by Tab and moves with the arrow keys.
+  svg.addEventListener('keydown', (e) => {
+    const g = e.target.closest('.pt');
+    if (!g) return;
+    const steps = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
+    const s = steps[e.key];
+    if (!s) return;
+    e.preventDefault();
+    const name = g.dataset.pt;
+    const p = state.pts[name];
+    const mult = e.shiftKey ? 5 : 1;
+    if (place(name, p.x + s[0] * mult, p.y + s[1] * mult)) afterMove(name);
+  });
+}
+
+/* ---------- 8. Readouts, bars, representations -------------------------- */
+
+function updateReadouts(mm) {
+  el.coordA.textContent = `(${state.pts.A.x}, ${state.pts.A.y})`;
+  el.coordB.textContent = `(${state.pts.B.x}, ${state.pts.B.y})`;
+
+  const showNums = state.counted;
+  el.valRise.textContent = showNums ? (mm.rise > 0 ? `+${mm.rise}` : String(mm.rise)) : '?';
+  el.valRun.textContent = showNums ? (mm.run > 0 ? `+${mm.run}` : String(mm.run)) : '?';
+
+  if (state.ruleRevealed) {
+    el.roGrad.classList.remove('locked');
+    el.valGrad.textContent = mm.degenerate ? '—' : gradText(mm.rise, mm.run);
+    el.gradSub.textContent = mm.vertical ? 'you cannot divide by a run of zero' : 'rise ÷ run';
+  } else {
+    el.valGrad.textContent = '—';
+  }
+
+  // Ratio bars: the comparison itself, before any division happens.
+  const biggest = Math.max(Math.abs(mm.rise), Math.abs(mm.run), 1);
+  el.barRise.style.width = `${(Math.abs(mm.rise) / biggest) * 100}%`;
+  el.barRun.style.width = `${(Math.abs(mm.run) / biggest) * 100}%`;
+  el.bars.hidden = state.stage < 2 && !state.teacher;
+}
+
+function fracHTML(n, d) {
+  return `<span class="frac"><span class="num">${n}</span><span class="den">${d}</span></span>`;
+}
+
+function updateReps(mm) {
+  if (!state.ruleRevealed) return;
+  if (mm.degenerate) {
+    el.repWords.textContent = 'the two points are on top of each other';
+    ['repRatio', 'repFrac', 'repSimp', 'repDec', 'repRule'].forEach((k) => { el[k].textContent = '—'; });
+    return;
+  }
+  const { rise, run } = mm;
+  const g = gcd(rise, run) || 1;
+  let sn = rise / g, sd = run / g;
+  if (sd < 0) { sn = -sn; sd = -sd; }
+
+  const upWord = rise === 0 ? 'no change up or down'
+    : rise > 0 ? `up ${Math.abs(rise)}` : `down ${Math.abs(rise)}`;
+  const acrossWord = run === 0 ? 'no change across'
+    : run > 0 ? `${Math.abs(run)} to the right` : `${Math.abs(run)} to the left`;
+
+  el.repWords.textContent = mm.degenerate ? 'the points are on top of each other'
+    : `${upWord} for every ${acrossWord}`;
+  el.repRatio.textContent = mm.degenerate ? '—' : `${rise} : ${run}`;
+  el.repFrac.innerHTML = run === 0 ? 'dividing by zero' : fracHTML(rise, run);
+  el.repSimp.innerHTML = run === 0 ? 'undefined' : (sd === 1 ? String(sn) : fracHTML(sn, sd));
+  el.repDec.textContent = decText(mm.m);
+  el.repRule.innerHTML = run === 0
+    ? 'gradient = rise ÷ 0 — undefined'
+    : `gradient = ${rise} ÷ ${run} = <b>${decText(mm.m)}</b>`;
+
+  el.stepRise.textContent = rise;
+  el.stepRun.textContent = run;
+}
+
+/* ---------- 9. Steepness meter ------------------------------------------ */
+
+function updateMeter(mm) {
+  const cxm = 140, cym = 86;
+  let angle;         // screen degrees, positive clockwise
+  if (mm.degenerate) angle = 0;
+  else if (mm.vertical) angle = -88 * Math.sign(mm.rise || 1);
+  else angle = -Math.atan(mm.m) * 180 / Math.PI;
+
+  el.plank.style.transform = `translate(${cxm}px, ${cym}px) rotate(${angle}deg)`;
+
+  // The ball rolls downhill; how far it runs encodes how steep the slope feels.
+  const mag = mm.m === null ? 1 : Math.abs(mm.m) / (Math.abs(mm.m) + 1.1);
+  const dist = 62 * mag;
+  const rad = angle * Math.PI / 180;
+  let dirX = Math.cos(rad), dirY = Math.sin(rad);
+  if (dirY < 0) { dirX = -dirX; dirY = -dirY; }   // always the downhill end
+  let perpX = dirY, perpY = -dirX;                 // sits on top of the plank
+  if (perpY > 0) { perpX = -perpX; perpY = -perpY; }
+  el.ball.setAttribute('cx', cxm + dirX * dist + perpX * 18);
+  el.ball.setAttribute('cy', cym + dirY * dist + perpY * 18);
+
+  // A sweep from level to the current tilt makes the angle itself visible.
+  const r = 54;
+  const end = { x: cxm + r * Math.cos(rad), y: cym + r * Math.sin(rad) };
+  const sweep = angle < 0 ? 0 : 1;
+  el.arc.setAttribute('d', `M${cxm + r} ${cym} A${r} ${r} 0 0 ${sweep} ${end.x} ${end.y}`);
+
+  const fam = family(mm);
+  const abs = mm.m === null ? Infinity : Math.abs(mm.m);
+  let word, note;
+  if (fam === 'none') { word = 'No interval yet'; note = 'Move the points apart.'; }
+  else if (fam === 'undefined') {
+    word = 'Straight up — off the scale';
+    note = 'There is no run at all, so this steepness cannot be measured.';
+  } else if (fam === 'zero') {
+    word = 'Flat';
+    note = 'The line goes across without going up or down.';
+  } else {
+    const dir = mm.m > 0 ? 'uphill from left to right' : 'downhill from left to right';
+    if (abs === 1) word = 'As much up as across';
+    else if (abs < 0.34) word = 'Very gentle';
+    else if (abs < 0.75) word = 'Gentle';
+    else if (abs < 1.5) word = 'Moderately steep';
+    else if (abs < 3) word = 'Steep';
+    else word = 'Very steep';
+    note = abs === 1
+      ? `The line cuts each grid square corner to corner, running ${dir}.`
+      : `The line runs ${dir}.`;
+  }
+  el.meterWord.textContent = word;
+  el.meterNote.textContent = note;
+}
+
+/* ---------- 10. Stage ladder and unlocking ------------------------------ */
+
+const GATES = [
+  { stage: 1, text: 'Move the points a few more times to unlock Count.',
+    need: () => state.explore.moves / 5 },
+  { stage: 2, text: 'Count the steps, then try some different lines to unlock Compare.',
+    need: () => Math.min(state.counted ? 1 : 0, state.explore.moves / 10) },
+  { stage: 3, text: 'Make several different lines — including a flat one and a downhill one — to unlock the rule.',
+    need: () => Math.min(state.explore.gradients.size / 4, state.explore.families.size / 3, state.explore.moves / 14) }
+];
+
+function updateGate() {
+  if (state.teacher) { unlockTo(3); el.gateText.textContent = 'Teacher demonstration mode — every stage is open.'; el.gateFill.style.width = '100%'; return; }
+  const next = GATES.find((g) => g.stage > state.unlocked);
+  if (!next) {
+    el.gateText.textContent = 'Every stage is open. Keep exploring, or take a challenge.';
+    el.gateFill.style.width = '100%';
+    return;
+  }
+  const p = clamp(next.need(), 0, 1);
+  el.gateText.textContent = next.text;
+  el.gateFill.style.width = `${p * 100}%`;
+  if (p >= 1) unlockTo(next.stage);
+}
+
+function unlockTo(stage) {
+  if (stage <= state.unlocked) return;
+  for (let s = state.unlocked + 1; s <= stage; s++) {
+    const rung = document.querySelector(`.rung[data-stage="${s}"]`);
+    if (rung) rung.disabled = false;
+    if (s === 3) { el.btnReveal.disabled = false; }
+  }
+  state.unlocked = stage;
+  announce(`Stage ${stage + 1} unlocked.`);
+  updateGate();
+}
+
+function setStage(stage) {
+  state.stage = stage;
+  document.body.dataset.stage = String(stage);
+  $$('.rung').forEach((r) => {
+    const s = Number(r.dataset.stage);
+    r.setAttribute('aria-current', s === stage ? 'step' : 'false');
+    r.classList.toggle('done', s < stage);
+  });
+  if (stage >= 1 && !state.counted && !state.teacher) { /* count is offered, not forced */ }
+  if (stage >= 2) el.bars.hidden = false;
+  render();
+  newPrompt();
+}
+
+/* ---------- 11. Discovery prompts --------------------------------------- */
+
+const PROMPTS = {
+  start: [
+    'Drag point B straight up. Which measurement changes, and which one stays put?',
+    'Drag point B sideways. Does the line get steeper, or does something else happen?',
+    'Put both points on the same horizontal grid line. What does the triangle do?'
+  ],
+  vertical: [
+    'You changed the vertical distance. What happened to the steepness?',
+    'What would happen if you doubled that vertical change?',
+    'The horizontal distance did not change. So what did the extra height do to the line?'
+  ],
+  horizontal: [
+    'You changed the horizontal distance. Did the line get steeper or gentler?',
+    'Same climb, longer distance across. Why does that feel less steep?',
+    'What would happen if you doubled the run but kept the rise the same?'
+  ],
+  both: [
+    'Both distances changed. Which one made more difference to the steepness?',
+    'Can you change both numbers and keep the steepness exactly the same?',
+    'What stays the same, and what changes, when you move a point along the line?'
+  ],
+  negative: [
+    'This line falls from left to right. How is it different from one that rises?',
+    'What is different about the rise when the line goes downhill?',
+    'Can you make a downhill line that is exactly as steep as an uphill one?'
+  ],
+  zero: [
+    'The line is flat. How much does it rise?',
+    'If a line does not rise at all, what should its gradient be?',
+    'Move one point up by one. How much steepness did one unit add?'
+  ],
+  vert: [
+    'There is no run at all here. What would you divide by?',
+    'Why can a straight-up line not be given a steepness number?'
+  ],
+  stage2: [
+    'Which is larger here — the rise or the run? Does that tell you anything?',
+    'Make the rise twice the run. Now make the run twice the rise. Compare them.',
+    'Two lines can look different but be equally steep. Can you build a pair?'
+  ],
+  stage3: [
+    'Why does dividing rise by run measure steepness, rather than subtracting?',
+    'A gradient of 3 means what, in plain words, about the journey along the line?',
+    'Why does every triangle on the same line give the same answer?'
+  ]
+};
+
+let lastPromptText = '';
+
+function pickPrompt(key) {
+  const pool = PROMPTS[key] || PROMPTS.start;
+  let choice = pool[Math.floor(Math.random() * pool.length)];
+  if (pool.length > 1 && choice === lastPromptText) {
+    choice = pool[(pool.indexOf(choice) + 1) % pool.length];
+  }
+  lastPromptText = choice;
+  return choice;
+}
+
+function newPrompt(key) {
+  const mm = measure(state.pts.A, state.pts.B);
+  let k = key;
+  if (!k) {
+    const fam = family(mm);
+    if (fam === 'undefined') k = 'vert';
+    else if (fam === 'zero') k = 'zero';
+    else if (mm.m !== null && mm.m < 0) k = 'negative';
+    else if (state.stage >= 3) k = 'stage3';
+    else if (state.stage === 2) k = 'stage2';
+    else k = 'start';
+  }
+  el.thinkPrompt.textContent = pickPrompt(k);
+}
+
+let lastPos = null;
+function maybeNewPrompt() {
+  // Every so often, interrupt with a prediction before the next move.
+  if (!state.teacher && state.explore.moves > 8 && state.explore.moves % 12 === 0
+      && el.predictBox.hidden && !state.animating) {
+    startPrediction();
+    announce('A prediction question is waiting.');
+  }
+  const b = { ...state.pts.B };
+  if (lastPos) {
+    const dv = b.y !== lastPos.y, dh = b.x !== lastPos.x;
+    if (state.explore.moves % 4 === 0) {
+      newPrompt(dv && dh ? 'both' : dv ? 'vertical' : dh ? 'horizontal' : undefined);
+    }
+  }
+  lastPos = b;
+}
+
+/* ---------- 12. Prediction activities ----------------------------------- */
+
+const PREDICTIONS = [
+  {
+    q: 'Point B is about to move up 2 units. What happens to the steepness?',
+    opts: ['It gets steeper', 'It gets gentler', 'It stays the same'],
+    answer: 0,
+    why: 'The rise grew but the run did not, so the same trip across now climbs further. Steeper.',
+    apply: (A, B) => ({ x: B.x, y: clamp(B.y + 2, CFG.min, CFG.max) })
+  },
+  {
+    q: 'Point B is about to move right 2 units. What happens to the steepness?',
+    opts: ['It gets steeper', 'It gets gentler', 'It stays the same'],
+    answer: 1,
+    why: 'The same climb is spread over a longer distance across, so the line leans back. Gentler.',
+    apply: (A, B) => ({ x: clamp(B.x + 2, CFG.min, CFG.max), y: B.y })
+  },
+  {
+    q: 'The rise and the run are about to be scaled by the same amount. What happens to the steepness?',
+    opts: ['It gets steeper', 'It gets gentler', 'It stays the same'],
+    answer: 2,
+    why: 'A bigger triangle, but the two changes kept the same ratio — so the line points exactly the same way.',
+    apply: (A, B) => {
+      const dx = B.x - A.x, dy = B.y - A.y;
+      const big = { x: A.x + dx * 2, y: A.y + dy * 2 };
+      if (Math.abs(big.x) <= CFG.max && Math.abs(big.y) <= CFG.max) return big;
+      if (dx % 2 === 0 && dy % 2 === 0 && (dx !== 0 || dy !== 0)) {
+        return { x: A.x + dx / 2, y: A.y + dy / 2 };   // halving keeps the ratio too
+      }
+      return null;   // cannot be done exactly right now
+    }
+  },
+  {
+    q: 'Point B is about to drop until it is level with point A. What will the rise be?',
+    opts: ['A large number', 'Zero', 'Undefined'],
+    answer: 1,
+    why: 'Level means no vertical change at all. Rise 0, so the gradient is 0 — flat, not undefined.',
+    apply: (A, B) => ({ x: B.x, y: A.y })
+  }
+];
+
+function startPrediction() {
+  const { A, B } = state.pts;
+  const usable = PREDICTIONS.filter((q) => {
+    const t = q.apply(A, B);
+    return t && (t.x !== B.x || t.y !== B.y);
+  });
+  if (!usable.length) { announce('Move the points somewhere with more room, then predict again.'); return; }
+  const p = usable[Math.floor(Math.random() * usable.length)];
+  state.prediction = p;
+  el.predictBox.hidden = false;
+  el.predictQ.textContent = p.q;
+  el.predictResult.hidden = true;
+  el.predictOpts.textContent = '';
+  p.opts.forEach((label, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    b.addEventListener('click', () => resolvePrediction(i, b));
+    el.predictOpts.appendChild(b);
+  });
+}
+
+function resolvePrediction(choice, btn) {
+  const p = state.prediction;
+  if (!p || state.animating) return;
+  $$('#predictOpts button').forEach((b) => b.classList.remove('chosen'));
+  btn.classList.add('chosen');
+
+  const before = measure(state.pts.A, state.pts.B);
+  const target = p.apply(state.pts.A, state.pts.B);
+  if (!target) return;
+
+  animatePoint('B', target, () => {
+    const after = measure(state.pts.A, state.pts.B);
+    const correct = choice === p.answer;
+    el.predictResult.hidden = false;
+    el.predictResult.className = 'predict__result ' + (correct ? 'right' : 'think');
+    const beforeAbs = before.m === null ? Infinity : Math.abs(before.m);
+    const afterAbs = after.m === null ? Infinity : Math.abs(after.m);
+    const change = afterAbs > beforeAbs ? 'steeper' : afterAbs < beforeAbs ? 'gentler' : 'exactly the same';
+    el.predictResult.textContent =
+      `${correct ? 'That matches what happened. ' : 'Watch the line again. '}` +
+      `The line became ${change}. ${p.why}`;
+    announce(el.predictResult.textContent);
+  });
+}
+
+/** Smooth move so the change itself is visible, not just the end state. */
+function animatePoint(name, target, done) {
+  const start = { ...state.pts[name] };
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const dur = reduce ? 0 : 750;
+  state.animating = true;
+  const t0 = performance.now();
+
+  function frame(now) {
+    const t = dur === 0 ? 1 : clamp((now - t0) / dur, 0, 1);
+    const e = 1 - Math.pow(1 - t, 3);
+    state.pts[name] = {
+      x: Math.round((start.x + (target.x - start.x) * e) * 2) / 2,
+      y: Math.round((start.y + (target.y - start.y) * e) * 2) / 2
+    };
+    render();
+    if (t < 1) { requestAnimationFrame(frame); return; }
+    state.pts[name] = { x: target.x, y: target.y };
+    state.animating = false;
+    state.explore.moves += 2;
+    const mm = measure(state.pts.A, state.pts.B);
+    if (mm.m !== null) state.explore.gradients.add(mm.m);
+    state.explore.families.add(family(mm));
+    render(); updateGate();
+    if (done) done();
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- 13. Counting animation and the rule reveal ------------------- */
+
+/** Stop a count in progress and clear everything it drew. */
+function cancelCount() {
+  if (state.countTimer) { clearTimeout(state.countTimer); state.countTimer = null; }
+  state.countNodes.forEach((n) => n.remove());
+  state.countNodes = [];
+  el.tri.classList.remove('counting');
+  state.animating = false;
+  el.btnCount.textContent = state.counted ? 'Count again' : 'Count the steps';
+}
+
+/**
+ * Walk the two legs one unit at a time, one number per second, so a class
+ * can count out loud together. Numbers stay on screen as they accumulate.
+ */
+function countSteps() {
+  if (state.countTimer) { cancelCount(); return; }   // pressing again stops it
+  cancelCount();
+
+  const mm = measure(state.pts.A, state.pts.B);
+  if (mm.degenerate) { announce('Move the points apart first.'); return; }
+
+  state.counted = true;
+  // The panel is left exactly as the teacher set it. Counting is legible on
+  // the plane itself, so there is no reason to force the numbers open here.
+  if (el.foldMeasure) el.foldMeasure.dataset.ready = 'yes';
+  unlockTo(Math.max(state.unlocked, 1));
+  setStage(Math.max(state.stage, 1));
+  render();
+  el.ticksRun.classList.add('ticks--on');
+  el.ticksRise.classList.add('ticks--on');
+
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    el.btnCount.textContent = 'Count again';
+    announce(`Rise ${mm.rise}, run ${mm.run}.`);
+    return;
+  }
+
+  const A = state.pts.A, B = state.pts.B;
+  const g = triGeom(A, B);
+  const sr = Math.sign(mm.rise), sn = Math.sign(mm.run);
+
+  // put each numeral on the outside of its leg
+  const riseSide = -(Math.sign((g.riseFirst ? g.bx : g.ax) - g.vx) || 1);
+  const runSide = -(Math.sign((g.riseFirst ? g.ay : g.by) - g.hy) || 1);
+
+  const beats = [];
+  for (let i = 0; i < Math.abs(mm.rise); i++) {
+    beats.push({
+      kind: 'rise', n: i + 1,
+      lx: g.vx + riseSide * 24, ly: y2px(A.y + sr * (i + 0.5)) + 7,
+      fill: () => setLine(el.fillRise, g.vx, g.ay, g.vx, y2px(A.y + sr * (i + 1)))
+    });
+  }
+  for (let i = 0; i < Math.abs(mm.run); i++) {
+    beats.push({
+      kind: 'run', n: i + 1,
+      lx: x2px(A.x + sn * (i + 0.5)), ly: g.hy + runSide * 26 + 7,
+      fill: () => setLine(el.fillRun, g.ax, g.hy, x2px(A.x + sn * (i + 1)), g.hy)
+    });
+  }
+  if (g.riseFirst) beats.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'rise' ? -1 : 1));
+  else beats.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'run' ? -1 : 1));
+
+  if (!beats.length) { announce('Nothing to count yet.'); return; }
+
+  // start both fills at zero length so nothing flashes in early
+  setLine(el.fillRise, g.vx, g.ay, g.vx, g.ay);
+  setLine(el.fillRun, g.ax, g.hy, g.ax, g.hy);
+  el.tri.classList.add('counting');
+  el.btnCount.textContent = 'Stop counting';
+  state.animating = true;
+
+  let i = 0;
+  const beat = () => {
+    const b = beats[i];
+    b.fill();
+    const num = make('text', { class: `count-num count-num--${b.kind}`, x: b.lx, y: b.ly }, String(b.n));
+    el.tri.appendChild(num);
+    state.countNodes.push(num);
+    announce(`${b.kind} ${b.n}`);
+    i++;
+    if (i < beats.length) {
+      state.countTimer = setTimeout(beat, CFG.countMs);
+    } else {
+      state.countTimer = setTimeout(() => {
+        state.countTimer = null;
+        state.animating = false;
+        el.tri.classList.remove('counting');
+        el.btnCount.textContent = 'Count again';
+        announce(`Rise ${mm.rise}, run ${mm.run}.`);
+      }, CFG.countMs);
+    }
+  };
+  beat();
+}
+
+/** Animated substitution: the formula arrives only after the idea. */
+function revealRule() {
+  if (state.ruleRevealed) { setStage(3); return; }
+  state.counted = true;
+  state.ruleRevealed = true;
+  if (el.foldMeasure) el.foldMeasure.dataset.ready = 'yes';
+  setStage(3);
+  el.repsCard.classList.remove('locked');
+  el.repsLock.hidden = true;
+  el.repsBody.hidden = false;
+  el.steppers.hidden = false;
+  el.roGrad.classList.remove('locked');
+  el.btnReveal.textContent = 'Rule revealed';
+  el.btnReveal.disabled = true;
+  el.bars.hidden = false;
+
+  const mm = measure(state.pts.A, state.pts.B);
+  render();
+
+  // Walk the substitution one line at a time so the structure is readable.
+  const steps = [
+    'gradient = rise ÷ run',
+    `gradient = ${mm.rise} ÷ ${mm.run}`,
+    mm.run === 0 ? 'gradient = undefined' : `gradient = ${decText(mm.m)}`
+  ];
+  let k = 0;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const show = () => {
+    el.repRule.textContent = steps[k];
+    document.querySelector('.rep--formula').classList.add('flash');
+    setTimeout(() => document.querySelector('.rep--formula').classList.remove('flash'), 600);
+    k++;
+    if (k < steps.length) setTimeout(show, reduce ? 0 : 900);
+    else setTimeout(() => updateReps(measure(state.pts.A, state.pts.B)), reduce ? 0 : 700);
+  };
+  show();
+  announce('The rule is revealed. Gradient equals rise divided by run.');
+  newPrompt('stage3');
+}
+
+/* ---------- 14. Modes ---------------------------------------------------- */
+
+function toggleMode(key, on) {
+  cancelCount();
+  state.modes[key] = on;
+  document.body.classList.toggle(`mode-${key}`, on);
+  const btn = document.querySelector(`[data-toggle="${key}"]`);
+  if (btn) btn.setAttribute('aria-pressed', String(on));
+
+  if (key === 'slide') {
+    if (on) {
+      const mm = measure(state.pts.A, state.pts.B);
+      if (mm.degenerate) { state.modes.slide = false; document.body.classList.remove('mode-slide');
+        if (btn) btn.setAttribute('aria-pressed', 'false');
+        announce('Move the points apart before sliding along the line.'); return; }
+      const g = gcd(mm.rise, mm.run) || 1;
+      state.slideLine = { p0: { ...state.pts.A }, dx: mm.run / g, dy: mm.rise / g };
+      state.ghosts = [];
+      rememberGhost();
+      // How many whole-number positions does this line actually offer?
+      let spots = 0;
+      for (let k = -CFG.span; k <= CFG.span; k++) {
+        const x = state.slideLine.p0.x + k * state.slideLine.dx;
+        const y = state.slideLine.p0.y + k * state.slideLine.dy;
+        if (Math.abs(x) <= CFG.max && Math.abs(y) <= CFG.max) spots++;
+      }
+      el.thinkPrompt.textContent = spots >= 4
+        ? 'Slide A or B along the line. The rise changes. The run changes. Watch what refuses to change.'
+        : 'This line only meets a few whole-number points, so there is not much room to slide. Try a simpler line first — 2 up and 1 across, say — then turn sliding back on.';
+    } else {
+      state.slideLine = null;
+      state.ghosts = [];
+    }
+  }
+  if (key === 'compare') {
+    el.compareCard.hidden = !on;
+    if (on) el.thinkPrompt.textContent =
+      'Two lines. Which is steeper? Can you give them the same gradient using different triangles?';
+  }
+  if (key === 'world') {
+    el.worldCard.hidden = !on;
+    if (on) buildWorldPicks();
+    else state.world = null;
+  }
+  render();
+}
+
+function rememberGhost() {
+  const { A, B } = state.pts;
+  const key = `${A.x},${A.y},${B.x},${B.y}`;
+  if (state.ghosts.some((g) => g.key === key)) return;
+  state.ghosts.push({ key, a: { ...A }, b: { ...B } });
+  if (state.ghosts.length > 5) state.ghosts.shift();
+}
+
+function drawGhosts() {
+  el.ghosts.textContent = '';
+  if (!state.modes.slide) return;
+  state.ghosts.forEach(({ a, b }) => {
+    const { ax, ay, bx, by, cx, cy, vx, hy } = triGeom(a, b);
+    el.ghosts.appendChild(make('path', { class: 'ghost-tri', d: `M${ax} ${ay} L${cx} ${cy} L${bx} ${by} Z` }));
+    el.ghosts.appendChild(make('line', { class: 'ghost-run', x1: ax, y1: hy, x2: bx, y2: hy }));
+    el.ghosts.appendChild(make('line', { class: 'ghost-rise', x1: vx, y1: ay, x2: vx, y2: by }));
+    if (state.counted) {
+      const mm = measure(a, b);
+      el.ghosts.appendChild(make('text', {
+        class: 'ghost-tag', x: (ax + bx) / 2, y: hy + (mm.rise > 0 ? 40 : -26)
+      }, `${mm.rise} ÷ ${mm.run}${state.ruleRevealed ? ` = ${decText(mm.m)}` : ''}`));
+    }
+  });
+}
+
+function drawSecondLine(C, D) {
+  el.line2.textContent = '';
+  if (!state.modes.compare) return;
+  const g = triGeom(C, D);
+  el.line2.appendChild(make('line', { class: 'seg2-run', x1: g.ax, y1: g.hy, x2: g.bx, y2: g.hy }));
+  el.line2.appendChild(make('line', { class: 'seg2-rise', x1: g.vx, y1: g.ay, x2: g.vx, y2: g.by }));
+  el.line2.appendChild(make('line', { class: 'interval2', x1: g.ax, y1: g.ay, x2: g.bx, y2: g.by }));
+}
+
+function updateCompare() {
+  if (!state.modes.compare) return;
+  const m1 = measure(state.pts.A, state.pts.B);
+  const m2 = measure(state.pts.C, state.pts.D);
+  const show = state.counted || state.teacher;
+  const cell = (label, mm, cls) => `
+    <div class="cmp__row ${cls}">
+      <span>${label}</span>
+      <span>${show ? `rise <b>${mm.rise}</b> · run <b>${mm.run}</b>${state.ruleRevealed ? ` · gradient <b>${gradText(mm.rise, mm.run)}</b>` : ''}` : 'not measured yet'}</span>
+    </div>`;
+  el.cmpBody.innerHTML = cell('Line 1 (A to B)', m1, 'cmp__row--l1') + cell('Line 2 (C to D)', m2, 'cmp__row--l2');
+
+  let q;
+  if (m1.m !== null && m2.m !== null && m1.m === m2.m) {
+    q = (m1.rise !== m2.rise)
+      ? 'Different triangles, identical gradient. Explain to a partner how that is possible.'
+      : 'Same gradient. Are the lines the same line, or just equally steep?';
+  } else if (m1.m === null || m2.m === null) {
+    q = 'One of these lines is vertical. What makes its gradient impossible to write down?';
+  } else {
+    const steeper = Math.abs(m1.m) > Math.abs(m2.m) ? 'Line 1' : 'Line 2';
+    q = `${steeper} is steeper. Which line has the larger rise? Is that the same answer?`;
+  }
+  el.cmpQuestion.textContent = q;
+}
+
+/* real world -------------------------------------------------------- */
+
+const WORLD = [
+  { id: 'ramp', name: 'Wheelchair ramp', rise: 1, run: 14,
+    fact: 'Australian Standard AS 1428.1 caps a wheelchair ramp at 1 in 14 — one unit up for every fourteen along. Gentle by design.' },
+  { id: 'road', name: 'Steep road sign', rise: 1, run: 8,
+    fact: 'A road sign showing 12.5% means a gradient of 1 in 8. Trucks use low gear; the sign warns before the descent.' },
+  { id: 'roof', name: 'Roof pitch', rise: 5, run: 12,
+    fact: 'Builders call this a 5 in 12 pitch. Roofers name the same idea "pitch"; mathematicians call it gradient.' },
+  { id: 'ski', name: 'Ski run', rise: 2, run: 5,
+    fact: 'An intermediate ski run sits near 40%, a gradient of 2 in 5. Black runs pass 1 — steeper than 45 degrees.' },
+  { id: 'trail', name: 'Hiking track', rise: 1, run: 3,
+    fact: 'A track climbing 1 in 3 is graded hard. Walkers feel gradient in their legs long before they calculate it.' },
+  { id: 'stairs', name: 'Staircase', rise: 2, run: 3,
+    fact: 'A stair repeats one triangle over and over: about 2 up for every 3 across. Building rules fix the riser near 17 cm and the going near 25 cm for exactly this reason.' }
+];
+
+function buildWorldPicks() {
+  el.worldPicks.textContent = '';
+  WORLD.forEach((w) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.textContent = w.name;
+    b.addEventListener('click', () => applyWorld(w));
+    el.worldPicks.appendChild(b);
+  });
+  el.worldFact.textContent = 'Choose a real slope. The line will take the same steepness.';
+}
+
+function applyWorld(w) {
+  state.world = w;
+  // Scale the real ratio so it fits the plane while keeping the gradient exact.
+  let rise = w.rise, run = w.run;
+  const g = gcd(rise, run) || 1;
+  rise /= g; run /= g;
+  let k = 1;
+  while (Math.abs(rise * (k + 1)) <= 9 && Math.abs(run * (k + 1)) <= 18) k++;
+  // shrink until the exact ratio fits inside the plane — never clamp a
+  // coordinate, because clamping would silently change the gradient
+  while (k > 1 && (run * k > CFG.span || Math.abs(rise * k) > CFG.span)) k--;
+  const A = { x: -Math.round(run * k / 2), y: -Math.round(rise * k / 2) };
+  const B = { x: A.x + run * k, y: A.y + rise * k };
+  if (B.x > CFG.max) { A.x -= B.x - CFG.max; B.x = CFG.max; }
+  if (B.y > CFG.max) { A.y -= B.y - CFG.max; B.y = CFG.max; }
+  if (A.x < CFG.min) { B.x += CFG.min - A.x; A.x = CFG.min; }
+  if (A.y < CFG.min) { B.y += CFG.min - A.y; A.y = CFG.min; }
+  state.pts.A = A; state.pts.B = B;
+  el.worldFact.textContent = w.fact;
+  state.explore.moves += 1;
+  render(); updateGate();
+  announce(`${w.name}: rise ${w.rise} for every run of ${w.run}.`);
+}
+
+function drawWorld(A, B) {
+  el.world.textContent = '';
+  if (!state.modes.world || !state.world) return;
+  const ax = x2px(A.x), ay = y2px(A.y), bx = x2px(B.x), by = y2px(B.y);
+  const len = Math.hypot(bx - ax, by - ay);
+  if (len < 4) return;
+  const ang = Math.atan2(by - ay, bx - ax) * 180 / Math.PI;
+  const mx = (ax + bx) / 2, my = (ay + by) / 2;
+
+  const g = make('g', { transform: `translate(${mx} ${my}) rotate(${ang})` });
+  g.appendChild(make('rect', { class: 'world-band', x: -len / 2, y: 0, width: len, height: 16, rx: 4 }));
+  const glyph = make('g', { class: 'world-glyph', transform: 'translate(0 -2)' });
+  glyph.appendChild(svgFrag(WORLD_GLYPHS[state.world.id] || ''));
+  g.appendChild(glyph);
+  el.world.appendChild(g);
+}
+
+/* Simple silhouettes, drawn so they sit on the line and tilt with it. */
+const WORLD_GLYPHS = {
+  ramp: '<circle cx="0" cy="-9" r="9" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="0" cy="-9" r="2.5"/><path d="M-2 -20 a4 4 0 1 1 .1 0" /><path d="M-2 -16 L6 -16 L9 -22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>',
+  road: '<rect x="-17" y="-15" width="34" height="12" rx="4"/><rect x="-9" y="-22" width="17" height="8" rx="3"/><circle cx="-10" cy="-2" r="4"/><circle cx="10" cy="-2" r="4"/>',
+  roof: '<path d="M-20 -2 L0 -20 L20 -2 Z" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/><rect x="-6" y="-12" width="12" height="10"/>',
+  ski: '<circle cx="2" cy="-24" r="4"/><path d="M2 -20 L-2 -10 M-2 -10 L-9 -3 M-2 -10 L7 -4 M2 -18 L11 -21" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M-15 -2 L2 -2" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>',
+  trail: '<circle cx="0" cy="-25" r="4"/><path d="M0 -21 L0 -12 M0 -12 L-6 -2 M0 -12 L7 -3 M0 -18 L9 -14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><rect x="-9" y="-22" width="8" height="9" rx="2"/>',
+  stairs: '<path d="M-18 -2 L-18 -8 L-6 -8 L-6 -14 L6 -14 L6 -20 L18 -20" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>'
+};
+
+/* ---------- 15. Special cases -------------------------------------------- */
+
+const CASES = {
+  zero: { title: 'Gradient of zero',
+    body: 'No rise at all. Zero divided by any run is zero, so a horizontal line has gradient 0 — a real number, not "nothing".' },
+  undefined: { title: 'Undefined gradient',
+    body: 'The run is zero, and nothing can be divided by zero. A vertical line is not infinitely steep; its steepness simply cannot be written as a number.' },
+  one: { title: 'Gradient of one',
+    body: 'Up exactly as much as across. The line cuts the grid squares corner to corner, at 45 degrees.' },
+  steep: { title: 'Gradient greater than one',
+    body: 'The rise beats the run, so the line climbs more than it travels. The bigger the number, the steeper the climb.' },
+  shallow: { title: 'Gradient between zero and one',
+    body: 'The run beats the rise, so this is a fraction. A gradient of 1/2 means half a unit up for every unit across.' },
+  'minus-one': { title: 'Gradient of negative one',
+    body: 'Down exactly as much as across. Just as steep as gradient 1 — the minus sign records direction, not size.' },
+  'steep-neg': { title: 'Steep negative gradient',
+    body: 'Falling from left to right, and falling fast. The sign tells you the direction; the size tells you the steepness.' },
+  'shallow-neg': { title: 'Gentle negative gradient',
+    body: 'A slow descent. Compare it with the matching positive gradient — same steepness, opposite direction.' }
+};
+
+function updateSpecialCase(mm) {
+  const fam = family(mm);
+  const c = CASES[fam];
+  const show = !!c && (state.counted || state.teacher || fam === 'zero' || fam === 'undefined');
+  el.caseCard.hidden = !show;
+  if (show) { el.caseTitle.textContent = c.title; el.caseBody.textContent = c.body; }
+}
+
+/* ---------- 16. Challenges ----------------------------------------------- */
+
+const CHALLENGES = [
+  { task: 'Build a line with a gradient of 2.',
+    hints: ['Two units up for every one across.', 'Try rise 4 and run 2. Does that give the same answer?', 'Any rise that is double the run works — 6 and 3, 8 and 4.'],
+    test: (m) => m.m === 2 },
+  { task: 'Build a line with a gradient of one half.',
+    hints: ['Half a unit up for every unit across.', 'Whole points only, so make the run twice the rise.', 'Rise 2 and run 4 gives 2 ÷ 4 = 0.5.'],
+    test: (m) => m.m === 0.5 },
+  { task: 'Build any line with a negative gradient.',
+    hints: ['Negative means falling from left to right.', 'Put B lower than A while keeping B to the right.', 'Rise −3 with run 4 gives −0.75.'],
+    test: (m) => m.m !== null && m.m < 0 },
+  { task: 'Build a horizontal line, then say what its gradient is.',
+    hints: ['Horizontal means no change in height.', 'Give A and B the same y coordinate.', 'Rise 0 ÷ any run = 0.'],
+    test: (m) => m.rise === 0 && m.run !== 0 },
+  { task: 'Build a vertical line, then explain why its gradient is undefined.',
+    hints: ['Vertical means no change across.', 'Give A and B the same x coordinate.', 'Run 0 means dividing by zero, which has no answer.'],
+    test: (m) => m.vertical },
+  { task: 'Build a gradient of exactly −3.',
+    hints: ['Three down for every one across.', 'Rise −3, run 1. Or rise −6, run 2.', 'Check: −6 ÷ 2 = −3.'],
+    test: (m) => m.m === -3 },
+  { task: 'Build a gradient somewhere between 0 and 1.',
+    hints: ['The line must rise, but slowly.', 'Make the run larger than the rise.', 'Rise 2, run 5 gives 0.4.'],
+    test: (m) => m.m !== null && m.m > 0 && m.m < 1 },
+  { task: 'Build a line steeper than gradient 4.',
+    hints: ['Rise must be more than four times the run.', 'Try run 1 with a rise of 5 or more.', 'Rise 9, run 2 gives 4.5.'],
+    test: (m) => m.m !== null && Math.abs(m.m) > 4 && !m.vertical },
+  { task: 'Build a gradient of exactly 1, then find a second pair of points that also gives 1.',
+    hints: ['Gradient 1 means rise equals run.', 'Turn on the second line to hold both at once.', 'A rise of 3 with run 3, and a rise of 7 with run 7, both give 1.'],
+    test: (m) => m.m === 1 },
+  { task: 'Turn on the second line and give both lines the same gradient using different sized triangles.',
+    hints: ['Press "Second line", then drag C and D.', 'Same gradient means the same ratio, not the same numbers.', 'Rise 2 run 4 and rise 3 run 6 both give one half.'],
+    needsCompare: true,
+    test: (m) => {
+      const m2 = measure(state.pts.C, state.pts.D);
+      return m.m !== null && m2.m !== null && m.m === m2.m && m.rise !== m2.rise;
+    } },
+  { task: 'Make a line with rise 6 and run 3. What gradient does it give?',
+    hints: ['Six up, three across.', 'From A, count three to the right and six up.', '6 ÷ 3 = 2.'],
+    test: (m) => Math.abs(m.rise) === 6 && Math.abs(m.run) === 3 && m.m > 0 },
+  { task: 'Build two lines that are equally steep but slope in opposite directions.',
+    hints: ['One rises, one falls.', 'Turn on the second line.', 'Gradients of 2 and −2 are equally steep.'],
+    needsCompare: true,
+    test: (m) => {
+      const m2 = measure(state.pts.C, state.pts.D);
+      return m.m !== null && m2.m !== null && m.m === -m2.m && m.m !== 0;
+    } }
+];
+
+function nextChallenge() {
+  if (usedChallenges.length === CHALLENGES.length) usedChallenges = [];
+  let idx;
+  do { idx = Math.floor(Math.random() * CHALLENGES.length); } while (usedChallenges.includes(idx));
+  usedChallenges.push(idx);
+
+  state.challenge = CHALLENGES[idx];
+  state.hintLevel = 0;
+  el.chalTask.textContent = state.challenge.task;
+  el.chalFeedback.hidden = true;
+  el.chalHint.hidden = true;
+  el.btnHint.hidden = false;
+  el.btnHint.textContent = 'Hint';
+  el.btnChallenge.textContent = 'Different challenge';
+  if (state.challenge.needsCompare && !state.modes.compare) toggleMode('compare', true);
+  announce(`Challenge: ${state.challenge.task}`);
+}
+
+function showHint() {
+  const c = state.challenge;
+  if (!c) return;
+  const h = c.hints[Math.min(state.hintLevel, c.hints.length - 1)];
+  el.chalHint.hidden = false;
+  el.chalHint.textContent = h;
+  state.hintLevel++;
+  if (state.hintLevel >= c.hints.length) el.btnHint.textContent = 'No more hints';
+}
+
+function checkChallenge(mm) {
+  const c = state.challenge;
+  if (!c) return;
+  el.chalFeedback.hidden = false;
+  if (c.test(mm)) {
+    el.chalFeedback.className = 'chal__feedback solved';
+    el.chalFeedback.textContent = state.ruleRevealed
+      ? `Done. This line has gradient ${gradText(mm.rise, mm.run)}. Can you find a different pair of points that also works?`
+      : 'Done. Now find a different pair of points that also solves it.';
+  } else {
+    el.chalFeedback.className = 'chal__feedback close';
+    el.chalFeedback.textContent = state.counted
+      ? `Not yet — rise ${mm.rise}, run ${mm.run}. Keep adjusting.`
+      : 'Not yet. Keep adjusting the points.';
+  }
+}
+
+/* ---------- 17. Controls, display switches, accessibility ---------------- */
+
+function announce(msg) { el.live.textContent = msg; }
+
+/**
+ * Put the manipulative back to its opening state.
+ *
+ *   reset(false)  the plane and every reveal — rise and run return to "?",
+ *                 the rule re-locks, modes and challenges clear. A student's
+ *                 earned stage unlocks are kept, since they were earned.
+ *   reset(true)   the above plus stage progress, exploration history and the
+ *                 display switches. This is the drawer's "Reset everything".
+ *
+ * Classroom mode, projection, contrast and text size are never touched by
+ * either — a teacher should not lose their whiteboard setup to a reset.
+ */
+function reset(hard = false) {
+  cancelCount();
+
+  // the plane
+  state.pts.A = { ...CFG.start.a };
+  state.pts.B = { ...CFG.start.b };
+  state.pts.C = { ...CFG.start2.c };
+  state.pts.D = { ...CFG.start2.d };
+  state.ghosts = [];
+  state.slideLine = null;
+  lastPos = null;
+
+  // every mode back off
+  Object.keys(state.modes).forEach((k) => { if (state.modes[k]) toggleMode(k, false); });
+  state.world = null;
+
+  // the reveals — this is what was previously missed
+  state.counted = false;
+  state.ruleRevealed = false;
+  el.btnCount.textContent = 'Count the steps';
+  el.ticksRun.classList.remove('ticks--on');
+  el.ticksRise.classList.remove('ticks--on');
+  el.roGrad.classList.add('locked');
+  el.gradSub.textContent = 'locked until the rule is revealed';
+  el.repsCard.classList.add('locked');
+  el.repsLock.hidden = false;
+  el.repsBody.hidden = true;
+  el.steppers.hidden = true;
+  el.caseCard.hidden = true;
+  if (el.foldMeasure) delete el.foldMeasure.dataset.ready;
+
+  // activities
+  state.prediction = null;
+  el.predictBox.hidden = true;
+  el.predictResult.hidden = true;
+  state.challenge = null;
+  state.hintLevel = 0;
+  el.chalTask.textContent = 'Press start for a challenge. Nothing is scored — try as many times as you like.';
+  el.chalFeedback.hidden = true;
+  el.chalHint.hidden = true;
+  el.btnHint.hidden = true;
+  el.btnChallenge.textContent = 'Start a challenge';
+
+  if (hard) {
+    state.explore = { moves: 0, gradients: new Set(), families: new Set() };
+    state.unlocked = 0;
+    usedChallenges = [];
+    $$('.rung').forEach((r) => { r.disabled = Number(r.dataset.stage) !== 0; });
+    Object.assign(state.vis, { labels: true, coords: true, triangle: true, numbers: true,
+      construction: false, infinite: false, grid: true, snap: true, riseFirst: true });
+    $$('[data-vis]').forEach((cb) => { cb.checked = !!state.vis[cb.dataset.vis]; });
+    applyVis();
+    if (el.foldMeasure) el.foldMeasure.open = false;
+    el.planeHint.classList.remove('gone');
+  }
+
+  // teacher mode keeps everything open; student mode restores what was earned
+  if (state.teacher) {
+    state.unlocked = 3;
+    $$('.rung').forEach((r) => { r.disabled = false; });
+  }
+  el.btnReveal.textContent = 'Reveal the rule';
+  el.btnReveal.disabled = state.unlocked < 3;
+  el.bars.hidden = !state.teacher;
+
+  setStage(0);
+  newPrompt('start');
+  updateGate();
+  render();
+  announce(hard ? 'Everything reset to the start.' : 'Reset. Rise and run are hidden again.');
+}
+
+function randomPoints() {
+  cancelCount();
+  const r = () => Math.floor(Math.random() * 17) - 8;
+  do {
+    state.pts.A = { x: r(), y: r() };
+    state.pts.B = { x: r(), y: r() };
+  } while (state.pts.A.x === state.pts.B.x && state.pts.A.y === state.pts.B.y);
+  if (state.modes.slide) toggleMode('slide', false);
+  state.explore.moves += 1;
+  const mm = measure(state.pts.A, state.pts.B);
+  if (mm.m !== null) state.explore.gradients.add(mm.m);
+  state.explore.families.add(family(mm));
+  render(); updateGate(); newPrompt();
+  announce(`New points: A at ${state.pts.A.x}, ${state.pts.A.y}. B at ${state.pts.B.x}, ${state.pts.B.y}.`);
+}
+
+/**
+ * Teacher demonstration is now a single toggle. Off, the app behaves as the
+ * gated discovery sequence (stages unlock through exploration); on, every
+ * stage opens at once for whole-class teaching. Students get the quiz instead.
+ */
+function setMode(mode) {
+  state.teacher = mode === 'teacher';
+  document.body.dataset.mode = state.teacher ? 'teacher' : 'student';
+  const btn = $('[data-setmode="teacher"]');
+  if (btn) btn.setAttribute('aria-pressed', String(state.teacher));
+  if (state.teacher) {
+    unlockTo(3);
+    $$('.rung').forEach((r) => { r.disabled = false; });
+    el.btnReveal.disabled = state.ruleRevealed;
+    el.bars.hidden = false;
+  }
+  updateGate();
+  render();
+}
+
+function applyVis() {
+  const b = document.body.classList;
+  b.toggle('hide-labels', !state.vis.labels);
+  b.toggle('hide-coords', !state.vis.coords);
+  b.toggle('hide-triangle', !state.vis.triangle);
+  b.toggle('hide-numbers', !state.vis.numbers);
+  b.toggle('show-construction', state.vis.construction);
+  b.toggle('show-infinite', state.vis.infinite);
+  b.toggle('hide-grid', !state.vis.grid);
+  render();
+}
+
+function wireControls() {
+  const modeBtn = $('[data-setmode="teacher"]');
+  if (modeBtn) modeBtn.addEventListener('click', () => {
+    setMode(modeBtn.getAttribute('aria-pressed') === 'true' ? 'student' : 'teacher');
+  });
+
+  $('#btnQuiz').addEventListener('click', openStudentQuiz);
+
+  $$('[data-action="reset"]').forEach((b) => b.addEventListener('click', () => reset(false)));
+  $('#btnResetAll').addEventListener('click', () => reset(true));
+  $$('[data-action="random"]').forEach((b) => b.addEventListener('click', randomPoints));
+
+  $$('[data-toggle]').forEach((b) => b.addEventListener('click', () => {
+    toggleMode(b.dataset.toggle, b.getAttribute('aria-pressed') !== 'true');
+  }));
+
+  $$('.rung').forEach((r) => r.addEventListener('click', () => {
+    if (r.disabled) return;
+    const s = Number(r.dataset.stage);
+    if (s === 3 && !state.ruleRevealed) { revealRule(); return; }
+    setStage(s);
+  }));
+
+  if (el.foldMeasure) {
+    el.foldMeasure.addEventListener('toggle', () => {
+      announce(el.foldMeasure.open ? 'Measurements shown.' : 'Measurements folded away.');
+    });
+  }
+
+  el.btnCount.addEventListener('click', countSteps);
+  el.btnReveal.addEventListener('click', revealRule);
+  $('#btnPredict').addEventListener('click', startPrediction);
+  $('#btnNewPrompt').addEventListener('click', () => newPrompt());
+  el.btnChallenge.addEventListener('click', nextChallenge);
+  el.btnHint.addEventListener('click', showHint);
+
+  // steppers move point B, keeping every representation linked
+  $$('[data-step]').forEach((b) => b.addEventListener('click', () => {
+    const by = Number(b.dataset.by);
+    const { A, B } = state.pts;
+    const target = b.dataset.step === 'rise'
+      ? { x: B.x, y: clamp(B.y + by, CFG.min, CFG.max) }
+      : { x: clamp(B.x + by, CFG.min, CFG.max), y: B.y };
+    if (place('B', target.x, target.y)) afterMove('B');
+  }));
+
+  // display toggles
+  $$('[data-vis]').forEach((cb) => cb.addEventListener('change', () => {
+    if (cb.dataset.vis === 'riseFirst') cancelCount();
+    state.vis[cb.dataset.vis] = cb.checked;
+    applyVis();
+  }));
+
+  // drawer
+  const openDrawer = (open) => {
+    el.drawer.hidden = !open;
+    $('#btnDrawer').setAttribute('aria-expanded', String(open));
+    if (open) $('#btnDrawerClose').focus();
+  };
+  $('#btnDrawer').addEventListener('click', () => openDrawer(el.drawer.hidden));
+  $('#btnDrawerClose').addEventListener('click', () => openDrawer(false));
+  el.drawer.addEventListener('click', (e) => { if (e.target === el.drawer) openDrawer(false); });
+  $('#btnUnlockAll').addEventListener('click', () => { unlockTo(3); $$('.rung').forEach((r) => { r.disabled = false; }); el.btnReveal.disabled = state.ruleRevealed; });
+
+  // presentation switches
+  const proj = $('#btnProjection');
+  proj.addEventListener('click', () => {
+    const on = proj.getAttribute('aria-pressed') !== 'true';
+    proj.setAttribute('aria-pressed', String(on));
+    document.body.classList.toggle('projection', on);
+  });
+  const con = $('#btnContrast');
+  con.addEventListener('click', () => {
+    const on = con.getAttribute('aria-pressed') !== 'true';
+    con.setAttribute('aria-pressed', String(on));
+    document.body.classList.toggle('contrast', on);
+  });
+  const sizes = [1, 1.12, 1.25, 0.92];
+  let sizeIdx = 0;
+  $('#btnTextSize').addEventListener('click', () => {
+    sizeIdx = (sizeIdx + 1) % sizes.length;
+    document.documentElement.style.setProperty('--scale', sizes[sizeIdx]);
+    announce(`Interface size ${Math.round(sizes[sizeIdx] * 100)} per cent.`);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !el.drawer.hidden) openDrawer(false);
+  });
+}
+
+/* ---------- 17b. The student quiz ---------------------------------------- */
+
+/**
+ * Open the quiz in a new window.
+ *
+ * The whole quiz is carried inside this file as QUIZ_HTML and written straight
+ * into the new window, so it works from a USB stick, a shared drive or GitHub
+ * Pages without a second file needing to be in the right place. If the quiz
+ * has been deployed separately as gradient-student-quiz.html, that copy is
+ * used instead so a teacher can hand out a direct link.
+ */
+function openStudentQuiz() {
+  const win = window.open('', 'gradientQuiz');
+  if (!win) {
+    announce('The browser blocked the new window. Allow pop-ups for this page and try again.');
+    alert('Your browser blocked the quiz window.\n\nAllow pop-ups for this page, then press Student Quiz again.');
+    return;
+  }
+  try {
+    win.document.open();
+    win.document.write(typeof QUIZ_HTML === 'string' ? QUIZ_HTML : '');
+    win.document.close();
+    win.focus();
+    announce('The student quiz opened in a new window.');
+  } catch (err) {
+    console.error('Could not open the quiz:', err);
+    win.close();
+    alert('The quiz could not be opened in this browser.');
+  }
+}
+
+/* ---------- 18. Start up -------------------------------------------------- */
+
+function init() {
+  buildGrid();
+  buildAxes();
+  initDragging();
+  wireControls();
+  applyVis();
+  setStage(0);
+  newPrompt('start');
+  updateGate();
+  render();
+  setTimeout(() => el.planeHint.classList.add('gone'), 9000);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    init();
+  } catch (err) {
+    // A dead page with no explanation helps nobody. Say what broke.
+    console.error('Rise & Run could not start:', err);
+    const note = document.createElement('p');
+    note.style.cssText = 'margin:24px;padding:16px;border:2px solid #a5590c;border-radius:12px;' +
+      'background:#fdeedd;color:#a5590c;font:600 15px system-ui,sans-serif';
+    note.textContent = 'This page could not start up: ' + err.message +
+      ' — try refreshing, or open it in Chrome, Edge, Firefox or Safari.';
+    document.querySelector('.layout').prepend(note);
+  }
+});
+
+</script>
+</body>
+</html>

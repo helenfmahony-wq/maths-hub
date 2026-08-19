@@ -1,0 +1,1826 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gradient — Student Quiz</title>
+<style>
+/* ==============================================================
+   Gradient — Student Quiz
+   Companion to the Rise & Run manipulative. NSW MA5-LIN-C-01.
+
+   UI principle: one question, one plane, nothing else competing.
+   Colour code matches the manipulative exactly, so a student moving
+   between the two never has to relearn what blue and orange mean.
+   ============================================================== */
+
+:root{
+  --bg:#eef2f8;
+  --panel:#ffffff;
+  --sunk:#f4f7fb;
+  --edge:#d7e0ec;
+  --ink:#16202e;
+  --ink-soft:#42556d;
+  --ink-faint:#7688a0;
+
+  --rise:#1f6fdc;  --rise-wash:#e4eefc;
+  --run:#e0700f;   --run-wash:#fdeedd;
+  --grad:#6b34c9;  --grad-wash:#efe7fd;
+  --interval:#263449;
+  --line2:#0b8574; --line2-wash:#ddf1ee;
+  --good:#0f7a53;  --good-wash:#e2f4ec;
+  --warn:#a5590c;  --warn-wash:#fdefdc;
+
+  --grid:#ccd8e6; --grid-strong:#b2c2d5;
+
+  --lvl:#1f6fdc; --lvl-wash:#e4eefc;
+
+  --font-display:Optima,Candara,"Gill Sans MT","Trebuchet MS",system-ui,sans-serif;
+  --font-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-data:ui-monospace,"SFMono-Regular","Cascadia Mono","Roboto Mono",Consolas,monospace;
+
+  --r-lg:22px; --r-md:15px; --r-sm:10px;
+  --shadow:0 1px 2px rgba(22,32,46,.05),0 10px 26px -14px rgba(22,32,46,.3);
+  --t:170ms cubic-bezier(.2,.7,.3,1);
+  --t-med:340ms cubic-bezier(.2,.7,.3,1);
+}
+*,*::before,*::after{ box-sizing:border-box; }
+[hidden]{ display:none !important; }
+
+body{
+  margin:0; font-family:var(--font-body); color:var(--ink); line-height:1.5;
+  background:radial-gradient(900px 520px at 15% -10%,#fff 0%,rgba(255,255,255,0) 60%),
+             linear-gradient(180deg,var(--bg) 0%,#e2e9f3 100%);
+  background-attachment:fixed; min-height:100vh;
+}
+h1,h2,h3{ font-family:var(--font-display); margin:0; font-weight:600; letter-spacing:-.01em; }
+button{ font:inherit; color:inherit; cursor:pointer; }
+.sr-only{ position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0; }
+:focus-visible{ outline:3px solid var(--grad); outline-offset:2px; border-radius:5px; }
+
+/* ---------- top bar ---------- */
+.bar{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:12px clamp(12px,2.2vw,26px);
+  background:rgba(255,255,255,.85); backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--edge); position:sticky; top:0; z-index:20;
+}
+.bar h1{ font-size:1.12rem; }
+.bar__spacer{ flex:1; }
+.levelchip{
+  display:inline-flex; align-items:center; gap:8px; padding:6px 15px; border-radius:99px;
+  background:var(--lvl-wash); color:var(--lvl); border:1.5px solid currentColor;
+  font-weight:700; font-size:.88rem;
+}
+.levelchip__dot{ width:9px;height:9px;border-radius:50%;background:currentColor; }
+.tbtn{
+  border:1px solid var(--edge); background:var(--panel); border-radius:99px;
+  padding:8px 15px; font-size:.83rem; font-weight:600; color:var(--ink-soft); transition:all var(--t);
+}
+.tbtn:hover{ border-color:var(--ink-faint); color:var(--ink); }
+
+/* ---------- progress ---------- */
+.prog{ padding:12px clamp(12px,2.2vw,26px) 0; display:flex; align-items:center; gap:14px; }
+.prog__track{ flex:1; height:9px; background:var(--panel); border:1px solid var(--edge); border-radius:99px; overflow:hidden; }
+.prog__fill{ display:block; height:100%; width:0; background:var(--lvl); border-radius:99px; transition:width var(--t-med); }
+.prog__count{ font-size:.82rem; font-weight:700; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+.prog__dots{ display:flex; gap:5px; }
+.dot{ width:11px; height:11px; border-radius:50%; background:var(--edge); transition:background var(--t); }
+.dot.correct{ background:var(--good); }
+.dot.shown{ background:var(--warn); }
+.dot.here{ box-shadow:0 0 0 3px var(--grad-wash); background:var(--grad); }
+
+/* ---------- layout ---------- */
+.main{
+  display:grid; grid-template-columns:min(100%,58vh) minmax(0,1fr);
+  justify-content:center; gap:16px;
+  padding:14px clamp(12px,2.2vw,26px) 34px; align-items:start;
+}
+/* How much room the plane gets depends on how much the student may use it.
+   Sweet and Mild explore, so the plane is large. Medium reads a fixed
+   diagram, so it is smaller. Spicy works from numbers, so it is gone. */
+body[data-plane="interactive"] .main{ grid-template-columns:min(100%,78vh) minmax(330px,1fr); }
+body[data-plane="figure"] .main{ grid-template-columns:min(100%,46vh) minmax(330px,1fr); }
+body[data-plane="none"] .main{ grid-template-columns:min(100%,760px); }
+body[data-plane="figure"] #planeCard{ opacity:.98; }
+body[data-plane="figure"] #svg{ cursor:default; }
+.card{
+  background:var(--panel); border:1px solid var(--edge); border-radius:var(--r-lg);
+  box-shadow:var(--shadow); padding:15px 16px 16px;
+}
+
+/* ---------- plane ---------- */
+.planetools{ display:flex; gap:7px; flex-wrap:wrap; margin-bottom:10px; align-items:center; }
+.ptool{
+  border:1px solid var(--edge); background:var(--sunk); border-radius:99px;
+  padding:6px 12px; font-size:.78rem; font-weight:600; color:var(--ink-soft); transition:all var(--t);
+}
+.ptool[aria-pressed="true"]{ background:var(--ink); border-color:var(--ink); color:#fff; }
+.ptool--warn{ background:var(--warn-wash); border-color:#f0c489; color:var(--warn); }
+#svg{ display:block; width:100%; height:auto; aspect-ratio:1/1; border-radius:var(--r-md); background:var(--sunk); touch-action:none; }
+.planenote{ margin:9px 0 0; font-size:.8rem; color:var(--ink-faint); min-height:1.2em; }
+
+.gl{ stroke:var(--grid); stroke-width:1; }
+.gl5{ stroke:var(--grid-strong); stroke-width:1.4; }
+.ax{ stroke:var(--ink-soft); stroke-width:2.2; }
+.axt{ stroke:var(--ink-soft); stroke-width:1.5; }
+.axn{ fill:var(--ink-faint); font:500 11px var(--font-data); text-anchor:middle; }
+.axname{ fill:var(--ink-soft); font:600 14px var(--font-display); }
+.iv{ stroke:var(--interval); stroke-width:5; stroke-linecap:round; }
+.iv2{ stroke:var(--line2); stroke-width:5; stroke-linecap:round; stroke-dasharray:13 7; }
+.trif{ fill:var(--ink); opacity:.045; }
+.lrise{ stroke:var(--rise); stroke-width:6; stroke-linecap:round; }
+.lrun{ stroke:var(--run); stroke-width:6; stroke-linecap:round; }
+.lrise2{ stroke:var(--rise); stroke-width:3.4; opacity:.7; stroke-dasharray:6 4; }
+.lrun2{ stroke:var(--run); stroke-width:3.4; opacity:.7; stroke-dasharray:6 4; }
+.ra{ fill:none; stroke:var(--ink-faint); stroke-width:2; }
+.legtxt{ font:600 17px var(--font-display); paint-order:stroke; stroke:var(--sunk); stroke-width:5px; stroke-linejoin:round; }
+.legtxt--rise{ fill:var(--rise); }
+.legtxt--run{ fill:var(--run); }
+.tri-badge-bg{ fill:var(--ink); }
+.tri-badge{ font:700 15px var(--font-display); fill:#fff; text-anchor:middle; }
+.ghost{ fill:none; stroke:var(--ink-faint); stroke-width:1.6; stroke-dasharray:4 5; opacity:.6; }
+.ghost-r{ stroke:var(--rise); stroke-width:3; opacity:.3; }
+.ghost-n{ stroke:var(--run); stroke-width:3; opacity:.3; }
+
+.pt{ cursor:grab; }
+.pt.locked{ cursor:default; }
+.pt-halo{ fill:#fff; stroke:var(--edge); stroke-width:2; }
+.pt-dot{ stroke:#fff; stroke-width:3; transition:r var(--t); }
+.pt--A .pt-dot{ fill:var(--interval); }
+.pt--B .pt-dot{ fill:var(--grad); }
+.pt--C .pt-dot,.pt--D .pt-dot{ fill:var(--line2); }
+.pt:not(.locked):hover .pt-dot,.pt:focus-visible .pt-dot{ r:14; }
+.pt:focus-visible .pt-halo{ stroke:var(--grad); stroke-width:4; }
+.pt-name{ font:700 16px var(--font-display); fill:#fff; text-anchor:middle; dominant-baseline:middle; }
+.pt-co{ font:600 12px var(--font-data); fill:var(--ink-soft); paint-order:stroke; stroke:var(--sunk); stroke-width:5px; stroke-linejoin:round; }
+.linetag{ font:700 13px var(--font-display); paint-order:stroke; stroke:var(--sunk); stroke-width:5px; stroke-linejoin:round; }
+
+
+/* ---------- question ---------- */
+.qcard{ display:flex; flex-direction:column; min-height:330px; }
+.qtag{ font-size:.76rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); }
+.qtext{ font-family:var(--font-display); font-size:1.42rem; font-weight:600; margin:7px 0 4px; line-height:1.28; }
+.qsub{ font-size:.9rem; color:var(--ink-soft); margin:0 0 15px; }
+
+.opts{ display:grid; gap:9px; }
+.opt{
+  text-align:left; border:1.5px solid var(--edge); background:var(--sunk);
+  border-radius:var(--r-md); padding:13px 16px; font-size:1rem; font-weight:600;
+  transition:all var(--t); display:flex; align-items:center; gap:11px;
+}
+.opt:hover:not(:disabled){ border-color:var(--grad); background:var(--grad-wash); transform:translateY(-1px); }
+.opt__key{
+  width:26px;height:26px;flex:none;border-radius:50%;background:var(--panel);
+  border:1.5px solid var(--edge); display:grid; place-items:center; font-size:.8rem; font-family:var(--font-data);
+}
+.opt.right{ background:var(--good-wash); border-color:var(--good); color:var(--good); }
+.opt.wrong{ background:var(--warn-wash); border-color:#e8b877; color:var(--warn); }
+.opt:disabled{ cursor:default; }
+.opt.dim{ opacity:.5; }
+
+.entry{ display:flex; gap:9px; align-items:center; flex-wrap:wrap; }
+.entry input{
+  flex:1 1 160px; min-width:130px; font:700 1.32rem var(--font-data); color:var(--ink);
+  padding:12px 15px; border-radius:var(--r-md); border:1.5px solid var(--edge); background:var(--sunk);
+}
+.entry input:focus{ outline:none; border-color:var(--grad); background:#fff; }
+.entry input.right{ border-color:var(--good); background:var(--good-wash); color:var(--good); }
+.entry input.wrong{ border-color:#e8b877; background:var(--warn-wash); color:var(--warn); }
+/* two gradients side by side, so the comparison is the point of the layout */
+.pairbox{ display:grid; gap:10px; }
+.pairrow{
+  display:flex; align-items:center; gap:12px; padding:11px 14px;
+  border:1.5px solid var(--edge); border-radius:var(--r-md); background:var(--sunk);
+}
+.pairrow__badge{
+  width:28px; height:28px; flex:none; border-radius:50%; background:var(--ink); color:#fff;
+  display:grid; place-items:center; font:700 .9rem var(--font-display);
+}
+.pairrow__name{ flex:1; font-weight:600; font-size:.95rem; }
+.pairrow input{
+  width:110px; flex:none; font:700 1.2rem var(--font-data); text-align:center; color:var(--ink);
+  padding:9px 10px; border-radius:var(--r-sm); border:1.5px solid var(--edge); background:var(--panel);
+}
+.pairrow input:focus{ outline:none; border-color:var(--grad); }
+.pairrow input.right{ border-color:var(--good); background:var(--good-wash); color:var(--good); }
+.pairrow input.wrong{ border-color:#e8b877; background:var(--warn-wash); color:var(--warn); }
+
+.keyhints{ display:flex; gap:6px; flex-wrap:wrap; margin-top:9px; }
+.keyhint{ border:1px solid var(--edge); background:var(--panel); border-radius:99px; padding:5px 11px; font:600 .78rem var(--font-data); color:var(--ink-soft); }
+
+.buildbox{
+  border:1.5px dashed var(--grad); background:var(--grad-wash); border-radius:var(--r-md);
+  padding:13px 15px; font-size:.93rem; color:var(--grad); font-weight:600;
+}
+.buildbox.done{ border-style:solid; border-color:var(--good); background:var(--good-wash); color:var(--good); }
+
+.fb{ margin:14px 0 0; padding:12px 15px; border-radius:var(--r-md); font-size:.95rem; font-weight:600; }
+.fb.ok{ background:var(--good-wash); color:var(--good); }
+.fb.no{ background:var(--warn-wash); color:var(--warn); }
+.fb.shown{ background:var(--grad-wash); color:var(--grad); }
+.fb__why{ display:block; font-weight:400; margin-top:6px; color:var(--ink-soft); }
+
+.hintbox{ margin:11px 0 0; padding:11px 14px; border-left:3px solid var(--run); background:var(--run-wash); border-radius:var(--r-sm); font-size:.9rem; color:var(--warn); }
+
+.qfoot{ display:flex; gap:9px; flex-wrap:wrap; margin-top:auto; padding-top:16px; }
+.btn{
+  border:1px solid var(--edge); background:var(--panel); border-radius:99px;
+  padding:11px 19px; font-size:.9rem; font-weight:700; transition:all var(--t);
+}
+.btn:hover:not(:disabled){ transform:translateY(-1px); box-shadow:var(--shadow); }
+.btn:disabled{ opacity:.4; cursor:not-allowed; }
+.btn--go{ background:var(--ink); border-color:var(--ink); color:#fff; }
+.btn--next{ background:var(--grad); border-color:var(--grad); color:#fff; }
+.btn--ghost{ background:transparent; color:var(--ink-soft); }
+
+/* ---------- modals ---------- */
+.veil{ position:fixed; inset:0; background:rgba(22,32,46,.5); z-index:40; display:grid; place-items:center; padding:18px; }
+.modal{
+  background:var(--panel); border-radius:var(--r-lg); box-shadow:0 30px 70px -20px rgba(0,0,0,.5);
+  width:min(560px,100%); max-height:90vh; overflow:auto; padding:24px;
+  animation:pop var(--t-med);
+}
+@keyframes pop{ from{ transform:translateY(14px) scale(.98); opacity:0; } }
+.modal h2{ font-size:1.4rem; margin-bottom:5px; }
+.modal p.lead{ margin:0 0 18px; color:var(--ink-soft); font-size:.93rem; }
+
+.levels{ display:grid; gap:11px; }
+.lvl{
+  display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:var(--r-md);
+  border:1.5px solid var(--edge); background:var(--sunk); text-align:left; width:100%; transition:all var(--t);
+}
+.lvl:hover{ transform:translateY(-2px); box-shadow:var(--shadow); }
+.lvl__heat{ font-size:1.5rem; flex:none; width:34px; text-align:center; }
+.lvl__body{ flex:1; }
+.lvl__name{ font-family:var(--font-display); font-size:1.1rem; font-weight:700; }
+.lvl__desc{ font-size:.83rem; color:var(--ink-soft); }
+.lvl__go{ font-size:.82rem; font-weight:700; color:var(--ink-faint); flex:none; }
+.lvl--sweet{ border-left:6px solid #16a34a; }
+.lvl--mild{ border-left:6px solid #2563eb; }
+.lvl--medium{ border-left:6px solid #f59e0b; }
+.lvl--spicy{ border-left:6px solid #ea580c; }
+
+.cert{ text-align:center; }
+.cert__cup{ font-size:3.4rem; line-height:1; }
+.cert__score{ font-family:var(--font-data); font-size:2.6rem; font-weight:700; color:var(--grad); margin:6px 0 2px; }
+.cert__line{ font-size:1rem; color:var(--ink-soft); }
+.cert__note{ font-size:.86rem; color:var(--ink-faint); margin-top:12px; }
+.modal__acts{ display:flex; gap:9px; flex-wrap:wrap; margin-top:20px; }
+
+.banner{ text-align:center; font-size:.78rem; color:var(--ink-faint); padding:0 16px 22px; }
+.banner a{ color:var(--ink-soft); }
+
+/* ---------- responsive ---------- */
+@media (max-width:1000px){
+  .main,
+  body[data-plane="interactive"] .main,
+  body[data-plane="figure"] .main,
+  body[data-plane="none"] .main{ grid-template-columns:1fr; }
+  .qcard{ min-height:0; }
+}
+@media (max-width:560px){
+  .qtext{ font-size:1.2rem; }
+  .bar h1{ font-size:1rem; }
+  .prog__dots{ display:none; }
+}
+@media (prefers-reduced-motion:reduce){
+  *{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <h1>Gradient Quiz</h1>
+  <span class="levelchip" id="levelChip" hidden><span class="levelchip__dot"></span><span id="levelName">—</span></span>
+  <span class="bar__spacer"></span>
+  <button type="button" class="tbtn" id="btnLevels">Change level</button>
+  <button type="button" class="tbtn" id="btnRestart">Start again</button>
+</header>
+
+<div class="prog" id="progRow" hidden>
+  <span class="prog__count" id="progCount">1 / 10</span>
+  <span class="prog__track"><span class="prog__fill" id="progFill"></span></span>
+  <span class="prog__dots" id="progDots"></span>
+</div>
+
+<main class="main" id="main" hidden>
+
+  <!-- the plane travels with every question -->
+  <section class="card" id="planeCard" aria-label="Plane">
+    <div class="planetools" id="planetools">
+      <button type="button" class="ptool" id="tNum" aria-pressed="true">Numbers</button>
+      <button type="button" class="ptool" id="tTri" aria-pressed="true">Triangle</button>
+      <button type="button" class="ptool ptool--warn" id="tExplore" aria-pressed="false">Explore freely</button>
+    </div>
+    <svg id="svg" viewBox="0 0 560 560" role="application"
+         aria-label="Cartesian plane. Tab to a point, then use the arrow keys to move it.">
+      <defs>
+        <marker id="aRise" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L11 6 L1 11z" fill="#1f6fdc"/></marker>
+        <marker id="aRun" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L11 6 L1 11z" fill="#e0700f"/></marker>
+      </defs>
+      <g id="gGrid"></g><g id="gAxes"></g><g id="gGhost"></g>
+      <g id="gL2"></g><g id="gTri"></g><g id="gIv"></g><g id="gPts"></g><g id="gLbl"></g>
+    </svg>
+    <p class="planenote" id="planeNote"></p>
+  </section>
+
+  <!-- one question at a time -->
+  <section class="card qcard" aria-live="polite">
+    <span class="qtag" id="qTag">Question 1</span>
+    <h2 class="qtext" id="qText">—</h2>
+    <p class="qsub" id="qSub"></p>
+
+    <div id="answerArea"></div>
+    <div class="fb" id="fb" hidden></div>
+    <div class="hintbox" id="hint" hidden></div>
+
+    <div class="qfoot">
+      <button type="button" class="btn btn--go" id="btnCheck" hidden>Check</button>
+      <button type="button" class="btn btn--ghost" id="btnHint">Hint</button>
+      <button type="button" class="btn btn--ghost" id="btnShow">Show me</button>
+      <button type="button" class="btn btn--next" id="btnNext" hidden>Next →</button>
+    </div>
+  </section>
+</main>
+
+<p class="banner" id="banner" hidden>Part of the Rise &amp; Run gradient manipulative · NSW MA5-LIN-C-01</p>
+
+<!-- level chooser -->
+<div class="veil" id="veilLevels">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="lvlHead">
+    <h2 id="lvlHead">Choose your level</h2>
+    <p class="lead">Ten questions. Nothing is timed, wrong answers cost you nothing, and you can use the plane the whole way through.</p>
+    <div class="levels" id="levelList"></div>
+  </div>
+</div>
+
+<!-- certificate -->
+<div class="veil" id="veilCert" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="certHead">
+    <div class="cert">
+      <div class="cert__cup">🏆</div>
+      <h2 id="certHead">Finished</h2>
+      <div class="cert__score" id="certScore">0 / 10</div>
+      <div class="cert__line" id="certLine">—</div>
+      <p class="cert__note" id="certNote"></p>
+    </div>
+    <div class="modal__acts">
+      <button type="button" class="btn btn--go" id="btnCopy">Copy my result</button>
+      <button type="button" class="btn" id="btnAgain">Try this level again</button>
+      <button type="button" class="btn btn--ghost" id="btnBackLevels">Choose another level</button>
+    </div>
+  </div>
+</div>
+
+<div class="sr-only" id="live" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+'use strict';
+(() => {
+
+/* ============================================================
+   1. Plane — a compact, purpose-built version of the manipulative
+      Same colour code and same construction order (rise leaves A).
+   ============================================================ */
+
+const V = 560, PAD = 34, MIN = -8, MAX = 8;
+const SPAN = MAX - MIN, U = (V - 2*PAD) / SPAN;
+const NS = 'http://www.w3.org/2000/svg';
+
+const X = x => PAD + (x - MIN) * U;
+const Y = y => PAD + (MAX - y) * U;
+const invX = px => (px - PAD) / U + MIN;
+const invY = py => MAX - (py - PAD) / U;
+const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+const gcd = (a,b) => b ? gcd(b, a % b) : Math.abs(a);
+
+const el = id => document.getElementById(id);
+const mk = (t, at = {}, txt) => {
+  const n = document.createElementNS(NS, t);
+  for (const k in at) n.setAttribute(k, at[k]);
+  if (txt !== undefined) n.textContent = txt;
+  return n;
+};
+
+const plane = {
+  A:{x:-4,y:-2}, B:{x:2,y:4}, C:{x:-6,y:4}, D:{x:-2,y:6},
+  showTwo:false, locked:false, numbers:true, triangle:true,
+  ghosts:[], pairTri:null, hidePoints:false, onChange:null
+};
+
+function measure(p,q){
+  const rise = q.y - p.y, run = q.x - p.x;
+  return { rise, run,
+    vertical: run === 0 && rise !== 0,
+    degenerate: run === 0 && rise === 0,
+    m: run === 0 ? null : rise / run };
+}
+
+/** Tidy gradient text: whole number, fraction in lowest terms, or undefined. */
+function gradText(rise, run){
+  if (run === 0) return rise === 0 ? '—' : 'undefined';
+  if (rise === 0) return '0';
+  const g = gcd(rise, run) || 1;
+  let n = rise/g, d = run/g;
+  if (d < 0) { n = -n; d = -d; }
+  return d === 1 ? String(n) : n + '/' + d;
+}
+
+function buildStatic(){
+  const gr = el('gGrid'), ax = el('gAxes');
+  for (let i = MIN; i <= MAX; i++){
+    const c = i % 5 === 0 ? 'gl5' : 'gl';
+    gr.appendChild(mk('line',{class:c,x1:X(i),y1:Y(MIN),x2:X(i),y2:Y(MAX)}));
+    gr.appendChild(mk('line',{class:c,x1:X(MIN),y1:Y(i),x2:X(MAX),y2:Y(i)}));
+  }
+  ax.appendChild(mk('line',{class:'ax',x1:X(MIN),y1:Y(0),x2:X(MAX),y2:Y(0)}));
+  ax.appendChild(mk('line',{class:'ax',x1:X(0),y1:Y(MIN),x2:X(0),y2:Y(MAX)}));
+  for (let i = MIN; i <= MAX; i++){
+    if (!i) continue;
+    ax.appendChild(mk('line',{class:'axt',x1:X(i),y1:Y(0)-4,x2:X(i),y2:Y(0)+4}));
+    ax.appendChild(mk('line',{class:'axt',x1:X(0)-4,y1:Y(i),x2:X(0)+4,y2:Y(i)}));
+    if (i % 2 === 0){
+      ax.appendChild(mk('text',{class:'axn',x:X(i),y:Y(0)+18}, String(i)));
+      ax.appendChild(mk('text',{class:'axn',x:X(0)-14,y:Y(i)+4}, String(i)));
+    }
+  }
+  ax.appendChild(mk('text',{class:'axname',x:X(MAX)-2,y:Y(0)-10,'text-anchor':'end'},'x'));
+  ax.appendChild(mk('text',{class:'axname',x:X(0)+10,y:Y(MAX)+12},'y'));
+
+  ['A','B','C','D'].forEach(name => {
+    const g = mk('g',{class:'pt pt--'+name,tabindex:'0',role:'button','data-pt':name});
+    g.appendChild(mk('circle',{class:'pt-halo',r:19}));
+    g.appendChild(mk('circle',{class:'pt-dot',r:12}));
+    g.appendChild(mk('text',{class:'pt-name'}, name));
+    el('gPts').appendChild(g);
+    el('gLbl').appendChild(mk('text',{class:'pt-co','data-co':name}));
+  });
+}
+
+/** Geometry with the rise leaving A, matching the main manipulative. */
+function geom(p,q){
+  return { ax:X(p.x), ay:Y(p.y), bx:X(q.x), by:Y(q.y),
+           cx:X(p.x), cy:Y(q.y), vx:X(p.x), hy:Y(q.y) };
+}
+
+function drawPlane(){
+  const {A,B,C,D} = plane;
+  const m = measure(A,B);
+  const g = geom(A,B);
+
+  // interval and triangle
+  el('gIv').textContent = '';
+  el('gIv').appendChild(mk('line',{class:'iv',x1:g.ax,y1:g.ay,x2:g.bx,y2:g.by}));
+
+  const t = el('gTri');
+  t.textContent = '';
+  if (plane.triangle && !plane.pairTri && !m.degenerate){
+    t.appendChild(mk('path',{class:'trif',d:`M${g.ax} ${g.ay} L${g.cx} ${g.cy} L${g.bx} ${g.by} Z`}));
+    if (m.rise !== 0) t.appendChild(mk('line',{class:'lrise',x1:g.ax,y1:g.ay,x2:g.vx,y2:g.cy,'marker-end':'url(#aRise)'}));
+    if (m.run !== 0) t.appendChild(mk('line',{class:'lrun',x1:g.cx,y1:g.hy,x2:g.bx,y2:g.by,'marker-end':'url(#aRun)'}));
+    if (m.rise !== 0 && m.run !== 0){
+      const sx = Math.sign(g.bx - g.cx) || 1, sy = Math.sign(g.ay - g.cy) || 1, s = 13;
+      t.appendChild(mk('path',{class:'ra',d:`M${g.cx+sx*s} ${g.cy} L${g.cx+sx*s} ${g.cy+sy*s} L${g.cx} ${g.cy+sy*s}`}));
+    }
+    const showN = plane.numbers;
+    if (m.rise !== 0){
+      const right = g.bx > g.ax;
+      t.appendChild(mk('text',{class:'legtxt legtxt--rise','text-anchor':right?'end':'start',
+        x:g.vx + (right?-13:13), y:(g.ay+g.cy)/2 + 5},
+        showN ? 'rise ' + m.rise : 'rise'));
+    }
+    if (m.run !== 0){
+      const above = g.by < g.ay;
+      t.appendChild(mk('text',{class:'legtxt legtxt--run','text-anchor':'middle',
+        x:clamp((g.cx+g.bx)/2, PAD+28, V-PAD-28), y:g.hy + (above?-13:24)},
+        showN ? 'run ' + m.run : 'run'));
+    }
+  }
+
+  // second line
+  const l2 = el('gL2');
+  l2.textContent = '';
+  if (plane.showTwo){
+    const h = geom(C,D), m2 = measure(C,D);
+    if (plane.triangle && !m2.degenerate){
+      if (m2.rise !== 0) l2.appendChild(mk('line',{class:'lrise2',x1:h.ax,y1:h.ay,x2:h.vx,y2:h.cy}));
+      if (m2.run !== 0) l2.appendChild(mk('line',{class:'lrun2',x1:h.cx,y1:h.hy,x2:h.bx,y2:h.by}));
+    }
+    l2.appendChild(mk('line',{class:'iv2',x1:h.ax,y1:h.ay,x2:h.bx,y2:h.by}));
+    l2.appendChild(mk('text',{class:'linetag',fill:'var(--line2)',x:(h.ax+h.bx)/2+8,y:(h.ay+h.by)/2-9},'line 2'));
+    el('gIv').appendChild(mk('text',{class:'linetag',fill:'var(--interval)',x:(g.ax+g.bx)/2+8,y:(g.ay+g.by)/2+20},'line 1'));
+  }
+
+  // Two separate triangles standing on one straight line. They are drawn far
+  // enough apart that neither hides the other, so a student can read the rise
+  // and the run of each and work the two gradients out independently.
+  const gh = el('gGhost');
+  gh.textContent = '';
+  if (plane.pairTri){
+    plane.pairTri.forEach((tri, k) => {
+      const q = geom(tri.a, tri.b);
+      const mm = measure(tri.a, tri.b);
+      gh.appendChild(mk('path',{class:'trif',d:`M${q.ax} ${q.ay} L${q.cx} ${q.cy} L${q.bx} ${q.by} Z`}));
+      if (mm.rise !== 0) gh.appendChild(mk('line',{class:'lrise',x1:q.ax,y1:q.ay,x2:q.vx,y2:q.cy,'marker-end':'url(#aRise)'}));
+      if (mm.run !== 0) gh.appendChild(mk('line',{class:'lrun',x1:q.cx,y1:q.hy,x2:q.bx,y2:q.by,'marker-end':'url(#aRun)'}));
+      if (mm.rise !== 0 && mm.run !== 0){
+        const sx = Math.sign(q.bx - q.cx) || 1, sy = Math.sign(q.ay - q.cy) || 1, s2 = 11;
+        gh.appendChild(mk('path',{class:'ra',d:`M${q.cx+sx*s2} ${q.cy} L${q.cx+sx*s2} ${q.cy+sy*s2} L${q.cx} ${q.cy+sy*s2}`}));
+      }
+      const right = q.bx > q.ax;
+      gh.appendChild(mk('text',{class:'legtxt legtxt--rise','text-anchor':right?'end':'start',
+        x:q.vx + (right?-11:11), y:(q.ay+q.cy)/2 + 5}, 'rise ' + mm.rise));
+      const above = q.by < q.ay;
+      gh.appendChild(mk('text',{class:'legtxt legtxt--run','text-anchor':'middle',
+        x:clamp((q.cx+q.bx)/2, PAD+26, V-PAD-26), y:q.hy + (above?-11:22)}, 'run ' + mm.run));
+      // a clear badge so the question can name them
+      const bx2 = (q.ax + q.bx)/2, by2 = (q.ay + q.by)/2;
+      gh.appendChild(mk('circle',{class:'tri-badge-bg',cx:bx2+16,cy:by2+20,r:13}));
+      gh.appendChild(mk('text',{class:'tri-badge',x:bx2+16,y:by2+25}, String(k+1)));
+    });
+  } else {
+    plane.ghosts.forEach(({a,b}) => {
+      const q = geom(a,b);
+      gh.appendChild(mk('path',{class:'ghost',d:`M${q.ax} ${q.ay} L${q.cx} ${q.cy} L${q.bx} ${q.by} Z`}));
+      gh.appendChild(mk('line',{class:'ghost-r',x1:q.ax,y1:q.ay,x2:q.vx,y2:q.cy}));
+      gh.appendChild(mk('line',{class:'ghost-n',x1:q.cx,y1:q.hy,x2:q.bx,y2:q.by}));
+    });
+  }
+
+  // points
+  ['A','B','C','D'].forEach(name => {
+    const node = document.querySelector(`[data-pt="${name}"]`);
+    const co = document.querySelector(`[data-co="${name}"]`);
+    const on = (name === 'A' || name === 'B' || plane.showTwo) && !plane.hidePoints;
+    node.style.display = on ? '' : 'none';
+    co.style.display = on && plane.numbers ? '' : 'none';
+    node.classList.toggle('locked', plane.locked);
+    node.setAttribute('tabindex', plane.locked ? '-1' : '0');
+    const p = plane[name], px = X(p.x), py = Y(p.y);
+    node.querySelectorAll('circle').forEach(c => { c.setAttribute('cx',px); c.setAttribute('cy',py); });
+    const nm = node.querySelector('.pt-name');
+    nm.setAttribute('x',px); nm.setAttribute('y',py+1);
+    node.setAttribute('aria-label', `Point ${name} at ${p.x} comma ${p.y}` + (plane.locked ? ', fixed for this question' : ', arrow keys to move'));
+    const nearR = p.x > MAX - 3, nearT = p.y > MAX - 1;
+    co.setAttribute('text-anchor', nearR ? 'end' : 'start');
+    co.setAttribute('x', px + (nearR ? -22 : 22));
+    co.setAttribute('y', py + (nearT ? 28 : -17));
+    co.textContent = `(${p.x}, ${p.y})`;
+  });
+
+  // No rise / run / gradient panel here on purpose: in a quiz it would hand
+  // over the answer. The arrows carry their own labels when Numbers is on.
+}
+
+function pointerPos(e){
+  const p = el('svg').createSVGPoint();
+  p.x = e.clientX; p.y = e.clientY;
+  const q = p.matrixTransform(el('svg').getScreenCTM().inverse());
+  return { x: invX(q.x), y: invY(q.y) };
+}
+
+function put(name, x, y){
+  const nx = clamp(Math.round(x), MIN, MAX), ny = clamp(Math.round(y), MIN, MAX);
+  const p = plane[name];
+  if (p.x === nx && p.y === ny) return false;
+  p.x = nx; p.y = ny;
+  return true;
+}
+
+function initDrag(){
+  const svg = el('svg');
+  svg.addEventListener('pointerdown', e => {
+    if (plane.locked) return;
+    const g = e.target.closest('.pt');
+    if (!g || g.style.display === 'none') return;
+    const name = g.dataset.pt;
+    g.setPointerCapture(e.pointerId);
+    const move = ev => { const q = pointerPos(ev); if (put(name,q.x,q.y)) { drawPlane(); plane.onChange && plane.onChange(name); } };
+    const up = ev => {
+      g.releasePointerCapture(ev.pointerId);
+      g.removeEventListener('pointermove',move);
+      g.removeEventListener('pointerup',up);
+      g.removeEventListener('pointercancel',up);
+    };
+    g.addEventListener('pointermove',move);
+    g.addEventListener('pointerup',up);
+    g.addEventListener('pointercancel',up);
+    move(e);
+  });
+  svg.addEventListener('keydown', e => {
+    if (plane.locked) return;
+    const g = e.target.closest('.pt');
+    if (!g) return;
+    const step = {ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,1],ArrowDown:[0,-1]}[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const name = g.dataset.pt, p = plane[name];
+    if (put(name, p.x + step[0], p.y + step[1])) { drawPlane(); plane.onChange && plane.onChange(name); }
+  });
+}
+
+/* ============================================================
+   2. Small helpers
+   ============================================================ */
+
+const rnd = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const pick = arr => arr[rnd(0,arr.length-1)];
+const shuffle = a => { const c=[...a]; for(let i=c.length-1;i>0;i--){const j=rnd(0,i);[c[i],c[j]]=[c[j],c[i]];} return c; };
+const say = msg => { el('live').textContent = msg; };
+
+/** Place A and B so the interval has exactly this rise and run. */
+function fit(rise, run){
+  const lo = MIN + 1, hi = MAX - 1;
+  const ax = rnd(Math.max(lo, lo - Math.min(0,run)), Math.min(hi, hi - Math.max(0,run)));
+  const ay = rnd(Math.max(lo, lo - Math.min(0,rise)), Math.min(hi, hi - Math.max(0,rise)));
+  return { A:{x:ax,y:ay}, B:{x:ax+run,y:ay+rise} };
+}
+
+/** A ratio in lowest terms, scaled by k, for equivalence work. */
+function scaled(rise, run, k){ return { rise: rise*k, run: run*k }; }
+
+/* ============================================================
+   3. Question bank
+      Each generator returns a question object. Levels below choose
+      a fixed *sequence* of these, so every student walks the same
+      conceptual path with different numbers.
+   ============================================================ */
+
+const Q = {};
+
+/* ---- counting and direction (Sweet) ---- */
+
+Q.countRise = () => {
+  const run = rnd(2,5), rise = rnd(2,6);
+  const {A,B} = fit(rise, run);
+  return {
+    plane:{A,B,numbers:false,triangle:true},
+    text:'How far does the line go UP from A to B?',
+    sub:'Count the blue arrow, one square at a time.',
+    kind:'mc',
+    options:shuffle([rise, run, rise+1, Math.max(1,rise-1)].filter((v,i,s)=>s.indexOf(v)===i)).map(v=>({label:v+' units',value:v})),
+    answer:rise,
+    hints:['The blue arrow is the rise. Start at A and count the squares upwards.',
+           'Look at the y numbers of A and B. How many steps apart are they?'],
+    why:`A is at height ${A.y} and B is at height ${B.y}, so the rise is ${rise}.`
+  };
+};
+
+Q.countRun = () => {
+  const run = rnd(2,6), rise = rnd(2,5);
+  const {A,B} = fit(rise, run);
+  return {
+    plane:{A,B,numbers:false,triangle:true},
+    text:'How far does the line go ACROSS from A to B?',
+    sub:'Count the orange arrow, one square at a time.',
+    kind:'mc',
+    options:shuffle([run, rise, run+1, Math.max(1,run-1)].filter((v,i,s)=>s.indexOf(v)===i)).map(v=>({label:v+' units',value:v})),
+    answer:run,
+    hints:['The orange arrow is the run. Count the squares sideways.',
+           'Compare the x numbers of A and B.'],
+    why:`A is at x = ${A.x} and B is at x = ${B.x}, so the run is ${run}.`
+  };
+};
+
+Q.direction = () => {
+  const mode = pick(['up','down','flat']);
+  const run = rnd(3,6);
+  const rise = mode === 'up' ? rnd(2,5) : mode === 'down' ? -rnd(2,5) : 0;
+  const {A,B} = fit(rise, run);
+  return {
+    plane:{A,B,numbers:true,triangle:true},
+    text:'Reading from left to right, what does this line do?',
+    kind:'mc',
+    options:[{label:'Goes uphill',value:'up'},{label:'Goes downhill',value:'down'},{label:'Stays flat',value:'flat'}],
+    answer:mode,
+    hints:['Put your finger on the left end of the line and slide it right.',
+           'If the line climbs it is uphill, if it drops it is downhill, if it stays level it is flat.'],
+    why: mode === 'up' ? 'It climbs as you move right, so it is uphill. Later you will call this a positive gradient.'
+       : mode === 'down' ? 'It drops as you move right, so it is downhill. Later you will call this a negative gradient.'
+       : 'There is no rise at all, so the line is flat.'
+  };
+};
+
+Q.whichSteeper = () => {
+  const gentle = pick([[1,4],[1,3],[2,5]]);
+  const steep = pick([[3,1],[4,1],[5,2]]);
+  const first = Math.random() < 0.5;
+  const one = first ? gentle : steep, two = first ? steep : gentle;
+  const a = fit(one[0], one[1]);
+  const b = fit(two[0], two[1]);
+  return {
+    plane:{A:a.A,B:a.B,C:b.A,D:b.B,showTwo:true,numbers:true,triangle:true},
+    text:'Which line is steeper?',
+    sub:'Line 1 is the solid dark line. Line 2 is the dashed green line.',
+    kind:'mc',
+    options:[{label:'Line 1',value:1},{label:'Line 2',value:2},{label:'They are the same',value:0}],
+    answer:first ? 2 : 1,
+    hints:['Steeper means it climbs more for the same distance across.',
+           'Compare each rise with its own run, not with the other line.'],
+    why:`The steeper line climbs ${steep[0]} for every ${steep[1]} across. The other only climbs ${gentle[0]} for every ${gentle[1]}.`
+  };
+};
+
+Q.buildFlat = () => ({
+  plane:{A:{x:-4,y:1},B:{x:3,y:-3},numbers:true,triangle:true,free:true},
+  text:'Drag the points to make a flat line.',
+  sub:'Use the plane on the left. Watch the rise as you go.',
+  kind:'build',
+  test:m => m.rise === 0 && m.run !== 0,
+  hints:['Flat means the line does not climb at all.',
+         'Give A and B the same y number. The rise should read 0.'],
+  why:'A flat line has a rise of 0. Zero divided by any run is 0, so its gradient is 0.'
+});
+
+/* ---- forming the ratio (Mild) ---- */
+
+Q.gradientWhole = () => {
+  const m = pick([2,3,4]), run = pick([1,2]);
+  const rise = m * run;
+  const {A,B} = fit(rise, run);
+  return {
+    plane:{A,B,numbers:true,triangle:true},
+    text:'What is the gradient of this line?',
+    sub:'Gradient = rise ÷ run.',
+    kind:'num',
+    answer:m,
+    keyhints:['a whole number'],
+    hints:['The rise and the run are written on the arrows.',
+           `Work out ${rise} ÷ ${run}.`],
+    why:`rise ÷ run = ${rise} ÷ ${run} = ${m}.`
+  };
+};
+
+Q.gradientCount = () => {
+  const m = pick([2,3]), run = pick([2,3]);
+  const rise = m * run;
+  const {A,B} = fit(rise, run);
+  return {
+    plane:{A,B,numbers:false,triangle:true},
+    text:'Work out the gradient of this line.',
+    sub:'The numbers are hidden — count the arrows yourself. Press “Numbers” on the plane if you get stuck.',
+    kind:'num',
+    answer:m,
+    keyhints:['a whole number'],
+    hints:['Count the blue arrow to find the rise, then the orange arrow to find the run.',
+           'Turn the Numbers button on to check your counting, then divide.'],
+    why:`The rise is ${rise} and the run is ${run}, so the gradient is ${rise} ÷ ${run} = ${m}.`
+  };
+};
+
+Q.gradientZero = () => {
+  const run = rnd(3,6);
+  const {A,B} = fit(0, run);
+  return {
+    plane:{A,B,numbers:true,triangle:true},
+    text:'What is the gradient of this flat line?',
+    kind:'num',
+    answer:0,
+    keyhints:['a single number'],
+    hints:['How much does this line rise?',
+           'Zero divided by anything is still zero.'],
+    why:'The rise is 0, so the gradient is 0 ÷ run = 0. Zero is a real answer, not "no gradient".'
+  };
+};
+
+Q.gradientUndefined = () => {
+  const rise = pick([4,5,6]) * pick([1,-1]);
+  const {A,B} = fit(rise, 0);
+  return {
+    plane:{A,B,numbers:true,triangle:true},
+    text:'This line is vertical. What is its gradient?',
+    kind:'mc',
+    options:shuffle([
+      {label:'Undefined',value:'undef'},
+      {label:'0',value:'zero'},
+      {label:'A very large number',value:'big'},
+      {label:'1',value:'one'}
+    ]),
+    answer:'undef',
+    hints:['What is the run of a vertical line?',
+           'You would have to divide by 0 — and nothing can be divided by 0.'],
+    why:'The run is 0, and dividing by 0 has no answer. So the gradient is undefined, not just very big.'
+  };
+};
+
+Q.signOfGradient = () => {
+  const down = Math.random() < 0.5;
+  const run = rnd(2,5), rise = (down ? -1 : 1) * rnd(2,5);
+  const {A,B} = fit(rise, run);
+  return {
+    plane:{A,B,numbers:true,triangle:true},
+    text:'Is the gradient of this line positive or negative?',
+    kind:'mc',
+    options:[{label:'Positive',value:'pos'},{label:'Negative',value:'neg'}],
+    answer:down ? 'neg' : 'pos',
+    hints:['Read the line from left to right.',
+           'A line that falls from left to right has a negative gradient.'],
+    why: down ? `The rise is ${rise}, a negative number, so the gradient is negative. The line falls from left to right.`
+              : `The rise is ${rise}, a positive number, so the gradient is positive. The line climbs from left to right.`
+  };
+};
+
+Q.buildGradient = () => {
+  const target = pick([2,3,4]);
+  return {
+    plane:{A:{x:-3,y:-1},B:{x:2,y:0},numbers:true,triangle:true,free:true},
+    text:`Make a line with a gradient of ${target}.`,
+    sub:'Drag A and B. There is more than one right answer.',
+    kind:'build',
+    test:m => m.m === target,
+    hints:[`Gradient ${target} means it goes up ${target} for every 1 across.`,
+           `Try a rise of ${target*2} with a run of 2. That works too.`],
+    why:`Any rise that is ${target} times the run gives a gradient of ${target}.`
+  };
+};
+
+/* ---- fractions, negatives, equivalence (Medium) ---- */
+
+Q.gradientFraction = () => {
+  const [rise, run] = pick([[1,2],[1,4],[3,4],[2,5],[1,5],[3,5]]);
+  const {A,B} = fit(rise, run);
+  return {
+    plane:{A,B,numbers:true,triangle:true}, figureOnly:true,
+    text:'What is the gradient of this line?',
+    sub:'Your answer will be less than 1. A fraction or a decimal is fine.',
+    kind:'num',
+    answer:rise/run,
+    keyhints:['a fraction or a decimal'],
+    hints:['The run is bigger than the rise, so the answer is less than 1.',
+           `rise ÷ run = ${rise} ÷ ${run}.`],
+    why:`${rise} ÷ ${run} = ${rise}/${run}. The line climbs ${rise} for every ${run} across.`
+  };
+};
+
+Q.gradientNegative = () => {
+  const [r, n] = pick([[2,1],[3,1],[4,2],[1,2],[3,2],[2,4]]);
+  const rise = -r, run = n;
+  const {A,B} = fit(rise, run);
+  return {
+    plane:{A,B,numbers:true,triangle:true}, figureOnly:true,
+    text:'What is the gradient of this line?',
+    sub:'Careful with the sign.',
+    kind:'num',
+    answer:rise/run,
+    keyhints:['a fraction or a decimal','a sign if it needs one'],
+    hints:['The line falls from left to right, so the gradient is negative.',
+           `rise ÷ run = ${rise} ÷ ${run}.`],
+    why:`${rise} ÷ ${run} = ${gradText(rise,run)}. The minus sign records the direction, not the steepness.`
+  };
+};
+
+Q.buildFractionGradient = () => {
+  const [rise, run] = pick([[1,2],[1,3],[2,3],[3,4]]);
+  return {
+    plane:{A:{x:-4,y:0},B:{x:1,y:3},numbers:true,triangle:true,free:true},
+    text:`Make a line with a gradient of ${rise}/${run}.`,
+    sub:'Drag A and B until the ratio is right.',
+    kind:'build',
+    test:m => m.m === rise/run,
+    hints:[`That means it goes up ${rise} for every ${run} across.`,
+           `Try a rise of ${rise} with a run of ${run}, or double both.`],
+    why:`Rise ${rise} with run ${run} gives ${rise} ÷ ${run} = ${rise}/${run}. Doubling both gives the same gradient.`
+  };
+};
+
+Q.buildNegativeGradient = () => {
+  const target = pick([-2,-3,-1]);
+  return {
+    plane:{A:{x:-3,y:0},B:{x:2,y:2},numbers:true,triangle:true,free:true},
+    text:`Make a line with a gradient of ${target}.`,
+    sub:'It will need to fall from left to right.',
+    kind:'build',
+    test:m => m.m === target,
+    hints:['A negative gradient falls from left to right.',
+           `Put B to the right of A but ${Math.abs(target)} units lower for every 1 across.`],
+    why:`A rise of ${target} with a run of 1 gives ${target}. So does ${target*2} over 2.`
+  };
+};
+
+Q.twoTrianglesSameLine = () => {
+  // one straight line, two triangles standing well apart on it
+  const [run, rise] = pick([[3,1],[2,1],[3,2],[2,-1],[3,-1],[2,3]]);
+  const k1 = 1, gap = 1, k2 = 2;                 // second triangle is twice the first
+  const totalRun = run * (k1 + gap + k2);
+  const totalRise = rise * (k1 + gap + k2);
+  const x0 = -Math.round(totalRun / 2);
+  const y0 = -Math.round(totalRise / 2);
+  const at = t => ({ x: x0 + run*t, y: y0 + rise*t });
+  const A = at(0), B = at(k1), C = at(k1+gap), D = at(k1+gap+k2);
+  const g = rise / run;
+  return {
+    plane:{ A, B:D,                                // the line runs the whole way
+            numbers:true, triangle:false, hidePoints:true,
+            pairTri:[{a:A,b:B},{a:C,b:D}] },
+    figureOnly:true,
+    text:'Two triangles stand on the same straight line. Work out the gradient of each one.',
+    sub:'Read the rise and the run off each triangle, then divide.',
+    kind:'pair',
+    labels:['Triangle 1', 'Triangle 2'],
+    answers:[g, g],
+    keyhints:['a fraction or a decimal'],
+    hints:['Triangle 1 gives ' + (rise*k1) + ' ÷ ' + (run*k1) + '. Work that out first.',
+           'Now do the same for triangle 2: ' + (rise*k2) + ' ÷ ' + (run*k2) + '. Simplify it.'],
+    why:`Triangle 1 gives ${rise*k1} ÷ ${run*k1} = ${gradText(rise*k1,run*k1)}. Triangle 2 gives ${rise*k2} ÷ ${run*k2}, which also simplifies to ${gradText(rise,run)}. Different sized triangles, one line, one gradient — that is why a gradient describes the whole line and not just the bit you measured.`
+  };
+};
+
+Q.matchTheGradient = () => {
+  const [rise, run] = pick([[1,2],[2,3],[3,4],[2,5]]);
+  const k = pick([2,3]);
+  const right = scaled(rise, run, k);
+  const wrongs = [
+    { rise: rise + 1, run: run },
+    { rise: rise, run: run + 1 },
+    { rise: run, run: rise }
+  ].filter(w => w.rise/w.run !== rise/run);
+  const opts = shuffle([right, ...wrongs.slice(0,3)])
+    .map(o => ({ label:`rise ${o.rise}, run ${o.run}`, value:o.rise/o.run }));
+  const {A,B} = fit(rise, run);
+  return {
+    plane:{A,B,numbers:true,triangle:true}, figureOnly:true,
+    text:'Which of these has the SAME gradient as the line shown?',
+    sub:`The line on the plane has rise ${rise} and run ${run}.`,
+    kind:'mc',
+    options:opts,
+    answer:rise/run,
+    hints:['Same gradient means the same ratio, not the same numbers.',
+           `Divide each pair. Which one also gives ${gradText(rise,run)}?`],
+    why:`${right.rise} ÷ ${right.run} = ${gradText(rise,run)}, the same as ${rise} ÷ ${run}. Both numbers were multiplied by ${k}, so the ratio did not change.`
+  };
+};
+
+/* ---- reasoning (Spicy) ---- */
+
+Q.fromCoordinates = () => {
+  const [rise, run] = pick([[3,4],[-2,3],[5,2],[-4,5],[3,-2],[-6,4]]);
+  const {A,B} = fit(rise, run);
+  return {
+    plane:{A,B,numbers:true,triangle:false},
+    figureOnly:true,
+    text:`Find the gradient of the interval from A(${A.x}, ${A.y}) to B(${B.x}, ${B.y}).`,
+    sub:'Only the two points are plotted. Work it out from the coordinates.',
+    kind:'num',
+    answer:rise/run,
+    keyhints:['a fraction or a decimal','a sign if it needs one'],
+    hints:['Rise is the change in y. Run is the change in x.',
+           `Change in y = ${B.y} − ${A.y} = ${rise}. Change in x = ${B.x} − ${A.x} = ${run}.`],
+    why:`rise ÷ run = ${rise} ÷ ${run} = ${gradText(rise,run)}.`
+  };
+};
+
+Q.steepestOfFour = () => {
+  const set = shuffle([
+    { label:'−4', v:-4 }, { label:'3', v:3 },
+    { label:'1/2', v:0.5 }, { label:'−2/3', v:-2/3 }
+  ]);
+  return {
+    noPlane:true,
+    text:'Which of these gradients belongs to the steepest line?',
+    sub:'No diagram — compare the numbers themselves.',
+    kind:'mc',
+    options:set.map(s => ({ label:s.label, value:s.v })),
+    answer:-4,
+    hints:['Steepness does not care which way the line leans.',
+           'Ignore the minus signs and compare the sizes.'],
+    why:'Ignoring signs, the sizes are 4, 3, 1/2 and 2/3. A gradient of −4 is the steepest — it falls 4 for every 1 across.'
+  };
+};
+
+Q.realWorldCompare = () => {
+  const pairs = [
+    { a:{name:'a wheelchair ramp at 1 in 14', v:1/14}, b:{name:'a roof pitched 5 in 12', v:5/12} },
+    { a:{name:'a road sign showing 1 in 8', v:1/8}, b:{name:'a hiking track at 1 in 3', v:1/3} },
+    { a:{name:'a ski run at 2 in 5', v:0.4}, b:{name:'a staircase at 2 in 3', v:2/3} }
+  ];
+  const p = pick(pairs);
+  const first = Math.random() < 0.5;
+  const one = first ? p.a : p.b, two = first ? p.b : p.a;
+  const steeper = p.a.v > p.b.v ? p.a : p.b;
+  return {
+    noPlane:true,
+    text:`Which is steeper: ${one.name}, or ${two.name}?`,
+    sub:'Turn each one into a gradient first, then compare.',
+    kind:'mc',
+    options:[{label:one.name.replace(/^a /,'The '),value:one.v},
+             {label:two.name.replace(/^a /,'The '),value:two.v}],
+    answer:steeper.v,
+    hints:['"1 in 14" means it rises 1 for every 14 along — a gradient of 1 ÷ 14.',
+           'Work both out as decimals and compare.'],
+    why:`${steeper.name} is steeper, because its gradient is the larger number. Builders and mathematicians are describing the same ratio with different words.`
+  };
+};
+
+Q.buildEquivalent = () => {
+  const [rise, run] = pick([[2,4],[3,6],[2,6],[4,6]]);
+  const target = rise/run;
+  const {A,B} = fit(rise, run);
+  return {
+    plane:{A,B,C:{x:-6,y:5},D:{x:-3,y:7},showTwo:true,numbers:true,triangle:true,free:true,
+           lockFirst:true},
+    text:'Give line 2 the same gradient as line 1, but using a DIFFERENT sized triangle.',
+    sub:'Drag C and D. Line 1 is fixed.',
+    kind:'build',
+    which:'second',
+    test:(m,m2) => m2.m === target && Math.abs(m2.rise) !== Math.abs(m.rise),
+    hints:[`Line 1 has gradient ${gradText(rise,run)}. Line 2 must match it.`,
+           `Try halving both numbers: rise ${rise/2}, run ${run/2}. That is a different triangle with the same ratio.`],
+    why:`Any pair in the ratio ${gradText(rise,run)} works. Different triangles, same gradient — the lines are parallel.`
+  };
+};
+
+Q.whyUndefined = () => ({
+  plane:{A:{x:-2,y:-4},B:{x:-2,y:4},numbers:true,triangle:true},
+  figureOnly:true,
+  text:'Why does a vertical line have an undefined gradient?',
+  kind:'mc',
+  options:shuffle([
+    {label:'Because the run is 0, and dividing by 0 has no answer',value:'right'},
+    {label:'Because the rise is 0',value:'w1'},
+    {label:'Because it is too steep to measure with a ruler',value:'w2'},
+    {label:'Because the gradient is infinity',value:'w3'}
+  ]),
+  answer:'right',
+  hints:['Look at the run of this line.',
+         'Gradient is rise ÷ run. What happens when the run is 0?'],
+  why:'The run is 0. Division by 0 has no answer at all, so we say the gradient is undefined rather than giving it a number.'
+});
+
+Q.explainConstant = () => ({
+  plane:{A:{x:-5,y:-3},B:{x:3,y:3},numbers:true,triangle:true,free:true},
+  text:'A student says “a longer line must have a bigger gradient”. Are they right?',
+  sub:'Slide the points along the same line to test the claim.',
+  kind:'mc',
+  options:shuffle([
+    {label:'No — length does not matter, only the ratio does',value:'right'},
+    {label:'Yes — longer lines are always steeper',value:'w1'},
+    {label:'Only if the line goes uphill',value:'w2'}
+  ]),
+  answer:'right',
+  hints:['Make the interval longer while keeping the same direction. Watch the gradient.',
+         'Try rise 2 run 4, then rise 4 run 8. Compare.'],
+  why:'Gradient compares two changes. Make both changes bigger in the same proportion and the ratio — and the steepness — stays exactly the same.'
+});
+
+
+/* ---- formula-only work (Medium and Spicy) ----
+   These deliberately give no draggable plane. Medium sees a fixed diagram
+   and must divide; Spicy usually sees nothing but the numbers. */
+
+Q.simplifyRatio = () => {
+  const [rise, run] = pick([[4,6],[6,4],[2,6],[6,8],[9,6],[4,10]]);
+  const {A,B} = fit(rise, run);
+  const g = gcd(rise,run);
+  return {
+    plane:{A,B,numbers:true,triangle:true}, figureOnly:true,
+    text:'What is the gradient of this line? Give it in its simplest form.',
+    sub:'Divide, then simplify.',
+    kind:'num',
+    answer:rise/run,
+    keyhints:['a fraction or a decimal'],
+    hints:['Read the rise and the run off the arrows, then write rise ÷ run.',
+           `Both ${rise} and ${run} divide by ${g}.`],
+    why:`${rise} ÷ ${run} = ${gradText(rise,run)} once you divide both numbers by ${g}.`
+  };
+};
+
+Q.gradientNoPicture = () => {
+  const [rise, run] = pick([[3,4],[-2,3],[5,2],[-4,5],[3,-2],[-6,4],[7,2],[-3,6]]);
+  const ax = rnd(-6,2), ay = rnd(-5,3);
+  const A = {x:ax, y:ay}, B = {x:ax+run, y:ay+rise};
+  return {
+    noPlane:true,
+    text:`Find the gradient of the interval joining A(${A.x}, ${A.y}) and B(${B.x}, ${B.y}).`,
+    sub:'No diagram this time. Use the formula.',
+    kind:'num',
+    answer:rise/run,
+    keyhints:['a fraction or a decimal','a sign if it needs one'],
+    hints:['Rise is the change in y. Run is the change in x.',
+           `rise = ${B.y} − ${A.y} = ${rise}, and run = ${B.x} − ${A.x} = ${run}.`],
+    why:`rise ÷ run = ${rise} ÷ ${run} = ${gradText(rise,run)}.`
+  };
+};
+
+Q.missingCoordinate = () => {
+  const m = pick([2,3,-2,-3,4]);
+  const run = pick([2,3,4]);
+  const ax = rnd(-5,0), ay = rnd(-3,2);
+  const by = ay + m*run;
+  return {
+    noPlane:true,
+    text:`A line through A(${ax}, ${ay}) has a gradient of ${m}. Point B sits at x = ${ax+run}. What is the y coordinate of B?`,
+    sub:'Work backwards from the formula.',
+    kind:'num',
+    answer:by,
+    keyhints:['a whole number'],
+    hints:[`From A to B the run is ${ax+run} − ${ax} = ${run}.`,
+           `If gradient = rise ÷ run then rise = gradient × run = ${m} × ${run} = ${m*run}.`],
+    why:`The run is ${run}, so the rise must be ${m} × ${run} = ${m*run}. Starting from y = ${ay}, that lands on y = ${by}.`
+  };
+};
+
+Q.sameLineWhichPoint = () => {
+  const [rise, run] = pick([[1,2],[2,3],[3,1],[-1,2],[-2,3],[3,4]]);
+  const ax = rnd(-4,0), ay = rnd(-3,2);
+  const A = {x:ax,y:ay}, B = {x:ax+run,y:ay+rise};
+  const k = pick([2,3]);
+  const right = {x:ax+run*k, y:ay+rise*k};
+  const wrongs = [
+    {x:right.x, y:right.y+1},
+    {x:right.x+1, y:right.y},
+    {x:ax+run*k, y:ay+rise*k-2}
+  ].filter(p => !(p.x===right.x && p.y===right.y));
+  const opts = shuffle([right, ...wrongs.slice(0,3)])
+    .map(p => ({label:`(${p.x}, ${p.y})`, value:`${p.x},${p.y}`}));
+  return {
+    noPlane:true,
+    text:`A line passes through A(${A.x}, ${A.y}) and B(${B.x}, ${B.y}). Which of these points is also on that line?`,
+    sub:'Check the gradient from A to each point.',
+    kind:'mc',
+    options:opts,
+    answer:`${right.x},${right.y}`,
+    hints:[`First find the gradient from A to B: ${rise} ÷ ${run} = ${gradText(rise,run)}.`,
+           'A point is on the line only if the gradient from A to it is exactly the same.'],
+    why:`The gradient from A to B is ${gradText(rise,run)}. From A(${A.x}, ${A.y}) to (${right.x}, ${right.y}) the rise is ${rise*k} and the run is ${run*k}, which gives the same gradient.`
+  };
+};
+
+Q.compareTwoGradients = () => {
+  const pairs = [[[3,4],[2,5]],[[1,2],[2,3]],[[5,2],[7,3]],[[-3,4],[2,5]],[[4,3],[5,4]]];
+  const [p, q2] = pick(pairs);
+  const g1 = p[0]/p[1], g2 = q2[0]/q2[1];
+  const steeper = Math.abs(g1) > Math.abs(g2) ? 'first' : 'second';
+  return {
+    noPlane:true,
+    text:`Line 1 has a rise of ${p[0]} and a run of ${p[1]}. Line 2 has a rise of ${q2[0]} and a run of ${q2[1]}. Which line is steeper?`,
+    sub:'Work out both gradients before you decide.',
+    kind:'mc',
+    options:[{label:'Line 1',value:'first'},{label:'Line 2',value:'second'},{label:'They are equally steep',value:'same'}],
+    answer:steeper,
+    hints:['Divide each rise by its own run.',
+           'Steepness ignores the sign — compare the sizes of the two answers.'],
+    why:`Line 1 gives ${gradText(p[0],p[1])} and line 2 gives ${gradText(q2[0],q2[1])}. Ignoring signs, the ${steeper === 'first' ? 'first' : 'second'} is larger, so it is steeper.`
+  };
+};
+
+/* ============================================================
+   4. The differentiated sequences
+      Each level is a designed path, not a random draw. The numbers
+      change every time; the conceptual order does not.
+   ============================================================ */
+
+const LEVELS = {
+  sweet: {
+    name:'Sweet', heat:'🍬', colour:'#16a34a', wash:'#dcfce7',
+    desc:'Counting the rise and the run on a big, fully draggable plane.',
+    blurb:'No formula yet — just count and look.',
+    access:'interactive',
+    seq:['countRise','countRun','direction','countRise','whichSteeper',
+         'countRun','direction','whichSteeper','countRise','buildFlat']
+  },
+  mild: {
+    name:'Mild', heat:'🌱', colour:'#2563eb', wash:'#dbeafe', access:'interactive',
+    desc:'Dividing rise by run, with the plane still there to explore.',
+    blurb:'Now you turn the two counts into one number.',
+    seq:['gradientWhole','gradientWhole','signOfGradient','gradientZero','gradientCount',
+         'gradientUndefined','buildGradient','gradientWhole','gradientCount','buildGradient']
+  },
+  medium: {
+    name:'Medium', heat:'🌶️', colour:'#f59e0b', wash:'#fef3c7', access:'figure',
+    desc:'Fractions, negatives and equivalent ratios — worked out with the formula.',
+    blurb:'The diagram is fixed now. You do the dividing.',
+    seq:['gradientFraction','gradientNegative','simplifyRatio','twoTrianglesSameLine',
+         'gradientFraction','matchTheGradient','simplifyRatio','gradientNegative',
+         'twoTrianglesSameLine','matchTheGradient']
+  },
+  spicy: {
+    name:'Spicy', heat:'🔥', colour:'#ea580c', wash:'#ffedd5', access:'figure',
+    desc:'Gradients from coordinates alone, with no diagram to lean on.',
+    blurb:'Numbers only. You reason it out.',
+    seq:['fromCoordinates','gradientNoPicture','compareTwoGradients','whyUndefined','realWorldCompare',
+         'gradientNoPicture','steepestOfFour','missingCoordinate','sameLineWhichPoint','missingCoordinate']
+  }
+};
+
+const QUIZ_LEN = 10;
+
+/* ============================================================
+   5. Quiz engine
+   ============================================================ */
+
+const S = { levelKey:null, i:0, items:[], score:0, shownCount:0 };
+
+function newItem(genKey){
+  const q = Q[genKey]();
+  q.gen = genKey;
+  q.state = 'open';     // open | right | wrong | revealed
+  q.tries = 0;
+  q.hintsUsed = 0;
+  q.typed = '';
+  return q;
+}
+
+function startLevel(key){
+  S.levelKey = key; S.i = 0; S.score = 0; S.shownCount = 0;
+  S.items = LEVELS[key].seq.slice(0, QUIZ_LEN).map(newItem);
+  const cfg = LEVELS[key];
+  document.documentElement.style.setProperty('--lvl', cfg.colour);
+  document.documentElement.style.setProperty('--lvl-wash', cfg.wash);
+  el('levelName').textContent = cfg.name;
+  el('levelChip').hidden = false;
+  el('progRow').hidden = false;
+  el('main').hidden = false;
+  el('banner').hidden = false;
+  el('veilLevels').hidden = true;
+  buildDots();
+  loadQuestion();
+  say(`${cfg.name} level started. Question 1 of ${QUIZ_LEN}.`);
+}
+
+function buildDots(){
+  const d = el('progDots');
+  d.textContent = '';
+  for (let k = 0; k < QUIZ_LEN; k++){
+    d.appendChild(Object.assign(document.createElement('span'), { className:'dot' }));
+  }
+}
+
+function paintProgress(){
+  el('progCount').textContent = `${S.i+1} / ${QUIZ_LEN}`;
+  el('progFill').style.width = `${(S.i / QUIZ_LEN) * 100}%`;
+  [...el('progDots').children].forEach((dot, k) => {
+    const it = S.items[k];
+    dot.className = 'dot'
+      + (it.state === 'right' ? ' correct' : '')
+      + (it.state === 'revealed' ? ' shown' : '')
+      + (k === S.i ? ' here' : '');
+  });
+}
+
+const cur = () => S.items[S.i];
+
+/**
+ * Put the plane into the state this question wants.
+ *
+ * Three levels of access, so the tool never does the thinking for the student:
+ *   interactive  Sweet and Mild — full drag, toggles, scratch mode, large plane
+ *   figure       Medium — a fixed diagram to read rise and run from, nothing more
+ *   none         most of Spicy — no diagram at all, the formula only
+ */
+function applyPlane(q){
+  const access = q.noPlane ? 'none'
+    : (LEVELS[S.levelKey].access === 'interactive' && !q.figureOnly) ? 'interactive'
+    : 'figure';
+  q.access = access;
+
+  document.body.dataset.plane = access;
+  el('planeCard').hidden = access === 'none';
+  el('planetools').hidden = access !== 'interactive';
+
+  if (access === 'none'){ plane.onChange = null; return; }
+
+  const p = q.plane;
+  plane.A = {...p.A}; plane.B = {...p.B};
+  plane.C = p.C ? {...p.C} : {x:-6,y:4};
+  plane.D = p.D ? {...p.D} : {x:-2,y:6};
+  plane.showTwo = !!p.showTwo;
+  plane.numbers = p.numbers !== false;
+  plane.triangle = p.triangle !== false;
+  plane.ghosts = p.ghosts ? p.ghosts.map(g => ({a:{...g.a}, b:{...g.b}})) : [];
+  plane.pairTri = p.pairTri ? p.pairTri.map(t => ({a:{...t.a}, b:{...t.b}})) : null;
+  plane.hidePoints = !!p.hidePoints;
+
+  // a figure is never draggable, whatever the question asked for
+  plane.locked = access === 'figure' ? true : !p.free;
+
+  q.snapshot = { A:{...plane.A}, B:{...plane.B}, C:{...plane.C}, D:{...plane.D},
+                 numbers:plane.numbers, triangle:plane.triangle };
+
+  el('tNum').setAttribute('aria-pressed', String(plane.numbers));
+  el('tTri').setAttribute('aria-pressed', String(plane.triangle));
+  el('tExplore').setAttribute('aria-pressed','false');
+  el('tExplore').textContent = 'Explore freely';
+  el('tExplore').hidden = !!p.free;
+
+  el('planeNote').textContent =
+      access === 'figure' ? 'This diagram is fixed. Read the rise and the run from it, then use the formula.'
+    : p.free ? 'Drag A and B, or press Tab then use the arrow keys.'
+    : 'This line is set for the question. Press “Explore freely” if you want to experiment.';
+  drawPlane();
+}
+
+function loadQuestion(){
+  const q = cur();
+  paintProgress();
+  applyPlane(q);
+
+  el('qTag').textContent = `Question ${S.i+1} of ${QUIZ_LEN}`;
+  el('qText').textContent = q.text;
+  el('qSub').textContent = q.sub || '';
+  el('qSub').hidden = !q.sub;
+  el('fb').hidden = true;
+  el('hint').hidden = true;
+  el('btnHint').hidden = false;
+  el('btnHint').textContent = 'Hint';
+  el('btnHint').disabled = false;
+  el('btnShow').hidden = false;
+  el('btnShow').disabled = false;
+  el('btnNext').hidden = true;
+  el('btnCheck').hidden = !(q.kind === 'num' || q.kind === 'build' || q.kind === 'pair');
+  el('btnCheck').textContent = q.kind === 'build' ? 'Check my line'
+    : q.kind === 'pair' ? 'Check both' : 'Check';
+
+  buildAnswerArea(q);
+  if (q.state !== 'open') restoreAnswered(q);
+}
+
+function buildAnswerArea(q){
+  const box = el('answerArea');
+  box.textContent = '';
+
+  if (q.kind === 'mc'){
+    const wrap = document.createElement('div');
+    wrap.className = 'opts';
+    q.options.forEach((o, k) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'opt'; b.dataset.k = k;
+      b.innerHTML = `<span class="opt__key">${String.fromCharCode(65+k)}</span><span>${o.label}</span>`;
+      b.addEventListener('click', () => answerMC(k));
+      wrap.appendChild(b);
+    });
+    box.appendChild(wrap);
+  }
+
+  if (q.kind === 'num'){
+    const wrap = document.createElement('div');
+    wrap.className = 'entry';
+    const inp = document.createElement('input');
+    inp.id = 'numIn'; inp.autocomplete = 'off'; inp.spellcheck = false;
+    inp.setAttribute('aria-label','Your answer');
+    inp.placeholder = 'Type your answer';
+    inp.value = q.typed || '';
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); answerNum(); } });
+    inp.addEventListener('input', () => { q.typed = inp.value; inp.className = ''; });
+    wrap.appendChild(inp);
+    box.appendChild(wrap);
+    if (q.keyhints){
+      const kh = document.createElement('div');
+      kh.className = 'keyhints';
+      q.keyhints.forEach(t => {
+        const s = document.createElement('span'); s.className = 'keyhint'; s.textContent = t; kh.appendChild(s);
+      });
+      box.appendChild(kh);
+    }
+    setTimeout(() => { if (inp.isConnected) inp.focus(); }, 30);
+  }
+
+  if (q.kind === 'pair'){
+    const wrap = document.createElement('div');
+    wrap.className = 'pairbox';
+    q.labels.forEach((lab, k) => {
+      const row = document.createElement('label');
+      row.className = 'pairrow pairrow--' + (k+1);
+      const badge = document.createElement('span');
+      badge.className = 'pairrow__badge'; badge.textContent = String(k+1);
+      const name = document.createElement('span');
+      name.className = 'pairrow__name'; name.textContent = lab + ' gradient';
+      const inp = document.createElement('input');
+      inp.id = 'pairIn' + k; inp.autocomplete = 'off'; inp.spellcheck = false;
+      inp.placeholder = '?';
+      inp.setAttribute('aria-label', lab + ' gradient');
+      inp.value = (q.typedPair && q.typedPair[k]) || '';
+      inp.addEventListener('input', () => {
+        q.typedPair = q.typedPair || ['',''];
+        q.typedPair[k] = inp.value; inp.className = '';
+      });
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); answerPair(); } });
+      row.append(badge, name, inp);
+      wrap.appendChild(row);
+    });
+    box.appendChild(wrap);
+    if (q.keyhints){
+      const kh = document.createElement('div');
+      kh.className = 'keyhints';
+      q.keyhints.forEach(t => {
+        const sp = document.createElement('span'); sp.className = 'keyhint'; sp.textContent = t; kh.appendChild(sp);
+      });
+      box.appendChild(kh);
+    }
+    // hold a reference rather than looking the id up later: by the time this
+    // fires the student may already have moved to the next question
+    const firstInput = wrap.querySelector('input');
+    setTimeout(() => { if (firstInput && firstInput.isConnected) firstInput.focus(); }, 30);
+  }
+
+  if (q.kind === 'build'){
+    const d = document.createElement('div');
+    d.className = 'buildbox'; d.id = 'buildBox';
+    d.textContent = 'Build it on the plane, then press Check when you think it is right.';
+    box.appendChild(d);
+    // No auto-marking: the student decides when the line is finished, which
+    // keeps the judgement theirs rather than the tool's.
+    plane.onChange = () => {
+      if (q.state === 'wrong'){
+        q.state = 'open';
+        el('fb').hidden = true;
+        el('buildBox').textContent = 'Keep going, then press Check.';
+      }
+    };
+    if (q.plane.lockFirst) lockFirstLine();
+  }
+  if (q.kind !== 'build') plane.onChange = null;
+}
+
+/** For the "match line 2 to line 1" task: A and B must not move. */
+function lockFirstLine(){
+  ['A','B'].forEach(n => {
+    const g = document.querySelector(`[data-pt="${n}"]`);
+    g.classList.add('locked');
+    g.setAttribute('tabindex','-1');
+    g.dataset.fixed = '1';
+  });
+}
+
+/* ---- marking ---- */
+
+/** Accept 3, -2, 1/2, -3/4, 0.5, .5 and the word undefined. */
+function parseNum(raw){
+  if (raw == null) return null;
+  let s = String(raw).trim().toLowerCase().replace(/\s+/g,'').replace('−','-');
+  if (!s) return null;
+  if (/^undef(ined)?$/.test(s)) return { undef:true };
+  let mm = s.match(/^(-?\d+)\/(-?\d+)$/);
+  if (mm){
+    const d = Number(mm[2]);
+    if (d === 0) return { undef:true };
+    return { v: Number(mm[1]) / d };
+  }
+  if (/^-?(\d+\.?\d*|\.\d+)$/.test(s)) return { v: Number(s) };
+  return null;
+}
+
+/**
+ * Accept an exact value, or a sensibly rounded decimal. A gradient of 1/3 has
+ * no exact decimal form, so a student writing 0.33 has done the mathematics
+ * correctly and should not be told they are wrong.
+ */
+function sameValue(a, b){
+  if (Math.abs(a - b) < 1e-6) return true;
+  const exact = [2,4,5,8,10,20,25,50,100].some(d => Math.abs(b*d - Math.round(b*d)) < 1e-9);
+  return !exact && Math.abs(a - b) <= 0.005;
+}
+
+function answerNum(){
+  const q = cur();
+  if (q.state === 'right' || q.state === 'revealed') return;
+  const inp = el('numIn');
+  const parsed = parseNum(inp.value);
+  q.typed = inp.value;
+  q.tries++;
+
+  if (!parsed){
+    inp.className = 'wrong';
+    feedback('no', 'I could not read that. Try a number like 2, −3, 1/2 or 0.5.');
+    return;
+  }
+  const ok = parsed.undef ? q.answer === 'undef' : sameValue(parsed.v, Number(q.answer));
+  if (ok){ inp.className = 'right'; markRight(q); }
+  else { inp.className = 'wrong'; markWrong(q); }
+}
+
+function answerPair(){
+  const q = cur();
+  if (q.state === 'right' || q.state === 'revealed') return;
+  const inputs = q.answers.map((_, k) => el('pairIn' + k));
+  const parsed = inputs.map(i => parseNum(i.value));
+  q.typedPair = inputs.map(i => i.value);
+  q.tries++;
+
+  if (parsed.some(p => !p)){
+    inputs.forEach((i, k) => { if (!parsed[k]) i.className = 'wrong'; });
+    feedback('no', 'Fill in both boxes with a number, a fraction like 1/3, or a decimal.');
+    return;
+  }
+  const ok = parsed.map((p, k) => p.undef ? false : sameValue(p.v, q.answers[k]));
+  inputs.forEach((i, k) => { i.className = ok[k] ? 'right' : 'wrong'; });
+
+  if (ok.every(Boolean)){ markRight(q); return; }
+  // both filled in and equal to each other, but wrong: they have the idea, not the arithmetic
+  const equalToEachOther = sameValue(parsed[0].v ?? NaN, parsed[1].v ?? NaN);
+  q.state = 'wrong';
+  feedback('no', equalToEachOther
+    ? 'You have spotted that both are the same — but check the arithmetic on the rise and the run.'
+    : ok[0] ? 'Triangle 1 is right. Look at triangle 2 again.'
+    : ok[1] ? 'Triangle 2 is right. Look at triangle 1 again.'
+    : 'Not yet. Read the rise and the run off each triangle carefully.');
+  if (q.tries >= 2 && q.hintsUsed === 0) showHint();
+}
+
+function answerMC(k){
+  const q = cur();
+  if (q.state === 'right' || q.state === 'revealed') return;
+  q.tries++;
+  q.chosen = k;
+  const right = q.options[k].value === q.answer
+    || (typeof q.answer === 'number' && sameValue(q.options[k].value, q.answer));
+  paintOptions(q, k, right);
+  if (right) markRight(q); else markWrong(q);
+}
+
+function paintOptions(q, chosenIdx, right){
+  [...el('answerArea').querySelectorAll('.opt')].forEach((b, k) => {
+    b.classList.remove('right','wrong','dim');
+    const isAns = q.options[k].value === q.answer
+      || (typeof q.answer === 'number' && sameValue(q.options[k].value, q.answer));
+    if (k === chosenIdx) b.classList.add(right ? 'right' : 'wrong');
+    if ((q.state === 'right' || q.state === 'revealed') && isAns) b.classList.add('right');
+    b.disabled = q.state === 'right' || q.state === 'revealed';
+    if (b.disabled && !b.classList.contains('right') && !b.classList.contains('wrong')) b.classList.add('dim');
+  });
+}
+
+function checkBuild(){
+  const q = cur();
+  if (q.kind !== 'build' || q.state === 'right' || q.state === 'revealed') return;
+  q.tries++;
+  const m = measure(plane.A, plane.B);
+  const m2 = measure(plane.C, plane.D);
+  if (q.test(m, m2)){
+    el('buildBox').classList.add('done');
+    el('buildBox').textContent = 'That works.';
+    markRight(q);
+  } else {
+    el('buildBox').textContent = 'Not there yet — adjust the points and check again.';
+    markWrong(q);
+  }
+}
+
+function markRight(q){
+  q.state = 'right';
+  if (!q.counted){ q.counted = true; S.score++; }
+  feedback('ok', pick(['Correct.','That is it.','Yes — nicely done.','Right.']), q.why);
+  finishQuestion(q);
+  say('Correct. ' + (q.why || ''));
+}
+
+function markWrong(q){
+  q.state = 'wrong';
+  const msg = q.tries >= 2
+    ? 'Still not it — try a hint, or press “Show me”.'
+    : 'Not quite. Have another go — nothing is lost.';
+  feedback('no', msg);
+  if (q.tries >= 2 && q.hintsUsed === 0) showHint();
+  say(msg);
+}
+
+function revealAnswer(){
+  const q = cur();
+  if (q.state === 'right') return;
+  q.state = 'revealed';
+  S.shownCount++;
+  let text;
+  if (q.kind === 'mc'){
+    const idx = q.options.findIndex(o => o.value === q.answer
+      || (typeof q.answer === 'number' && sameValue(o.value, q.answer)));
+    text = 'The answer is ' + q.options[idx].label + '.';
+    paintOptions(q, q.chosen ?? -1, false);
+  } else if (q.kind === 'num'){
+    text = 'The answer is ' + (q.answer === 'undef' ? 'undefined' : formatAns(q.answer)) + '.';
+    el('numIn').value = q.answer === 'undef' ? 'undefined' : formatAns(q.answer);
+    el('numIn').className = '';
+    el('numIn').disabled = true;
+  } else if (q.kind === 'pair'){
+    text = 'Both triangles give ' + formatAns(q.answers[0]) + '.';
+    q.answers.forEach((a, k) => {
+      const i = el('pairIn' + k);
+      i.value = formatAns(a); i.className = ''; i.disabled = true;
+    });
+  } else {
+    text = 'Here is one line that works.';
+    solveBuild(q);
+  }
+  feedback('shown', text, q.why);
+  finishQuestion(q);
+  say(text + ' ' + (q.why || ''));
+}
+
+function formatAns(v){
+  if (Number.isInteger(v)) return String(v);
+  for (let d = 2; d <= 12; d++){
+    const n = v * d;
+    if (Math.abs(n - Math.round(n)) < 1e-9) return `${Math.round(n)}/${d}`;
+  }
+  return String(Math.round(v*1000)/1000);
+}
+
+/** Show a worked example for a build task by finding a valid position. */
+function solveBuild(q){
+  const search = () => {
+    for (let ax = MIN; ax <= MAX; ax++) for (let ay = MIN; ay <= MAX; ay++)
+      for (let bx = MIN; bx <= MAX; bx++) for (let by = MIN; by <= MAX; by++){
+        if (q.which === 'second'){
+          const m = measure(plane.A, plane.B);
+          const m2 = measure({x:ax,y:ay},{x:bx,y:by});
+          if (q.test(m, m2)) return { C:{x:ax,y:ay}, D:{x:bx,y:by} };
+        } else {
+          const m = measure({x:ax,y:ay},{x:bx,y:by});
+          if (q.test(m, measure(plane.C, plane.D))) return { A:{x:ax,y:ay}, B:{x:bx,y:by} };
+        }
+      }
+    return null;
+  };
+  const found = search();
+  if (found) Object.assign(plane, found);
+  drawPlane();
+  if (el('buildBox')) el('buildBox').textContent = 'One possible answer is shown on the plane.';
+}
+
+function finishQuestion(q){
+  el('btnNext').hidden = false;
+  el('btnNext').textContent = S.i === QUIZ_LEN - 1 ? 'See my result →' : 'Next →';
+  el('btnShow').disabled = true;
+  el('btnHint').disabled = true;
+  el('btnCheck').hidden = true;
+  plane.onChange = null;
+  paintProgress();
+  setTimeout(() => { const b = el('btnNext'); if (b && !b.hidden) b.focus(); }, 40);
+}
+
+function restoreAnswered(q){
+  if (q.kind === 'mc') paintOptions(q, q.chosen ?? -1, q.state === 'right');
+  if (q.kind === 'num' && el('numIn')) el('numIn').disabled = q.state !== 'wrong';
+  if (q.kind === 'pair') q.answers.forEach((_, k) => {
+    const i = el('pairIn' + k); if (i) i.disabled = q.state !== 'wrong';
+  });
+  if (q.state === 'right') feedback('ok','Already correct.', q.why);
+  if (q.state === 'revealed') feedback('shown','You looked at this one.', q.why);
+  if (q.state !== 'open') finishQuestion(q);
+}
+
+function feedback(kind, msg, why){
+  const f = el('fb');
+  f.hidden = false;
+  f.className = 'fb ' + kind;
+  f.textContent = msg;
+  if (why){
+    const s = document.createElement('span');
+    s.className = 'fb__why'; s.textContent = why;
+    f.appendChild(s);
+  }
+}
+
+function showHint(){
+  const q = cur();
+  if (!q.hints || q.hintsUsed >= q.hints.length){
+    el('btnHint').disabled = true;
+    return;
+  }
+  el('hint').hidden = false;
+  el('hint').textContent = q.hints[q.hintsUsed];
+  q.hintsUsed++;
+  el('btnHint').textContent = q.hintsUsed < q.hints.length ? 'Another hint' : 'No more hints';
+  if (q.hintsUsed >= q.hints.length) el('btnHint').disabled = true;
+  say('Hint: ' + el('hint').textContent);
+}
+
+function nextQuestion(){
+  if (S.i >= QUIZ_LEN - 1){ showCertificate(); return; }
+  S.i++;
+  loadQuestion();
+}
+
+/* ---- certificate ---- */
+
+function showCertificate(){
+  const cfg = LEVELS[S.levelKey];
+  el('progFill').style.width = '100%';
+  el('certScore').textContent = `${S.score} / ${QUIZ_LEN}`;
+  el('certHead').textContent = `${cfg.name} level complete`;
+  const pct = Math.round(S.score / QUIZ_LEN * 100);
+  el('certLine').textContent = pct === 100
+    ? 'Every question, first go or not — that is the lot.'
+    : pct >= 70 ? 'Solid work. You have the idea.'
+    : pct >= 40 ? 'Good progress. Worth another run at this level.'
+    : 'Have another go — the questions change every time.';
+  el('certNote').textContent = S.shownCount
+    ? `You used “Show me” on ${S.shownCount} question${S.shownCount>1?'s':''}. Those ones are worth revisiting.`
+    : 'You did not need to reveal a single answer.';
+  el('veilCert').hidden = false;
+  el('btnCopy').focus();
+
+  // hook for Mills Maths Tools result saving, if the page is embedded there
+  if (window.MMTSave) window.MMTSave({
+    tool:'gradient-student-quiz', topic:'linear-relationships',
+    level:cfg.name, levelKey:S.levelKey, score:S.score, total:QUIZ_LEN,
+    percent:pct, masteryTopic:'gradient', types:['level:'+S.levelKey],
+    certificateText:`Gradient — ${cfg.name}: ${S.score}/${QUIZ_LEN}`
+  });
+}
+
+async function copyResult(){
+  const cfg = LEVELS[S.levelKey];
+  const d = new Date(), p = n => String(n).padStart(2,'0');
+  const text = `Gradient Quiz — ${cfg.name}\nScore: ${S.score} / ${QUIZ_LEN}\n`
+    + `Completed: ${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  try {
+    await navigator.clipboard.writeText(text);
+    el('btnCopy').textContent = 'Copied';
+    setTimeout(() => el('btnCopy').textContent = 'Copy my result', 1400);
+  } catch { window.prompt('Copy this:', text); }
+}
+
+function backToLevels(){
+  el('veilCert').hidden = true;
+  el('veilLevels').hidden = false;
+  el('main').hidden = true;
+  el('progRow').hidden = true;
+  el('levelChip').hidden = true;
+  el('banner').hidden = true;
+  S.levelKey = null;
+}
+
+/* ============================================================
+   6. Wiring
+   ============================================================ */
+
+function buildLevelList(){
+  const list = el('levelList');
+  Object.entries(LEVELS).forEach(([key, cfg]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `lvl lvl--${key}`;
+    b.innerHTML = `<span class="lvl__heat" aria-hidden="true">${cfg.heat}</span>
+      <span class="lvl__body"><span class="lvl__name">${cfg.name}</span>
+      <span class="lvl__desc">${cfg.desc}</span></span>
+      <span class="lvl__go">Start →</span>`;
+    b.addEventListener('click', () => startLevel(key));
+    list.appendChild(b);
+  });
+}
+
+function wire(){
+  el('btnHint').addEventListener('click', showHint);
+  el('btnShow').addEventListener('click', revealAnswer);
+  el('btnNext').addEventListener('click', nextQuestion);
+  el('btnCheck').addEventListener('click', () => {
+    const q = cur();
+    if (q.kind === 'build') checkBuild();
+    else if (q.kind === 'pair') answerPair();
+    else answerNum();
+  });
+  el('btnCopy').addEventListener('click', copyResult);
+  el('btnAgain').addEventListener('click', () => { el('veilCert').hidden = true; startLevel(S.levelKey); });
+  el('btnBackLevels').addEventListener('click', backToLevels);
+  el('btnLevels').addEventListener('click', backToLevels);
+  el('btnRestart').addEventListener('click', () => { if (S.levelKey) startLevel(S.levelKey); });
+
+  el('tNum').addEventListener('click', () => {
+    plane.numbers = !plane.numbers;
+    el('tNum').setAttribute('aria-pressed', String(plane.numbers));
+    drawPlane();
+  });
+  el('tTri').addEventListener('click', () => {
+    plane.triangle = !plane.triangle;
+    el('tTri').setAttribute('aria-pressed', String(plane.triangle));
+    drawPlane();
+  });
+
+  // Explore freely: unlock the plane for scratch work, then put it back.
+  el('tExplore').addEventListener('click', () => {
+    const on = el('tExplore').getAttribute('aria-pressed') !== 'true';
+    el('tExplore').setAttribute('aria-pressed', String(on));
+    el('tExplore').textContent = on ? 'Back to the question' : 'Explore freely';
+    const q = cur();
+    if (on){
+      plane.locked = false;
+      el('planeNote').textContent = 'Scratch mode — drag anything. Your answer is not affected.';
+    } else {
+      Object.assign(plane, { A:{...q.snapshot.A}, B:{...q.snapshot.B},
+        C:{...q.snapshot.C}, D:{...q.snapshot.D},
+        numbers:q.snapshot.numbers, triangle:q.snapshot.triangle, locked:true });
+      el('tNum').setAttribute('aria-pressed', String(plane.numbers));
+      el('tTri').setAttribute('aria-pressed', String(plane.triangle));
+      el('planeNote').textContent = 'Back to the question line.';
+    }
+    drawPlane();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !el('btnNext').hidden && document.activeElement.tagName !== 'INPUT'){
+      e.preventDefault(); nextQuestion();
+    }
+  });
+}
+
+buildStatic();
+initDrag();
+buildLevelList();
+wire();
+drawPlane();
+
+})();
+</script>
+</body>
+</html>
