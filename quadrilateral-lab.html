@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Quadrilateral Lab</title>
+<meta name="description" content="An interactive geometry lab for classifying quadrilaterals by their properties." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cpolygon points='13,2 24,10 20,23 6,23 2,10' fill='none' stroke='%232F5AD6' stroke-width='2.5'/%3E%3C/svg%3E" />
+<!--
+  Self-contained build for GitHub Pages / school-network hosting.
+  No external network requests are made anywhere in this file
+  (fonts use the visitor's own system fonts) so it works fully
+  offline and behind restrictive school web filters.
+-->
+<style>
+/* ============================= TOKENS ============================= */
+:root{
+  --bg:#F5F7FB;
+  --surface:#FFFFFF;
+  --surface-2:#EEF1F8;
+  --surface-3:#E4E9F6;
+  --border:#D7DEEC;
+  --border-strong:#B9C4DD;
+  --ink:#1A2333;
+  --ink-soft:#566078;
+  --ink-faint:#8592AC;
+  --primary:#2F5AD6;
+  --primary-ink:#1E3FA0;
+  --primary-soft:#E7EDFC;
+  --accent:#E8672C;
+  --accent-soft:#FCE6DA;
+  --success:#1F9D6B;
+  --success-soft:#E3F6EE;
+  --danger:#D6455B;
+  --danger-soft:#FBE7EA;
+  --warning:#C9891A;
+  --warning-soft:#FBF0DC;
+  --grid-line: rgba(47,90,214,0.10);
+  --grid-line-strong: rgba(47,90,214,0.18);
+  --shadow: 0 1px 2px rgba(20,30,60,0.07), 0 10px 28px -14px rgba(20,30,60,0.22);
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --font-display:'Segoe UI Semibold','Segoe UI','Century Gothic','Avenir Next',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+  --font-body:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;
+  --font-mono:ui-monospace,'Cascadia Mono','Segoe UI Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10141F;
+    --surface:#171D2B;
+    --surface-2:#1D2436;
+    --surface-3:#252E45;
+    --border:#2B3450;
+    --border-strong:#3B4568;
+    --ink:#E7ECF7;
+    --ink-soft:#9AA6C2;
+    --ink-faint:#69759A;
+    --primary:#6F93FF;
+    --primary-ink:#BAD0FF;
+    --primary-soft:#1E2A4D;
+    --accent:#FF9358;
+    --accent-soft:#3A2618;
+    --success:#3FCB90;
+    --success-soft:#123829;
+    --danger:#FF6B81;
+    --danger-soft:#3A1620;
+    --warning:#F0BB4C;
+    --warning-soft:#3A2C0E;
+    --grid-line: rgba(111,147,255,0.14);
+    --grid-line-strong: rgba(111,147,255,0.24);
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 28px -14px rgba(0,0,0,0.7);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10141F;
+  --surface:#171D2B;
+  --surface-2:#1D2436;
+  --surface-3:#252E45;
+  --border:#2B3450;
+  --border-strong:#3B4568;
+  --ink:#E7ECF7;
+  --ink-soft:#9AA6C2;
+  --ink-faint:#69759A;
+  --primary:#6F93FF;
+  --primary-ink:#BAD0FF;
+  --primary-soft:#1E2A4D;
+  --accent:#FF9358;
+  --accent-soft:#3A2618;
+  --success:#3FCB90;
+  --success-soft:#123829;
+  --danger:#FF6B81;
+  --danger-soft:#3A1620;
+  --warning:#F0BB4C;
+  --warning-soft:#3A2C0E;
+  --grid-line: rgba(111,147,255,0.14);
+  --grid-line-strong: rgba(111,147,255,0.24);
+  --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 28px -14px rgba(0,0,0,0.7);
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:600;color:var(--ink);text-wrap:balance;margin:0 0 0.4em;}
+h1{font-size:1.35rem;}
+h2{font-size:1.05rem;}
+h3{font-size:0.92rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);}
+p{margin:0 0 0.7em;}
+button{font-family:inherit;}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
+}
+
+/* ============================= LAYOUT ============================= */
+.app{max-width:1320px;margin:0 auto;padding:0 20px 60px;}
+
+.topbar{
+  position:sticky;top:0;z-index:40;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  box-shadow:var(--shadow);
+}
+.topbar-inner{max-width:1320px;margin:0 auto;padding:14px 20px 0;}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.brand-mark{width:26px;height:26px;flex:none;}
+.brand h1{margin:0;}
+.brand span.tag{color:var(--ink-soft);font-size:0.85rem;}
+
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:thin;padding-bottom:0;}
+.tab-btn{
+  appearance:none;border:none;background:transparent;cursor:pointer;
+  padding:10px 14px 12px;font-size:0.86rem;font-weight:600;color:var(--ink-soft);
+  border-bottom:3px solid transparent;white-space:nowrap;font-family:var(--font-body);
+}
+.tab-btn:hover{color:var(--ink);}
+.tab-btn[aria-selected="true"]{color:var(--primary);border-bottom-color:var(--primary);}
+
+main{padding-top:20px;}
+.panel{display:none;}
+.panel.active{display:block;}
+.lede{color:var(--ink-soft);max-width:70ch;margin-bottom:12px;}
+
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:16px 18px;
+}
+.section-gap{margin-top:22px;}
+
+/* ---------- explore layout ---------- */
+.explore-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start;max-width:960px;}
+@media (max-width:880px){ .explore-grid{grid-template-columns:1fr;max-width:none;} }
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;}
+.chip{
+  appearance:none;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);
+  padding:7px 13px;border-radius:999px;font-size:0.82rem;font-weight:600;cursor:pointer;
+  transition:background .12s,border-color .12s,color .12s;
+}
+.chip:hover{border-color:var(--border-strong);}
+.chip[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:#fff;}
+.chip.accent[aria-pressed="true"], .chip.accent.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.chip.ghost{background:transparent;}
+.chip.small{padding:5px 10px;font-size:0.76rem;}
+.toolbar-sep{width:1px;align-self:stretch;background:var(--border);margin:2px 4px;}
+.btn{
+  appearance:none;border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);
+  padding:8px 14px;border-radius:var(--radius-sm);font-weight:600;font-size:0.84rem;cursor:pointer;
+}
+.btn:hover{background:var(--surface-2);}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+.btn.primary:hover{background:var(--primary-ink);}
+.btn.subtle{border-color:transparent;background:transparent;color:var(--primary);}
+
+.canvas-card{padding:10px;position:relative;}
+.canvas-wrap{width:100%;aspect-ratio:4/2.85;max-height:56vh;touch-action:none;}
+svg.stage{width:100%;height:100%;display:block;border-radius:var(--radius-sm);background:var(--surface-2);}
+
+.convention-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
+
+.hint-box{
+  margin-top:12px;background:var(--primary-soft);border:1px solid var(--border);border-radius:var(--radius);
+  padding:12px 14px;display:flex;gap:12px;align-items:flex-start;
+}
+.hint-box strong{color:var(--primary-ink);}
+.hint-box .hint-text{flex:1;}
+.hint-box button{flex:none;}
+
+.glossary{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.glossary details{
+  background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:6px 10px;font-size:0.82rem;
+}
+.glossary summary{cursor:pointer;font-weight:600;color:var(--ink);}
+.glossary p{margin:6px 0 0;color:var(--ink-soft);}
+
+/* ---------- property panel ---------- */
+.panel-col{position:sticky;top:150px;}
+.classify-card{margin-bottom:14px;}
+.classify-title{font-size:0.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin-bottom:8px;font-weight:700;}
+.pill-row{display:flex;flex-wrap:wrap;gap:6px;}
+.pill{
+  padding:5px 11px;border-radius:999px;font-size:0.8rem;font-weight:700;
+  background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);
+}
+.pill.top{background:var(--accent);border-color:var(--accent);color:#fff;}
+.classify-sentence{margin-top:10px;font-size:0.85rem;color:var(--ink-soft);}
+.hidden-name{filter:blur(6px);user-select:none;}
+.teacher-note{font-size:0.76rem;color:var(--ink-faint);margin-top:6px;}
+
+.prop-group h3{margin:14px 0 6px;}
+.prop-group:first-child h3{margin-top:0;}
+.prop-row{
+  display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--border);
+}
+.prop-row:last-child{border-bottom:none;}
+.prop-label{flex:1;font-size:0.83rem;}
+.prop-detail{display:block;font-size:0.72rem;color:var(--ink-faint);margin-top:1px;}
+.state-chip{
+  flex:none;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;
+  font-size:0.72rem;font-weight:700;font-family:var(--font-mono);white-space:nowrap;
+}
+.state-chip.true{background:var(--success-soft);color:var(--success);}
+.state-chip.false{background:var(--danger-soft);color:var(--danger);}
+.state-chip.partial{background:var(--warning-soft);color:var(--warning);}
+
+/* ---------- generic quiz / question widgets ---------- */
+.choice-list{display:flex;flex-direction:column;gap:8px;margin:10px 0;}
+.choice-item{
+  display:flex;align-items:flex-start;gap:9px;background:var(--surface-2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:9px 12px;font-size:0.87rem;cursor:pointer;
+}
+.choice-item input{margin-top:3px;}
+.feedback{
+  margin-top:12px;border-radius:var(--radius);padding:12px 14px;font-size:0.87rem;border:1px solid var(--border);
+}
+.feedback.good{background:var(--success-soft);border-color:var(--success);}
+.feedback.bad{background:var(--danger-soft);border-color:var(--danger);}
+.feedback.info{background:var(--primary-soft);border-color:var(--primary);}
+.feedback ul{margin:6px 0 0;padding-left:20px;}
+.feedback li{margin-bottom:4px;}
+
+.split{display:grid;grid-template-columns:280px minmax(0,1fr);gap:20px;align-items:start;}
+@media (max-width:760px){.split{grid-template-columns:1fr;}}
+.mini-shape{width:100%;aspect-ratio:1/1;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);}
+.mark-key{font-size:0.76rem;color:var(--ink-soft);margin-top:8px;line-height:1.5;}
+
+.abtn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.abtn{
+  border:1px solid var(--border-strong);background:var(--surface);padding:7px 14px;border-radius:var(--radius-sm);
+  font-weight:700;font-size:0.8rem;cursor:pointer;
+}
+.abtn[data-state="always"].sel{background:var(--success);border-color:var(--success);color:#fff;}
+.abtn[data-state="sometimes"].sel{background:var(--warning);border-color:var(--warning);color:#fff;}
+.abtn[data-state="never"].sel{background:var(--danger);border-color:var(--danger);color:#fff;}
+
+/* ---------- hierarchy ---------- */
+.hier-wrap{display:grid;grid-template-columns:minmax(0,1.5fr) 320px;gap:18px;align-items:start;}
+@media (max-width:880px){.hier-wrap{grid-template-columns:1fr;}}
+.hier-region{cursor:pointer;transition:opacity .15s;}
+.hier-region:hover{opacity:0.85;}
+.hier-label{font-family:var(--font-display);font-weight:600;fill:var(--ink);pointer-events:none;}
+.hier-info h3{margin-top:0;}
+.hier-info ul{padding-left:18px;margin:8px 0;}
+.hier-info li{margin-bottom:4px;font-size:0.85rem;}
+
+/* ---------- compare table ---------- */
+.compare-picker{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.table-scroll{overflow-x:auto;}
+table.compare{border-collapse:collapse;width:100%;min-width:560px;}
+table.compare th, table.compare td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;font-size:0.84rem;}
+table.compare thead th{font-family:var(--font-display);font-size:0.8rem;color:var(--ink-soft);border-bottom:2px solid var(--border-strong);}
+table.compare tbody tr{cursor:pointer;}
+table.compare tbody tr:hover{background:var(--surface-2);}
+table.compare tbody tr.selected{background:var(--primary-soft);}
+table.compare td.state{font-family:var(--font-mono);font-weight:700;}
+table.compare td.state.true{color:var(--success);}
+table.compare td.state.false{color:var(--danger);}
+table.compare td.state.partial{color:var(--warning);}
+.mini-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:16px;}
+.mini-cell{text-align:center;font-size:0.78rem;font-weight:700;color:var(--ink-soft);}
+.mini-cell svg{width:100%;aspect-ratio:1/1;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);}
+
+/* ---------- accordion (challenges) ---------- */
+.accordion-item{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;}
+.accordion-head{
+  width:100%;text-align:left;background:var(--surface-2);border:none;padding:12px 16px;font-weight:700;
+  font-family:var(--font-display);font-size:0.92rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+}
+.accordion-body{padding:14px 16px;display:none;}
+.accordion-item.open .accordion-body{display:block;}
+.accordion-item.open .accordion-head{color:var(--primary);}
+.lvl-tag{font-family:var(--font-mono);font-size:0.72rem;color:var(--ink-faint);}
+
+/* ---------- teacher ---------- */
+.teacher-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field label{font-size:0.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);}
+select, textarea{
+  font-family:inherit;font-size:0.86rem;padding:8px 10px;border-radius:var(--radius-sm);border:1px solid var(--border-strong);
+  background:var(--surface);color:var(--ink);
+}
+textarea{width:100%;min-height:70px;resize:vertical;}
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;}
+.switch{position:relative;width:38px;height:22px;flex:none;}
+.switch input{opacity:0;width:100%;height:100%;margin:0;position:absolute;top:0;left:0;cursor:pointer;z-index:2;}
+.switch .track{position:absolute;inset:0;background:var(--border-strong);border-radius:999px;transition:background .15s;pointer-events:none;}
+.switch .thumb{position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,0.3);pointer-events:none;}
+.switch input:checked + .track{background:var(--primary);}
+.switch input:checked ~ .thumb{left:18px;}
+.readout{margin-top:14px;background:var(--surface-2);border:1px dashed var(--border-strong);border-radius:var(--radius);padding:14px;font-size:0.9rem;min-height:44px;}
+
+.reflect-item{margin-bottom:16px;}
+.reflect-item label{display:block;font-weight:700;margin-bottom:6px;font-family:var(--font-display);font-size:0.9rem;}
+.save-note{font-size:0.76rem;color:var(--ink-faint);margin-top:-8px;margin-bottom:14px;}
+
+.justify-target{font-size:0.95rem;font-weight:600;margin-bottom:8px;}
+.chipset{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+.jchip{
+  border:1px solid var(--border-strong);background:var(--surface);padding:7px 12px;border-radius:var(--radius-sm);
+  font-size:0.82rem;cursor:pointer;
+}
+.jchip.sel{background:var(--primary);border-color:var(--primary);color:#fff;}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+/* ---------- SVG geometry drawing classes (theme-aware via CSS vars) ---------- */
+.qsvg-grid{stroke:var(--grid-line);stroke-width:1;}
+.qsvg-grid-strong{stroke:var(--grid-line-strong);stroke-width:1;}
+.qsvg-outline{stroke:var(--primary);stroke-width:2.75;fill:var(--primary-soft);fill-opacity:0.45;}
+.qsvg-outline.dim{opacity:0.3;}
+.qsvg-diagonal{stroke:var(--ink-faint);stroke-width:1.4;stroke-dasharray:5 4;fill:none;}
+.qsvg-vertex{fill:var(--surface);stroke:var(--primary);stroke-width:2.75;}
+.qsvg-vertex-hit{fill:transparent;cursor:grab;touch-action:none;}
+.qsvg-vertex-hit:active{cursor:grabbing;}
+.qsvg-vlabel{font-family:var(--font-display);font-weight:700;font-size:19px;fill:var(--primary-ink);}
+.qsvg-len-label{font-family:var(--font-mono);font-size:13px;fill:var(--ink-soft);}
+.qsvg-len-bg{fill:var(--surface);opacity:0.9;stroke:var(--border);stroke-width:1;}
+.qsvg-angle-label{font-family:var(--font-mono);font-size:13px;font-weight:700;fill:var(--warning);}
+.qsvg-tick{stroke:var(--ink);stroke-width:2.4;stroke-linecap:round;}
+.qsvg-arrow{stroke:var(--accent);stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.qsvg-rightangle{stroke:var(--success);stroke-width:2.1;fill:none;}
+.qsvg-arc{stroke:var(--warning);stroke-width:2.1;fill:none;}
+.qsvg-intersection{fill:var(--accent);stroke:var(--surface);stroke-width:1.5;}
+.qsvg-midpoint-single{fill:var(--success);stroke:var(--surface);stroke-width:1.5;}
+.qsvg-midpoint-double{fill:var(--surface);stroke:var(--danger);stroke-width:2.2;}
+.qsvg-rotate-line{stroke:var(--ink-faint);stroke-width:1.4;stroke-dasharray:3 3;pointer-events:none;}
+.qsvg-rotate-handle{fill:var(--accent);stroke:var(--surface);stroke-width:2;cursor:grab;touch-action:none;}
+.qsvg-rotate-handle:active{cursor:grabbing;}
+.qsvg-body-hit{fill:transparent;cursor:move;touch-action:none;}
+
+.hz-quad{fill:var(--surface-2);stroke:var(--border-strong);stroke-width:2;}
+.hz-trap{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2;fill-opacity:0.8;}
+.hz-kite{fill:var(--warning-soft);stroke:var(--warning);stroke-width:2;fill-opacity:0.8;}
+.hz-para{fill:var(--primary-soft);stroke:var(--primary);stroke-width:2;fill-opacity:0.6;}
+.hz-rect{fill:var(--success-soft);stroke:var(--success);stroke-width:2;fill-opacity:0.65;}
+.hz-rhom{fill:var(--danger-soft);stroke:var(--danger);stroke-width:2;fill-opacity:0.65;}
+.hz-region.selected{stroke-width:4;}
+</style>
+
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 26 26" aria-hidden="true"><polygon points="13,2 24,10 20,23 6,23 2,10" fill="none" stroke="#2F5AD6" stroke-width="2"/></svg>
+      <h1>Quadrilateral Lab</h1>
+      <span class="tag">Stage 4 · classifying quadrilaterals by their properties</span>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Activity mode" id="tabList"></div>
+  </div>
+</div>
+
+<div class="app">
+  <main id="tabPanels"></main>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ======================================================================
+   PURE GEOMETRY ENGINE
+   ====================================================================== */
+const add=(a,b)=>({x:a.x+b.x,y:a.y+b.y});
+const sub=(a,b)=>({x:a.x-b.x,y:a.y-b.y});
+const scaleV=(a,s)=>({x:a.x*s,y:a.y*s});
+const dot=(a,b)=>a.x*b.x+a.y*b.y;
+const cross=(a,b)=>a.x*b.y-a.y*b.x;
+const len=(a)=>Math.hypot(a.x,a.y);
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const midpoint=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
+const normalize=(a)=>{const l=len(a)||1e-9;return {x:a.x/l,y:a.y/l};};
+const perp=(a)=>({x:-a.y,y:a.x});
+const rotatePoint=(p,center,theta)=>{
+  const c=Math.cos(theta), s=Math.sin(theta);
+  const dx=p.x-center.x, dy=p.y-center.y;
+  return {x:center.x+dx*c-dy*s, y:center.y+dx*s+dy*c};
+};
+const centroidOf=(pts)=>({x:pts.reduce((s,p)=>s+p.x,0)/pts.length, y:pts.reduce((s,p)=>s+p.y,0)/pts.length});
+const clamp=(v,lo,hi)=>Math.min(hi,Math.max(lo,v));
+function angleBetween(v1,v2){
+  const l1=len(v1), l2=len(v2);
+  if(l1<1e-9||l2<1e-9) return 0;
+  const c=clamp(dot(v1,v2)/(l1*l2),-1,1);
+  return Math.acos(c);
+}
+const RAD=Math.PI/180;
+function makeTolerances(pts){
+  const c=centroidOf(pts);
+  const scale_=Math.max(20, pts.reduce((s,p)=>s+dist(p,c),0)/pts.length);
+  return {scale:scale_, angle:2.5*RAD, lenRel:0.025, posAbs:Math.max(3,scale_*0.02)};
+}
+function equalLen(a,b,tol){ const m=Math.max(a,b,1e-6); return Math.abs(a-b)<=tol.lenRel*m+0.6; }
+function isParallel(v1,v2,tol){
+  const l1=len(v1), l2=len(v2);
+  if(l1<1e-6||l2<1e-6) return false;
+  const s=Math.abs(cross(v1,v2))/(l1*l2);
+  return Math.asin(clamp(s,0,1))<=tol.angle;
+}
+function isPerpendicular(v1,v2,tol){ return Math.abs(angleBetween(v1,v2)-Math.PI/2)<=tol.angle; }
+function pointsEqual(a,b,tol){ return dist(a,b)<=tol.posAbs; }
+function clusterEqual(values,eqFn){
+  const groups=[]; const ids=new Array(values.length).fill(-1);
+  for(let i=0;i<values.length;i++){
+    let placed=false;
+    for(let g=0; g<groups.length; g++){
+      if(eqFn(values[i], values[groups[g][0]])){ groups[g].push(i); ids[i]=g; placed=true; break; }
+    }
+    if(!placed){ groups.push([i]); ids[i]=groups.length-1; }
+  }
+  return {ids, groups};
+}
+function analyze(pts){
+  const [A,B,C,D]=pts;
+  const tol=makeTolerances(pts);
+  const sides=[sub(B,A), sub(C,B), sub(D,C), sub(A,D)];
+  const sideLen=sides.map(len);
+  const pair1Parallel=isParallel(sides[0], sides[2], tol);
+  const pair2Parallel=isParallel(sides[1], sides[3], tol);
+  const pair1Equal=equalLen(sideLen[0], sideLen[2], tol);
+  const pair2Equal=equalLen(sideLen[1], sideLen[3], tol);
+  const allSidesEqual=equalLen(sideLen[0],sideLen[1],tol) && equalLen(sideLen[1],sideLen[2],tol) && equalLen(sideLen[2],sideLen[3],tol);
+  const sideClusters=clusterEqual(sideLen,(a,b)=>equalLen(a,b,tol));
+  const verts=[A,B,C,D];
+  const angles=verts.map((v,i)=>{
+    const prev=verts[(i+3)%4], next=verts[(i+1)%4];
+    return angleBetween(sub(prev,v), sub(next,v));
+  });
+  const angleDeg=angles.map(a=>a/RAD);
+  const rightAngleFlags=angleDeg.map(a=>Math.abs(a-90)<=tol.angle/RAD);
+  const rightAngleCount=rightAngleFlags.filter(Boolean).length;
+  const oppAnglesEqualPair1=Math.abs(angleDeg[0]-angleDeg[2])<=tol.angle/RAD;
+  const oppAnglesEqualPair2=Math.abs(angleDeg[1]-angleDeg[3])<=tol.angle/RAD;
+  const angleClusters=clusterEqual(angleDeg,(a,b)=>Math.abs(a-b)<=tol.angle/RAD);
+  const diagAC=sub(C,A), diagBD=sub(D,B);
+  const diagACLen=len(diagAC), diagBDLen=len(diagBD);
+  const diagonalsEqual=equalLen(diagACLen,diagBDLen,tol);
+  const midAC=midpoint(A,C), midBD=midpoint(B,D);
+  const diagonalsBisect=pointsEqual(midAC,midBD,tol);
+  const diagonalsPerp=isPerpendicular(diagAC,diagBD,tol);
+  const diagonalsPerpBisect=diagonalsBisect && diagonalsPerp;
+  const acBisectsA=Math.abs(angleBetween(sub(D,A),sub(C,A)) - angleBetween(sub(C,A),sub(B,A)))<=tol.angle;
+  const acBisectsC=Math.abs(angleBetween(sub(B,C),sub(A,C)) - angleBetween(sub(A,C),sub(D,C)))<=tol.angle;
+  const acBisectsAngles=acBisectsA && acBisectsC;
+  const bdBisectsB=Math.abs(angleBetween(sub(A,B),sub(D,B)) - angleBetween(sub(D,B),sub(C,B)))<=tol.angle;
+  const bdBisectsD=Math.abs(angleBetween(sub(C,D),sub(B,D)) - angleBetween(sub(B,D),sub(A,D)))<=tol.angle;
+  const bdBisectsAngles=bdBisectsB && bdBisectsD;
+  const diagonalsBisectAngles=acBisectsAngles && bdBisectsAngles;
+  const oneDiagonalBisectsAngles=acBisectsAngles || bdBisectsAngles;
+  const isParallelogram=pair1Parallel && pair2Parallel;
+  const isRectangle=isParallelogram && rightAngleCount===4;
+  const isRhombus=isParallelogram && allSidesEqual;
+  const isSquare=isRectangle && isRhombus;
+  const hasOnePairParallel=pair1Parallel || pair2Parallel;
+  const isTrapezium=hasOnePairParallel;
+  const isTrapeziumOnly=hasOnePairParallel && !isParallelogram;
+  const kitePattern1All=equalLen(sideLen[0],sideLen[3],tol) && equalLen(sideLen[1],sideLen[2],tol);
+  const kitePattern2All=equalLen(sideLen[0],sideLen[1],tol) && equalLen(sideLen[2],sideLen[3],tol);
+  const isKite=kitePattern1All || kitePattern2All;
+  const names=['Quadrilateral'];
+  if(isTrapezium) names.push('Trapezium');
+  if(isParallelogram) names.push('Parallelogram');
+  if(isKite) names.push('Kite');
+  if(isRectangle) names.push('Rectangle');
+  if(isRhombus) names.push('Rhombus');
+  if(isSquare) names.push('Square');
+  return {tol, sideLen, angleDeg, sides, pair1Parallel, pair2Parallel, pair1Equal, pair2Equal, allSidesEqual,
+    sideClusters, angleClusters, rightAngleFlags, rightAngleCount, oppAnglesEqualPair1, oppAnglesEqualPair2,
+    diagACLen, diagBDLen, diagonalsEqual, midAC, midBD, diagonalsBisect, diagonalsPerp, diagonalsPerpBisect,
+    acBisectsAngles, bdBisectsAngles, diagonalsBisectAngles, oneDiagonalBisectsAngles,
+    isParallelogram, isRectangle, isRhombus, isSquare, isTrapezium, isTrapeziumOnly, isKite, names};
+}
+function lineIntersection(p1,p2,p3,p4){
+  const d1=sub(p2,p1), d2=sub(p4,p3);
+  const denom=cross(d1,d2);
+  if(Math.abs(denom)<1e-9) return midpoint(midpoint(p1,p2),midpoint(p3,p4));
+  const t=cross(sub(p3,p1), d2)/denom;
+  return add(p1, scaleV(d1,t));
+}
+
+/* ======================================================================
+   PRESETS  (points are in a 0..600 x 0..460 local coordinate space)
+   Ordering is always A,B,C,D going around the perimeter.
+   ====================================================================== */
+function buildPresets(){
+  const P={};
+  P.general=[{x:216,y:132},{x:383,y:150},{x:469,y:352},{x:103,y:412}];
+  P.trapezium=[{x:160,y:370},{x:460,y:370},{x:333,y:150},{x:207,y:150}];
+  (function(){
+    const A={x:180,y:380}, s1={x:230,y:-40}, s2={x:-20,y:-190};
+    const B=add(A,s1), D=add(A,s2), C=add(A,add(s1,s2));
+    P.parallelogram=[A,B,C,D];
+  })();
+  (function(){
+    const center={x:300,y:250}, theta=12*RAD, w=150, h=90;
+    const u={x:Math.cos(theta),y:Math.sin(theta)}, v=perp(u);
+    P.rectangle=[
+      add(center, add(scaleV(u,-w), scaleV(v,-h))),
+      add(center, add(scaleV(u, w), scaleV(v,-h))),
+      add(center, add(scaleV(u, w), scaleV(v, h))),
+      add(center, add(scaleV(u,-w), scaleV(v, h))),
+    ];
+  })();
+  (function(){
+    const center={x:300,y:250}, theta=8*RAD, p=170, q=95;
+    const u={x:Math.cos(theta),y:Math.sin(theta)}, v=perp(u);
+    P.rhombus=[add(center,scaleV(u,p)), add(center,scaleV(v,q)), add(center,scaleV(u,-p)), add(center,scaleV(v,-q))];
+  })();
+  (function(){
+    const center={x:300,y:250}, theta=18*RAD, p=125;
+    const u={x:Math.cos(theta),y:Math.sin(theta)}, v=perp(u);
+    P.square=[add(center,scaleV(u,p)), add(center,scaleV(v,p)), add(center,scaleV(u,-p)), add(center,scaleV(v,-p))];
+  })();
+  P.kite=[{x:300,y:100},{x:430,y:190},{x:300,y:400},{x:170,y:190}];
+  return P;
+}
+const PRESETS=buildPresets();
+const FAMILIES=['general','trapezium','parallelogram','rectangle','rhombus','square','kite'];
+const FAMILY_LABEL={general:'General quadrilateral', trapezium:'Trapezium', parallelogram:'Parallelogram',
+  rectangle:'Rectangle', rhombus:'Rhombus', square:'Square', kite:'Kite'};
+function clonePts(pts){ return pts.map(p=>({x:p.x,y:p.y})); }
+
+/* ======================================================================
+   CONSTRAINED-DRAG ENGINE
+   Every update is a pure function of (snapshot taken at gesture start,
+   a small context captured at gesture start, and the live mouse point) -
+   nothing accumulates across pointermove events, so there is no drift.
+   ====================================================================== */
+function makeVertexCtx(family, idx, snap){
+  const opp=(idx+2)%4;
+  if(family==='rectangle' || family==='square-corner'){
+    const fixed={...snap[opp]};
+    const nA=(idx+1)%4, nB=(idx+3)%4;
+    const u=normalize(sub(snap[nA], fixed));
+    const v=normalize(sub(snap[nB], fixed));
+    return {fixed,u,v,nA,nB,opp};
+  }
+  if(family==='rhombus' || family==='square'){
+    const center=centroidOf(snap);
+    const uAxis=normalize(sub(snap[0], snap[2]));
+    const vAxis=normalize(sub(snap[1], snap[3]));
+    return {center, uAxis, vAxis, opp};
+  }
+  if(family==='kite'){
+    if(idx===0 || idx===2){
+      const axis=normalize(sub(snap[0], snap[2]));
+      const M=midpoint(snap[1], snap[3]);
+      return {axis, M, opp};
+    } else {
+      const A=snap[0], C=snap[2];
+      const axis=normalize(sub(C,A));
+      const axisLen=dist(A,C);
+      const vAxis=perp(axis);
+      const oppSide = idx===1?3:1;
+      return {A,C,axis,axisLen,vAxis,oppSide};
+    }
+  }
+  return {opp};
+}
+function computeFamilyPts(family, idx, snap, ctx, mouse){
+  const pts=clonePts(snap);
+  const opp=(idx+2)%4;
+  if(family==='general'){
+    pts[idx]=mouse;
+    return pts;
+  }
+  if(family==='parallelogram'){
+    const n1=(idx+1)%4, n2=(idx+3)%4;
+    pts[idx]=mouse;
+    pts[opp]={x: snap[n1].x+snap[n2].x-mouse.x, y: snap[n1].y+snap[n2].y-mouse.y};
+    return pts;
+  }
+  if(family==='rectangle'){
+    const {fixed,u,v,nA,nB}=ctx;
+    let w=dot(sub(mouse,fixed),u), h=dot(sub(mouse,fixed),v);
+    if(Math.abs(w)<24) w = w<0?-24:24;
+    if(Math.abs(h)<24) h = h<0?-24:24;
+    pts[idx]=add(fixed, add(scaleV(u,w), scaleV(v,h)));
+    pts[nA]=add(fixed, scaleV(u,w));
+    pts[nB]=add(fixed, scaleV(v,h));
+    pts[opp]=fixed;
+    return pts;
+  }
+  if(family==='rhombus' || family==='square'){
+    const {center,uAxis,vAxis}=ctx;
+    const isU=(idx===0||idx===2);
+    const axis=isU?uAxis:vAxis, other=isU?vAxis:uAxis;
+    let t=dot(sub(mouse,center),axis);
+    if(Math.abs(t)<20) t=t<0?-20:20;
+    pts[idx]=add(center, scaleV(axis,t));
+    pts[opp]=add(center, scaleV(axis,-t));
+    if(family==='square'){
+      const otherIdx = isU?1:0, otherOpp=(otherIdx+2)%4;
+      const existingSign=Math.sign(dot(sub(snap[otherIdx],center), other) || 1);
+      const s=existingSign*Math.abs(t);
+      pts[otherIdx]=add(center, scaleV(other,s));
+      pts[otherOpp]=add(center, scaleV(other,-s));
+    }
+    return pts;
+  }
+  if(family==='kite'){
+    if(idx===0 || idx===2){
+      const {axis,M}=ctx;
+      let t=dot(sub(mouse,M),axis);
+      const sign = idx===0? 1 : -1;
+      if(sign>0 && t<24) t=24;
+      if(sign<0 && t>-24) t=-24;
+      pts[idx]=add(M, scaleV(axis,t));
+      return pts;
+    } else {
+      const {A,axis,axisLen,vAxis,oppSide}=ctx;
+      const rel=sub(mouse,A);
+      const t=clamp(dot(rel,axis), 18, axisLen-18);
+      const q=dot(rel,vAxis);
+      const M=add(A, scaleV(axis,t));
+      pts[idx]=add(M, scaleV(vAxis,q));
+      pts[oppSide]=add(M, scaleV(vAxis,-q));
+      return pts;
+    }
+  }
+  if(family==='trapezium'){
+    pts[idx]=mouse;
+    if(idx===0 || idx===1){
+      const dir=normalize(sub(pts[1],pts[0]));
+      const mid=midpoint(snap[2],snap[3]);
+      const half=dist(snap[2],snap[3])/2;
+      const cand1=add(mid, scaleV(dir, half)), cand2=add(mid, scaleV(dir,-half));
+      const c2close = dist(cand1,snap[2])<=dist(cand2,snap[2]);
+      pts[2]= c2close?cand1:cand2;
+      pts[3]= c2close?cand2:cand1;
+    } else {
+      const dir=normalize(sub(pts[2],pts[3]));
+      const mid=midpoint(snap[0],snap[1]);
+      const half=dist(snap[0],snap[1])/2;
+      const cand1=add(mid, scaleV(dir, half)), cand2=add(mid, scaleV(dir,-half));
+      const c0close = dist(cand1,snap[0])<=dist(cand2,snap[0]);
+      pts[0]= c0close?cand1:cand2;
+      pts[1]= c0close?cand2:cand1;
+    }
+    return pts;
+  }
+  pts[idx]=mouse;
+  return pts;
+}
+
+/* ======================================================================
+   REUSABLE SVG RENDERER
+   Draws a quadrilateral plus whichever mathematical-convention markings
+   are requested into any <svg viewBox="0 0 600 460"> element. Used by the
+   main Explore stage, the compare tool, the hierarchy info card and every
+   "mini shape" preview elsewhere in the page.
+   ====================================================================== */
+const SVGNS='http://www.w3.org/2000/svg';
+function svgEl(tag, attrs, cls){
+  const e=document.createElementNS(SVGNS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(cls) e.setAttribute('class', cls);
+  return e;
+}
+function ptsStr(pts){ return pts.map(p=>p.x.toFixed(2)+','+p.y.toFixed(2)).join(' '); }
+
+function drawArrowMarks(g, p1, p2, count, alongOffset){
+  const d=normalize(sub(p2,p1)), pp=perp(d), m=add(midpoint(p1,p2), scaleV(d, alongOffset||0));
+  const s=7.5, w=5.5, gap=10;
+  const total=(count-1)*gap;
+  for(let i=0;i<count;i++){
+    const off=-total/2+i*gap;
+    const c=add(m, scaleV(d, off));
+    const tip=add(c, scaleV(d, s));
+    const left=add(add(c, scaleV(d,-s)), scaleV(pp, w));
+    const right=add(add(c, scaleV(d,-s)), scaleV(pp,-w));
+    g.appendChild(svgEl('polyline', {points:ptsStr([left,tip,right]), fill:'none'}, 'qsvg-arrow'));
+  }
+}
+function drawTicks(g, p1, p2, count, alongOffset){
+  const d=normalize(sub(p2,p1)), pp=perp(d), m=add(midpoint(p1,p2), scaleV(d, alongOffset||0));
+  const tickLen=8, gap=7;
+  const total=(count-1)*gap;
+  for(let i=0;i<count;i++){
+    const off=-total/2+i*gap;
+    const c=add(m, scaleV(d, off));
+    const a=add(c, scaleV(pp, tickLen)), b=add(c, scaleV(pp,-tickLen));
+    g.appendChild(svgEl('line', {x1:a.x,y1:a.y,x2:b.x,y2:b.y}, 'qsvg-tick'));
+  }
+}
+function drawRightAngleMarker(g, v, p1, p2){
+  const d1=normalize(sub(p1,v)), d2=normalize(sub(p2,v));
+  const size=15;
+  const a=add(v, scaleV(d1,size));
+  const b=add(a, scaleV(d2,size));
+  const c=add(v, scaleV(d2,size));
+  g.appendChild(svgEl('polyline', {points:ptsStr([a,b,c]), fill:'none'}, 'qsvg-rightangle'));
+}
+function drawAngleArc(g, v, p1, p2, count){
+  const d1=normalize(sub(p1,v)), d2=normalize(sub(p2,v));
+  const a1=Math.atan2(d1.y,d1.x), a2=Math.atan2(d2.y,d2.x);
+  let diff=a2-a1;
+  while(diff<=-Math.PI) diff+=2*Math.PI;
+  while(diff> Math.PI) diff-=2*Math.PI;
+  const sweep=diff>0?1:0;
+  const largeArcFlag = Math.abs(diff)>Math.PI?1:0;
+  for(let i=0;i<count;i++){
+    const R=15+i*6.5;
+    const s=add(v, scaleV(d1,R)), e=add(v, scaleV(d2,R));
+    g.appendChild(svgEl('path', {d:`M ${s.x} ${s.y} A ${R} ${R} 0 ${largeArcFlag} ${sweep} ${e.x} ${e.y}`, fill:'none'}, 'qsvg-arc'));
+  }
+}
+function drawTextChip(g, pos, text, cls){
+  const w=Math.max(26, text.length*7.4+10), h=17;
+  g.appendChild(svgEl('rect',{x:pos.x-w/2,y:pos.y-h/2,width:w,height:h,rx:4},'qsvg-len-bg'));
+  const t=svgEl('text',{x:pos.x,y:pos.y+1,'text-anchor':'middle','dominant-baseline':'middle'},cls);
+  t.textContent=text;
+  g.appendChild(t);
+}
+function drawAngleSizeLabel(g, v, p1, p2, angleDeg){
+  const d1=normalize(sub(p1,v)), d2=normalize(sub(p2,v));
+  const bis=normalize(add(d1,d2));
+  const pos=add(v, scaleV(bis, 32));
+  drawTextChip(g, pos, Math.round(angleDeg)+'°', 'qsvg-angle-label');
+}
+function drawGrid(g){
+  for(let x=0;x<=600;x+=40){
+    g.appendChild(svgEl('line',{x1:x,y1:0,x2:x,y2:460}, x%120===0?'qsvg-grid-strong':'qsvg-grid'));
+  }
+  for(let y=0;y<=460;y+=40){
+    g.appendChild(svgEl('line',{x1:0,y1:y,x2:600,y2:y}, y%120===0?'qsvg-grid-strong':'qsvg-grid'));
+  }
+}
+
+const DEFAULT_CONV={lengths:false, parallel:true, equalSides:true, rightAngles:true, angleSizes:false, diagIntersect:false, midpoints:false};
+const VLABELS=['A','B','C','D'];
+
+function renderQuadInto(svg, pts, opts){
+  opts=Object.assign({interactive:false, conv:DEFAULT_CONV, dim:false, grid:true, vertexLabels:true, only:null}, opts||{});
+  const r=analyze(pts);
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  svg.setAttribute('viewBox','0 0 600 460');
+  if(opts.grid){ const gg=svgEl('g',{}); drawGrid(gg); svg.appendChild(gg); }
+
+  const onlyKeys = opts.only ? (Array.isArray(opts.only) ? opts.only : [opts.only]) : null;
+  const conv = onlyKeys ? Object.assign({lengths:false,parallel:false,equalSides:false,rightAngles:false,angleSizes:false,diagIntersect:false,midpoints:false}, Object.fromEntries(onlyKeys.map(k=>[k,true]))) : opts.conv;
+
+  // diagonals (drawn if their own markings are requested)
+  if(conv.diagIntersect || conv.midpoints){
+    const dg=svgEl('g',{});
+    dg.appendChild(svgEl('line',{x1:pts[0].x,y1:pts[0].y,x2:pts[2].x,y2:pts[2].y},'qsvg-diagonal'));
+    dg.appendChild(svgEl('line',{x1:pts[1].x,y1:pts[1].y,x2:pts[3].x,y2:pts[3].y},'qsvg-diagonal'));
+    dg.style.pointerEvents='none';
+    svg.appendChild(dg);
+  }
+
+  // body polygon
+  const poly=svgEl('polygon', {points:ptsStr(pts)}, 'qsvg-outline'+(opts.dim?' dim':''));
+  if(opts.interactive){ poly.classList.add('qsvg-body-hit'); poly.style.pointerEvents='all'; }
+  svg.appendChild(poly);
+  if(opts.interactive && opts.hooks && opts.hooks.onBodyDown){
+    poly.addEventListener('pointerdown', opts.hooks.onBodyDown);
+  }
+
+  // markings layer (purely decorative — never intercepts drag/click)
+  const mark=svgEl('g',{});
+  mark.style.pointerEvents='none';
+  svg.appendChild(mark);
+
+  // Work out in advance which sides will carry a parallel-arrow mark and/or an
+  // equal-side tick mark, so that a side needing both can have them nudged apart
+  // along the side instead of drawn stacked on the same point.
+  const sideHasArrow=[false,false,false,false];
+  if(conv.parallel){
+    if(r.pair1Parallel){ sideHasArrow[0]=true; sideHasArrow[2]=true; }
+    if(r.pair2Parallel){ sideHasArrow[1]=true; sideHasArrow[3]=true; }
+  }
+  const sideHasTick=[false,false,false,false];
+  if(conv.equalSides){
+    r.sideClusters.groups.forEach(grp=>{ if(grp.length>=2) grp.forEach(i=>{ sideHasTick[i]=true; }); });
+  }
+  const MARK_SEP=15; // px separation along the side when both marks land on it
+
+  if(conv.parallel){
+    if(r.pair1Parallel){
+      drawArrowMarks(mark, pts[0], pts[1], 1, sideHasTick[0]?-MARK_SEP:0);
+      drawArrowMarks(mark, pts[3], pts[2], 1, sideHasTick[2]? MARK_SEP:0);
+    }
+    if(r.pair2Parallel){
+      drawArrowMarks(mark, pts[1], pts[2], 2, sideHasTick[1]?-MARK_SEP:0);
+      drawArrowMarks(mark, pts[0], pts[3], 2, sideHasTick[3]? MARK_SEP:0);
+    }
+  }
+  if(conv.equalSides){
+    const sidesPts=[[pts[0],pts[1]],[pts[1],pts[2]],[pts[2],pts[3]],[pts[3],pts[0]]];
+    r.sideClusters.groups.forEach((grp, gi)=>{
+      if(grp.length>=2) grp.forEach(i=> drawTicks(mark, sidesPts[i][0], sidesPts[i][1], gi+1, sideHasArrow[i]?MARK_SEP:0));
+    });
+  }
+  if(conv.rightAngles){
+    for(let i=0;i<4;i++){
+      if(r.rightAngleFlags[i]) drawRightAngleMarker(mark, pts[i], pts[(i+3)%4], pts[(i+1)%4]);
+    }
+  }
+  if(conv.angleSizes){
+    for(let i=0;i<4;i++) drawAngleSizeLabel(mark, pts[i], pts[(i+3)%4], pts[(i+1)%4], r.angleDeg[i]);
+  }
+  if(conv.diagIntersect){
+    const ip=lineIntersection(pts[0],pts[2],pts[1],pts[3]);
+    mark.appendChild(svgEl('circle',{cx:ip.x,cy:ip.y,r:5},'qsvg-intersection'));
+    if(r.diagonalsPerp) drawRightAngleMarker(mark, ip, add(ip,scaleV(normalize(sub(pts[0],ip)),1)), add(ip,scaleV(normalize(sub(pts[1],ip)),1)));
+  }
+  if(conv.midpoints){
+    if(r.diagonalsBisect){
+      mark.appendChild(svgEl('circle',{cx:r.midAC.x,cy:r.midAC.y,r:6.5},'qsvg-midpoint-single'));
+    } else {
+      mark.appendChild(svgEl('circle',{cx:r.midAC.x,cy:r.midAC.y,r:6},'qsvg-midpoint-double'));
+      mark.appendChild(svgEl('circle',{cx:r.midBD.x,cy:r.midBD.y,r:6},'qsvg-midpoint-double'));
+    }
+  }
+  if(conv.lengths){
+    const sidesPts=[[pts[0],pts[1]],[pts[1],pts[2]],[pts[2],pts[3]],[pts[3],pts[0]]];
+    const c=centroidOf(pts);
+    sidesPts.forEach((sp,i)=>{
+      const m=midpoint(sp[0],sp[1]);
+      const out=normalize(sub(m,c));
+      const lp=add(m, scaleV(out, 16));
+      const txt=(r.sideLen[i]/38).toFixed(1);
+      drawTextChip(mark, lp, txt, 'qsvg-len-label');
+    });
+  }
+
+  // vertices (drawn last so they stay on top / draggable)
+  const vg=svgEl('g',{});
+  svg.appendChild(vg);
+  pts.forEach((p,i)=>{
+    if(opts.vertexLabels){
+      const c=centroidOf(pts);
+      const out=normalize(sub(p,c));
+      const lp=add(p, scaleV(out, 22));
+      const t=svgEl('text',{x:lp.x,y:lp.y,'text-anchor':'middle','dominant-baseline':'middle'},'qsvg-vlabel');
+      t.textContent=VLABELS[i];
+      vg.appendChild(t);
+    }
+    vg.appendChild(svgEl('circle',{cx:p.x,cy:p.y,r:6.5},'qsvg-vertex'));
+    if(opts.interactive){
+      const hit=svgEl('circle',{cx:p.x,cy:p.y,r:16,tabindex:'0',role:'button','aria-label':'Vertex '+VLABELS[i]+', draggable'},'qsvg-vertex-hit');
+      hit.dataset.idx=i;
+      vg.appendChild(hit);
+      if(opts.hooks && opts.hooks.onVertexDown) hit.addEventListener('pointerdown', (e)=>opts.hooks.onVertexDown(e,i));
+      if(opts.hooks && opts.hooks.onVertexKey) hit.addEventListener('keydown', (e)=>opts.hooks.onVertexKey(e,i));
+    }
+  });
+
+  // rotate handle
+  if(opts.interactive && opts.hooks && opts.hooks.onRotateDown){
+    const c=centroidOf(pts);
+    const maxR=Math.max(...pts.map(p=>dist(p,c)));
+    const handlePos={x:c.x, y:c.y-maxR-42};
+    const rg=svgEl('g',{});
+    rg.appendChild(svgEl('line',{x1:c.x,y1:c.y,x2:handlePos.x,y2:handlePos.y},'qsvg-rotate-line'));
+    const rh=svgEl('circle',{cx:handlePos.x,cy:handlePos.y,r:10,tabindex:'0',role:'button','aria-label':'Rotate shape'},'qsvg-rotate-handle');
+    rg.appendChild(rh);
+    svg.appendChild(rg);
+    rh.addEventListener('pointerdown', opts.hooks.onRotateDown);
+  }
+
+  return r;
+}
+
+/* ======================================================================
+   CLASSIFICATION TEXT + PROPERTY ROWS (shared by Explore, quizzes, teacher)
+   ====================================================================== */
+function explainClassification(r){
+  if(r.isSquare) return 'This is a square — because it has four right angles it is also a rectangle, and because all four sides are equal it is also a rhombus. Every square is therefore a parallelogram and a quadrilateral too.';
+  if(r.isRectangle) return 'This is a rectangle (four right angles, opposite sides parallel and equal) — so it is also a parallelogram and a quadrilateral. It is not a rhombus because its four sides are not all equal.';
+  if(r.isRhombus) return 'This is a rhombus (four equal sides, opposite sides parallel) — so it is also a parallelogram and a quadrilateral. It is not a rectangle because its angles are not all 90°.';
+  if(r.isKite) return 'This is a kite — two pairs of adjacent sides are equal and the diagonals cross at right angles. It is not a parallelogram, because its opposite sides are not parallel.';
+  if(r.isTrapeziumOnly) return 'This is a trapezium — exactly one pair of opposite sides is parallel. The other pair is not parallel, so it cannot be a parallelogram.';
+  if(r.isParallelogram) return 'This is a parallelogram — both pairs of opposite sides are parallel and equal, and the diagonals bisect each other. It is not a rectangle (no right angles) or a rhombus (sides not all equal).';
+  return 'This is a general quadrilateral — it has four sides and its angles add to 360°, but none of the special side, angle or diagonal properties hold yet. Try dragging a vertex to create one!';
+}
+const MINIMAL_SETS={
+  Square:'A shape only needs "all sides equal" + "one right angle" (inside a quadrilateral already known to be a parallelogram) to be forced into a square — every other property follows automatically.',
+  Rectangle:'A parallelogram only needs one right angle to be forced into a rectangle — the other three right angles, and equal diagonals, follow automatically.',
+  Rhombus:'A parallelogram only needs one pair of adjacent sides equal to be forced into a rhombus — all four sides equal, perpendicular diagonals and angle-bisecting diagonals all follow automatically.',
+  Parallelogram:'A quadrilateral only needs one pair of opposite sides that are both equal AND parallel to be forced into a parallelogram — the second pair, equal opposite angles and bisecting diagonals all follow automatically.',
+  Kite:'A quadrilateral only needs two pairs of adjacent equal sides to be forced into a kite — perpendicular diagonals and one diagonal bisecting the angles follow automatically.',
+  Trapezium:'A quadrilateral only needs one pair of opposite sides parallel to count as a trapezium — nothing else is guaranteed.',
+  Quadrilateral:'No special properties have been created yet — try dragging a vertex to build one!',
+};
+function topName(r){ return r.names[r.names.length-1]; }
+
+function buildPropertyRows(r){
+  function st(b){ return b?'true':'false'; }
+  function stPartial(full, none){ return full?'true': (none?'false':'partial'); }
+  return [
+    {group:'Sides', key:'oppParallel', label:'Opposite sides are parallel',
+      state: stPartial(r.pair1Parallel && r.pair2Parallel, !r.pair1Parallel && !r.pair2Parallel),
+      detail: (r.pair1Parallel?'AB ∥ CD  ':'AB ∦ CD  ')+(r.pair2Parallel?'· BC ∥ DA':'· BC ∦ DA')},
+    {group:'Sides', key:'oppEqual', label:'Opposite sides are equal',
+      state: stPartial(r.pair1Equal && r.pair2Equal, !r.pair1Equal && !r.pair2Equal),
+      detail:'AB'+(r.pair1Equal?'=':'≠')+'CD  ·  BC'+(r.pair2Equal?'=':'≠')+'DA'},
+    {group:'Sides', key:'allEqual', label:'All four sides are equal', state:st(r.allSidesEqual),
+      detail: r.sideLen.map(l=>(l/38).toFixed(1)).join(' , ')+' (relative units)'},
+    {group:'Angles', key:'perp', label:'Adjacent sides are perpendicular',
+      state: stPartial(r.rightAngleCount===4, r.rightAngleCount===0),
+      detail: r.rightAngleCount+' of 4 interior angles are 90°'},
+    {group:'Angles', key:'oppAngle', label:'Opposite angles are equal',
+      state: stPartial(r.oppAnglesEqualPair1 && r.oppAnglesEqualPair2, !r.oppAnglesEqualPair1 && !r.oppAnglesEqualPair2),
+      detail:'∠A'+(r.oppAnglesEqualPair1?'=':'≠')+'∠C  ·  ∠B'+(r.oppAnglesEqualPair2?'=':'≠')+'∠D'},
+    {group:'Diagonals', key:'diagEqual', label:'Diagonals are equal', state:st(r.diagonalsEqual),
+      detail:'AC='+(r.diagACLen/38).toFixed(1)+'  BD='+(r.diagBDLen/38).toFixed(1)},
+    {group:'Diagonals', key:'diagBisect', label:'Diagonals bisect each other', state:st(r.diagonalsBisect),
+      detail: r.diagonalsBisect?'Both diagonals share the same midpoint':'The diagonals cross, but not at either one\'s midpoint'},
+    {group:'Diagonals', key:'diagPerpBisect', label:'Diagonals bisect each other at right angles', state:st(r.diagonalsPerpBisect),
+      detail: (r.diagonalsBisect?'bisect ✓ · ':'bisect ✗ · ')+(r.diagonalsPerp?'perpendicular ✓':'perpendicular ✗')},
+    {group:'Diagonals', key:'diagBisectAngle', label:'Diagonals bisect the angles',
+      state: stPartial(r.diagonalsBisectAngles, !r.acBisectsAngles && !r.bdBisectsAngles),
+      detail:'AC '+(r.acBisectsAngles?'bisects ∠A, ∠C':'does not bisect ∠A, ∠C')+' · BD '+(r.bdBisectsAngles?'bisects ∠B, ∠D':'does not bisect ∠B, ∠D')},
+  ];
+}
+
+/* ======================================================================
+   APP-WIDE STATE
+   ====================================================================== */
+const App={
+  explore:{
+    family:'general',
+    pts: clonePts(PRESETS.general),
+    breakMode:false,
+    conv: Object.assign({}, DEFAULT_CONV),
+  },
+  teacher:{
+    hideName:false,
+    visibleGroups:{Sides:true, Angles:true, Diagonals:true},
+    lockConventions:false,
+    definingOnly:false,
+    difficulty:'medium',
+  },
+};
+
+function toSvgPoint(svg, evt){
+  const pt=svg.createSVGPoint ? svg.createSVGPoint() : null;
+  const rect=svg.getBoundingClientRect();
+  const vb=svg.viewBox.baseVal;
+  const x = vb.x + (evt.clientX-rect.left) * (vb.width/rect.width);
+  const y = vb.y + (evt.clientY-rect.top) * (vb.height/rect.height);
+  return {x,y};
+}
+
+/* ======================================================================
+   TAB SCAFFOLDING
+   ====================================================================== */
+const TABS=[
+  {id:'explore', label:'Explore'},
+  {id:'whichprops', label:'Which Properties?'},
+  {id:'nameit', label:'Name the Quadrilateral'},
+  {id:'hierarchy', label:'Classification Map'},
+  {id:'compare', label:'Compare Shapes'},
+  {id:'challenges', label:'Challenges'},
+  {id:'reflect', label:'Reflection'},
+  {id:'teacher', label:'Teacher Mode'},
+];
+
+function buildScaffold(){
+  const tabList=document.getElementById('tabList');
+  const panelsHost=document.getElementById('tabPanels');
+  TABS.forEach((t,i)=>{
+    const b=document.createElement('button');
+    b.className='tab-btn'; b.textContent=t.label; b.id='tabbtn-'+t.id;
+    b.setAttribute('role','tab'); b.setAttribute('aria-selected', i===0?'true':'false');
+    b.setAttribute('aria-controls','panel-'+t.id);
+    b.addEventListener('click', ()=>selectTab(t.id));
+    tabList.appendChild(b);
+
+    const sec=document.createElement('section');
+    sec.className='panel'+(i===0?' active':'');
+    sec.id='panel-'+t.id;
+    sec.setAttribute('role','tabpanel');
+    sec.setAttribute('aria-labelledby','tabbtn-'+t.id);
+    panelsHost.appendChild(sec);
+  });
+  tabList.addEventListener('keydown', (e)=>{
+    if(e.key!=='ArrowRight' && e.key!=='ArrowLeft') return;
+    const idx=TABS.findIndex(t=>'tabbtn-'+t.id===document.activeElement.id);
+    if(idx<0) return;
+    const next = e.key==='ArrowRight' ? (idx+1)%TABS.length : (idx-1+TABS.length)%TABS.length;
+    document.getElementById('tabbtn-'+TABS[next].id).focus();
+    selectTab(TABS[next].id);
+  });
+}
+function selectTab(id){
+  TABS.forEach(t=>{
+    document.getElementById('panel-'+t.id).classList.toggle('active', t.id===id);
+    document.getElementById('tabbtn-'+t.id).setAttribute('aria-selected', t.id===id?'true':'false');
+  });
+}
+
+/* ======================================================================
+   SHARED MINI-WIDGETS: Always/Sometimes/Never, Justification builder
+   ====================================================================== */
+function renderASN(container, statement, answer, explanation){
+  const wrap=document.createElement('div');
+  wrap.className='card section-gap';
+  wrap.innerHTML=`<div class="justify-target">${statement}</div><div class="abtn-row"></div><div class="feedback-slot"></div>`;
+  const row=wrap.querySelector('.abtn-row'), slot=wrap.querySelector('.feedback-slot');
+  ['always','sometimes','never'].forEach(opt=>{
+    const b=document.createElement('button');
+    b.className='abtn'; b.dataset.state=opt; b.textContent=opt.charAt(0).toUpperCase()+opt.slice(1);
+    b.addEventListener('click', ()=>{
+      row.querySelectorAll('.abtn').forEach(x=>x.classList.remove('sel'));
+      b.classList.add('sel');
+      const correct=opt===answer;
+      slot.innerHTML=`<div class="feedback ${correct?'good':'bad'}">${correct?'✓ Correct.':'✗ Not quite — the answer is "'+answer.charAt(0).toUpperCase()+answer.slice(1)+'".'} ${explanation}</div>`;
+    });
+    row.appendChild(b);
+  });
+  container.appendChild(wrap);
+  return wrap;
+}
+function renderJustification(container, target, chips){
+  const wrap=document.createElement('div');
+  wrap.className='card section-gap';
+  wrap.innerHTML=`<div class="justify-target">${target}</div><p style="font-size:0.78rem;color:var(--ink-faint);margin:-4px 0 8px;">Click every property that is actually the REASON — some listed properties are true but don\'t explain why.</p><div class="chipset"></div><div class="feedback-slot"></div>`;
+  const chipset=wrap.querySelector('.chipset'), slot=wrap.querySelector('.feedback-slot');
+  function refresh(){
+    const selected=[...chipset.querySelectorAll('.jchip.sel')];
+    if(!selected.length){ slot.innerHTML=''; return; }
+    let html='<div class="feedback info"><ul>';
+    selected.forEach(b=>{
+      const ok=b.dataset.correct==='1';
+      html+=`<li>${ok?'✓':'✗'} <strong>${b.textContent}</strong> — ${b.dataset.note}</li>`;
+    });
+    html+='</ul></div>';
+    slot.innerHTML=html;
+  }
+  chips.forEach(c=>{
+    const b=document.createElement('button');
+    b.className='jchip'; b.textContent=c.text; b.dataset.correct=c.correct?'1':'0'; b.dataset.note=c.note;
+    b.addEventListener('click', ()=>{ b.classList.toggle('sel'); refresh(); });
+    chipset.appendChild(b);
+  });
+  container.appendChild(wrap);
+  return wrap;
+}
+function randomFamilyShape(fam){
+  let pts=clonePts(PRESETS[fam]);
+  const c0=centroidOf(pts);
+  const angle=Math.random()*Math.PI*2;
+  const s=0.8+Math.random()*0.3;
+  pts=pts.map(p=>rotatePoint({x:c0.x+(p.x-c0.x)*s, y:c0.y+(p.y-c0.y)*s}, c0, angle));
+  if(fam==='general'){
+    pts=pts.map(p=>({x:p.x+(Math.random()*28-14), y:p.y+(Math.random()*28-14)}));
+  }
+  const c1=centroidOf(pts);
+  const target={x:300+(Math.random()*36-18), y:230+(Math.random()*26-13)};
+  const shift=sub(target,c1);
+  return pts.map(p=>add(p,shift));
+}
+
+/* ======================================================================
+   TAB 1 — EXPLORE
+   ====================================================================== */
+const MISCONCEPTION_PROMPTS=[
+  'Does rotating the shape change what it\'s called? Try the rotate handle and watch the property panel.',
+  'Does stretching a rectangle sideways make it stop being a rectangle? Try it — the panel is the judge, not the picture.',
+  'Can two diagonals cross in the middle of a shape without bisecting each other? Turn on "Show midpoint markers" to check.',
+  'A shape "looks like" a kite lying on its side — is it still a kite? Classification depends on properties, not orientation.',
+  'If the diagonals are equal, are they automatically bisecting each other too? Build a shape where one is true and the other isn\'t.',
+];
+function initExploreTab(){
+  const sec=document.getElementById('panel-explore');
+  sec.innerHTML=`
+    <p class="lede">Drag a vertex to reshape it, drag inside the shape to move it, or use the small handle above it to rotate it. Pick a preset below — special shapes stay locked to their defining properties as you drag, unless you switch on Break Mode.</p>
+    <div class="explore-grid">
+      <div>
+        <div class="toolbar" id="presetRow"></div>
+        <div class="toolbar">
+          <button class="chip accent" id="breakModeBtn" aria-pressed="false">🔓 Break mode: off</button>
+          <button class="btn" id="resetBtn">↺ Reset shape</button>
+        </div>
+        <div class="card canvas-card">
+          <div class="canvas-wrap"><svg class="stage" id="mainStage" role="img" aria-label="Interactive quadrilateral canvas"></svg></div>
+          <div class="convention-row" id="convRow"></div>
+        </div>
+        <div class="hint-box">
+          <div class="hint-text"><strong>Think about it:</strong> <span id="hintText"></span></div>
+          <button class="btn subtle" id="hintNext">Next ›</button>
+        </div>
+        <div class="glossary">
+          <details><summary>Parallel</summary><p>Lines that stay the same distance apart and never meet, however far they are extended.</p></details>
+          <details><summary>Perpendicular</summary><p>Two lines that meet at a right angle (90°).</p></details>
+          <details><summary>Bisect</summary><p>To bisect something means to cut it exactly in half.</p></details>
+          <details><summary>Diagonal</summary><p>A line segment joining two vertices that are not next to each other.</p></details>
+        </div>
+      </div>
+      <div class="panel-col">
+        <div class="card classify-card">
+          <div class="classify-title">This shape is currently...</div>
+          <div class="pill-row" id="classifyPills"></div>
+          <p class="classify-sentence" id="classifySentence"></p>
+          <p class="teacher-note" id="teacherNote" hidden></p>
+        </div>
+        <div class="card" id="propPanel"></div>
+      </div>
+    </div>
+  `;
+
+  // preset chips
+  const presetRow=sec.querySelector('#presetRow');
+  FAMILIES.forEach(fam=>{
+    const b=document.createElement('button');
+    b.className='chip'; b.textContent=FAMILY_LABEL[fam]; b.setAttribute('aria-pressed', fam===App.explore.family?'true':'false');
+    b.addEventListener('click', ()=>{ setExploreFamily(fam); });
+    presetRow.appendChild(b);
+  });
+
+  sec.querySelector('#breakModeBtn').addEventListener('click', ()=>{
+    App.explore.breakMode=!App.explore.breakMode;
+    updateBreakBtn();
+    renderExplore();
+  });
+  sec.querySelector('#resetBtn').addEventListener('click', ()=>{
+    App.explore.pts=clonePts(PRESETS[App.explore.family]);
+    App.explore.breakMode=false;
+    updateBreakBtn();
+    renderExplore();
+  });
+
+  // convention toggles
+  const convDefs=[
+    ['lengths','Show side lengths'], ['parallel','Show parallel markings'], ['equalSides','Show equal-side markings'],
+    ['rightAngles','Show right-angle markers'], ['angleSizes','Show angle sizes'],
+    ['diagIntersect','Show diagonal intersection'], ['midpoints','Show midpoint markers'],
+  ];
+  const convRow=sec.querySelector('#convRow');
+  convDefs.forEach(([key,label])=>{
+    const b=document.createElement('button');
+    b.className='chip small'; b.textContent=label;
+    b.setAttribute('aria-pressed', App.explore.conv[key]?'true':'false');
+    b.addEventListener('click', ()=>{
+      if(App.teacher.lockConventions) return;
+      App.explore.conv[key]=!App.explore.conv[key];
+      b.setAttribute('aria-pressed', App.explore.conv[key]?'true':'false');
+      renderExplore();
+    });
+    b.dataset.key=key;
+    convRow.appendChild(b);
+  });
+
+  // hint rotator
+  let hintIdx=0;
+  const hintText=sec.querySelector('#hintText');
+  hintText.textContent=MISCONCEPTION_PROMPTS[0];
+  sec.querySelector('#hintNext').addEventListener('click', ()=>{
+    hintIdx=(hintIdx+1)%MISCONCEPTION_PROMPTS.length;
+    hintText.textContent=MISCONCEPTION_PROMPTS[hintIdx];
+  });
+
+  wireStagePointerEvents();
+  updateBreakBtn();
+  renderExplore();
+}
+
+function updateBreakBtn(){
+  const b=document.getElementById('breakModeBtn');
+  if(!b) return;
+  b.setAttribute('aria-pressed', App.explore.breakMode?'true':'false');
+  b.textContent = App.explore.breakMode ? '🔓 Break mode: ON — dragging is now free' : '🔓 Break mode: off';
+}
+
+function setExploreFamily(fam){
+  App.explore.family=fam;
+  App.explore.pts=clonePts(PRESETS[fam]);
+  App.explore.breakMode=false;
+  updateBreakBtn();
+  document.querySelectorAll('#presetRow .chip').forEach(b=>b.setAttribute('aria-pressed', b.textContent===FAMILY_LABEL[fam]?'true':'false'));
+  const fr=document.getElementById('familyReadout');
+  if(fr) fr.textContent=FAMILY_LABEL[fam]+' preset — drag a vertex to explore the family';
+  renderExplore();
+}
+
+/* pointer-drag wiring for the main stage */
+let dragState=null;
+function wireStagePointerEvents(){
+  const svg=document.getElementById('mainStage');
+  function endDrag(){
+    if(dragState && dragState.pointerId!==undefined){
+      try{ svg.releasePointerCapture(dragState.pointerId); }catch(e){}
+    }
+    dragState=null;
+  }
+  svg.addEventListener('pointermove', (e)=>{
+    if(!dragState) return;
+    const mouse=toSvgPoint(svg,e);
+    if(dragState.type==='vertex'){
+      const fam = App.explore.breakMode ? 'general' : App.explore.family;
+      App.explore.pts=computeFamilyPts(fam, dragState.idx, dragState.snap, dragState.ctx, mouse);
+    } else if(dragState.type==='translate'){
+      const delta=sub(mouse, dragState.startMouse);
+      App.explore.pts=dragState.snap.map(p=>add(p,delta));
+    } else if(dragState.type==='rotate'){
+      const ang=Math.atan2(mouse.y-dragState.center.y, mouse.x-dragState.center.x);
+      const delta=ang-dragState.startAngle;
+      App.explore.pts=dragState.snap.map(p=>rotatePoint(p, dragState.center, delta));
+    }
+    renderExplore();
+  });
+  svg.addEventListener('pointerup', endDrag);
+  svg.addEventListener('pointercancel', endDrag);
+
+  window.__exploreHooks={
+    onVertexDown:(e,idx)=>{
+      e.preventDefault(); e.stopPropagation();
+      const snap=clonePts(App.explore.pts);
+      const fam = App.explore.breakMode ? 'general' : App.explore.family;
+      const ctx=makeVertexCtx(fam, idx, snap);
+      dragState={type:'vertex', idx, snap, ctx, pointerId:e.pointerId};
+      svg.setPointerCapture(e.pointerId);
+    },
+    onVertexKey:(e,idx)=>{
+      const step = e.shiftKey ? 22 : 8;
+      let d={x:0,y:0};
+      if(e.key==='ArrowLeft') d={x:-step,y:0}; else if(e.key==='ArrowRight') d={x:step,y:0};
+      else if(e.key==='ArrowUp') d={x:0,y:-step}; else if(e.key==='ArrowDown') d={x:0,y:step};
+      else return;
+      e.preventDefault();
+      const snap=clonePts(App.explore.pts);
+      const fam = App.explore.breakMode ? 'general' : App.explore.family;
+      const ctx=makeVertexCtx(fam, idx, snap);
+      const mouse=add(snap[idx], d);
+      App.explore.pts=computeFamilyPts(fam, idx, snap, ctx, mouse);
+      renderExplore();
+    },
+    onBodyDown:(e)=>{
+      e.preventDefault();
+      const snap=clonePts(App.explore.pts);
+      const startMouse=toSvgPoint(svg,e);
+      dragState={type:'translate', snap, startMouse, pointerId:e.pointerId};
+      svg.setPointerCapture(e.pointerId);
+    },
+    onRotateDown:(e)=>{
+      e.preventDefault(); e.stopPropagation();
+      const snap=clonePts(App.explore.pts);
+      const center=centroidOf(snap);
+      const mouse=toSvgPoint(svg,e);
+      const startAngle=Math.atan2(mouse.y-center.y, mouse.x-center.x);
+      dragState={type:'rotate', snap, center, startAngle, pointerId:e.pointerId};
+      svg.setPointerCapture(e.pointerId);
+    },
+  };
+}
+
+function renderExplore(){
+  const svg=document.getElementById('mainStage');
+  if(!svg) return;
+  const r=renderQuadInto(svg, App.explore.pts, {interactive:true, conv:App.explore.conv, hooks:window.__exploreHooks});
+
+  // classification pills
+  const pillRow=document.getElementById('classifyPills');
+  const sentence=document.getElementById('classifySentence');
+  const note=document.getElementById('teacherNote');
+  if(App.teacher.hideName){
+    pillRow.innerHTML='<span class="pill">? hidden by teacher</span>';
+    sentence.textContent='';
+    note.hidden=false; note.textContent='(Teacher: the shape\'s name is hidden from students. Turn it off in Teacher Mode.)';
+  } else {
+    pillRow.innerHTML='';
+    const top=topName(r);
+    r.names.forEach(n=>{
+      const p=document.createElement('span');
+      p.className='pill'+(n===top?' top':'');
+      p.textContent=n;
+      pillRow.appendChild(p);
+    });
+    sentence.textContent=explainClassification(r);
+    note.hidden=true;
+  }
+
+  // property panel
+  const rows=buildPropertyRows(r);
+  const groups=['Sides','Angles','Diagonals'];
+  const panel=document.getElementById('propPanel');
+  let html='';
+  groups.forEach(gname=>{
+    if(!App.teacher.visibleGroups[gname]) return;
+    const groupRows=rows.filter(row=>row.group===gname).filter(row=> App.teacher.definingOnly ? row.state==='true' : true);
+    if(!groupRows.length) return;
+    html+=`<div class="prop-group"><h3>${gname}</h3>`;
+    groupRows.forEach(row=>{
+      const chip = row.state==='true' ? '<span class="state-chip true">✓ True</span>'
+        : row.state==='false' ? '<span class="state-chip false">✗ False</span>'
+        : '<span class="state-chip partial">△ Partly</span>';
+      html+=`<div class="prop-row"><span class="prop-label">${row.label}<span class="prop-detail">${row.detail}</span></span>${chip}</div>`;
+    });
+    html+='</div>';
+  });
+  if(App.teacher.definingOnly && !html) html='<p style="color:var(--ink-soft);font-size:0.85rem;">No defining properties are true yet — reshape the quadrilateral to build some.</p>';
+  panel.innerHTML=html;
+}
+
+/* ======================================================================
+   TAB 2 — WHICH PROPERTIES DOES IT HAVE?
+   ====================================================================== */
+const QUIZ_PROPS=[
+  {key:'oppParallel', label:'Opposite sides are parallel', test:r=>r.pair1Parallel && r.pair2Parallel,
+    why:r=>'AB '+(r.pair1Parallel?'is':'is not')+' parallel to CD, and BC '+(r.pair2Parallel?'is':'is not')+' parallel to DA — both pairs must be parallel for this box to be ticked.'},
+  {key:'oppEqual', label:'Opposite sides are equal', test:r=>r.pair1Equal && r.pair2Equal,
+    why:r=>'AB and CD are '+(r.pair1Equal?'equal':'different lengths')+'; BC and DA are '+(r.pair2Equal?'equal':'different lengths')+'.'},
+  {key:'perp', label:'Adjacent sides are perpendicular', test:r=>r.rightAngleCount===4,
+    why:r=>r.rightAngleCount+' of the 4 angles measure 90° — all four are needed for this to be true.'},
+  {key:'oppAngle', label:'Opposite angles are equal', test:r=>r.oppAnglesEqualPair1 && r.oppAnglesEqualPair2,
+    why:r=>'∠A and ∠C are '+(r.oppAnglesEqualPair1?'equal':'different')+'; ∠B and ∠D are '+(r.oppAnglesEqualPair2?'equal':'different')+'.'},
+  {key:'diagEqual', label:'Diagonals are equal', test:r=>r.diagonalsEqual,
+    why:r=>'AC ≈ '+(r.diagACLen/38).toFixed(1)+' units, BD ≈ '+(r.diagBDLen/38).toFixed(1)+' units.'},
+  {key:'diagBisect', label:'Diagonals bisect each other', test:r=>r.diagonalsBisect,
+    why:r=>r.diagonalsBisect?'Both diagonals share exactly the same midpoint.':'The diagonals cross, but not at the midpoint of both — the crossing point is not equidistant from all four vertices in the right way.'},
+  {key:'diagPerpBisect', label:'Diagonals bisect each other at right angles', test:r=>r.diagonalsPerpBisect,
+    why:r=>'This needs BOTH bisecting ('+(r.diagonalsBisect?'yes':'no')+') AND perpendicular ('+(r.diagonalsPerp?'yes':'no')+').'},
+  {key:'diagBisectAngle', label:'Diagonals bisect the angles', test:r=>r.diagonalsBisectAngles,
+    why:r=>'Diagonal AC '+(r.acBisectsAngles?'does':'does not')+' bisect ∠A and ∠C; diagonal BD '+(r.bdBisectsAngles?'does':'does not')+' bisect ∠B and ∠D.'},
+];
+let whichPropsState={pts:null};
+function initWhichPropsTab(){
+  const sec=document.getElementById('panel-whichprops');
+  sec.innerHTML=`
+    <p class="lede">Look carefully at the quadrilateral below — no markings are drawn for you. Tick every property you think is true, then submit to see reasoned feedback (not just right/wrong).</p>
+    <div class="split">
+      <div>
+        <svg class="mini-shape" id="wpShape" role="img" aria-label="Quadrilateral to classify"></svg>
+        <div class="abtn-row"><button class="btn primary" id="wpNewShape" style="margin-top:10px;">🔀 New shape</button></div>
+      </div>
+      <div class="card">
+        <h2>Which properties does this quadrilateral have?</h2>
+        <div class="choice-list" id="wpChoices"></div>
+        <button class="btn primary" id="wpSubmit">Check my answers</button>
+        <div id="wpFeedback"></div>
+      </div>
+    </div>
+  `;
+  const choices=sec.querySelector('#wpChoices');
+  function activeQuizProps(){
+    const n = App.teacher.difficulty==='easy'?4 : App.teacher.difficulty==='hard'?8 : 6;
+    return QUIZ_PROPS.slice(0,n);
+  }
+  function buildChoices(){
+    choices.innerHTML='';
+    activeQuizProps().forEach(p=>{
+      const lab=document.createElement('label');
+      lab.className='choice-item';
+      lab.innerHTML=`<input type="checkbox" value="${p.key}"> <span>${p.label}</span>`;
+      choices.appendChild(lab);
+    });
+  }
+  function newShape(){
+    buildChoices();
+    const fam=FAMILIES[Math.floor(Math.random()*FAMILIES.length)];
+    whichPropsState.pts=randomFamilyShape(fam);
+    renderQuadInto(sec.querySelector('#wpShape'), whichPropsState.pts, {conv:{lengths:true,parallel:false,equalSides:false,rightAngles:false,angleSizes:false,diagIntersect:false,midpoints:false}, vertexLabels:true});
+    sec.querySelectorAll('#wpChoices input').forEach(i=>i.checked=false);
+    sec.querySelector('#wpFeedback').innerHTML='';
+  }
+  sec.querySelector('#wpNewShape').addEventListener('click', newShape);
+  sec.querySelector('#wpSubmit').addEventListener('click', ()=>{
+    const r=analyze(whichPropsState.pts);
+    const fb=sec.querySelector('#wpFeedback');
+    let correctCount=0;
+    let html='<div class="feedback info"><ul>';
+    activeQuizProps().forEach(p=>{
+      const truth=p.test(r);
+      const checked=sec.querySelector(`#wpChoices input[value="${p.key}"]`).checked;
+      const ok = truth===checked;
+      if(ok) correctCount++;
+      html+=`<li>${ok?'✓':'✗'} <strong>${p.label}:</strong> actually ${truth?'TRUE':'FALSE'}. ${p.why(r)}</li>`;
+    });
+    html+='</ul></div>';
+    const top=topName(r);
+    const totalQ=activeQuizProps().length;
+    html+=`<div class="feedback ${correctCount===totalQ?'good':'info'}">You matched ${correctCount} of ${totalQ}. This shape is best classified as a <strong>${top}</strong> (also: ${r.names.filter(n=>n!==top).join(', ')||'no broader categories beyond quadrilateral'}). <br><br><strong>Smallest sufficient set:</strong> ${MINIMAL_SETS[top]}</div>`;
+    fb.innerHTML=html;
+  });
+  newShape();
+}
+
+/* ======================================================================
+   TAB 3 — NAME THE QUADRILATERAL
+   ====================================================================== */
+const NAME_SCENARIOS=[
+  { given:['Opposite sides parallel','Opposite sides equal','Opposite angles equal','Diagonals bisect each other'],
+    against:['Diagonals are not necessarily equal','Diagonals are not necessarily perpendicular'],
+    valid:['Parallelogram'],
+    shape:'parallelogram', conv:{parallel:true, equalSides:true, midpoints:true},
+    explain:'These four properties are exactly the defining set for a parallelogram. Because we\'re told the diagonals are NOT necessarily equal or perpendicular, we can\'t promote it to a rectangle or a rhombus — it could still happen to be one, but we can\'t be sure from this list alone.'},
+  { given:['All four sides equal','Opposite sides parallel','Diagonals bisect each other at right angles','Diagonals bisect the angles'],
+    against:['Diagonals are not necessarily equal'],
+    valid:['Rhombus','Parallelogram'],
+    shape:'rhombus', conv:{equalSides:true, parallel:true, midpoints:true, diagIntersect:true},
+    explain:'All sides equal plus opposite sides parallel makes this a rhombus (and every rhombus is a parallelogram). Since the diagonals are specifically said not to be equal, it is NOT a square.'},
+  { given:['Adjacent sides perpendicular (all four right angles)','Diagonals equal','Diagonals bisect each other','Opposite sides parallel and equal'],
+    against:['Sides are not necessarily all equal'],
+    valid:['Rectangle','Parallelogram'],
+    shape:'rectangle', conv:{rightAngles:true, parallel:true, equalSides:true, midpoints:true},
+    explain:'Four right angles plus equal, bisecting diagonals is exactly a rectangle. Because the sides are specifically not all equal, it is NOT a square or a rhombus.'},
+  { given:['All four sides equal','Opposite sides parallel','Adjacent sides perpendicular','Diagonals equal','Diagonals bisect each other at right angles','Diagonals bisect the angles'],
+    against:[],
+    valid:['Square','Rectangle','Rhombus','Parallelogram'],
+    shape:'square', conv:{equalSides:true, parallel:true, rightAngles:true, midpoints:true, diagIntersect:true},
+    explain:'Every single special property is true here — this shape satisfies the full defining sets of a rectangle AND a rhombus at once, so it must be a square (and therefore also a rectangle, a rhombus, a parallelogram and a quadrilateral).'},
+  { given:['Exactly one pair of opposite sides parallel'],
+    against:['The other pair of sides is not parallel','Sides are not necessarily equal','Diagonals do not necessarily bisect each other'],
+    valid:['Trapezium'],
+    shape:'trapezium', conv:{parallel:true},
+    explain:'Only one pair of opposite sides is parallel, so this cannot be a parallelogram (which needs both pairs). A single parallel pair is exactly what defines a trapezium.'},
+  { given:['Two pairs of adjacent sides equal (not all four)','Diagonals meet at right angles','One diagonal bisects the other','That same diagonal bisects the angles it passes through'],
+    against:['Opposite sides are not parallel','The other diagonal is not bisected'],
+    valid:['Kite'],
+    shape:'kite', conv:{equalSides:true, diagIntersect:true},
+    explain:'Two pairs of ADJACENT (not opposite) equal sides, with perpendicular diagonals where only one bisects the other, is exactly the defining pattern for a kite. Since opposite sides are not parallel, it is not a parallelogram of any kind.'},
+];
+const ALL_NAME_OPTIONS=['Quadrilateral','Trapezium','Parallelogram','Rectangle','Rhombus','Square','Kite'];
+const NAME_IT_OPTIONS=ALL_NAME_OPTIONS.filter(n=>n!=='Quadrilateral');
+const MARK_KEY_ITEMS={
+  parallel:'matching arrows = those sides are parallel',
+  equalSides:'matching tick marks = those sides are equal',
+  rightAngles:'small square corner = a right angle',
+  midpoints:'solid dot where the diagonals cross = they bisect each other',
+  diagIntersect:'square mark where the diagonals cross = they meet at right angles',
+};
+let nameItIndex=0;
+function initNameItTab(){
+  const sec=document.getElementById('panel-nameit');
+  sec.innerHTML=`
+    <p class="lede">Look at the picture and its markings, read the property list, and decide every name that could correctly describe the quadrilateral. More than one answer can be right.</p>
+    <div class="split">
+      <div class="card" id="niGiven">
+        <svg class="mini-shape" id="niShape" role="img" aria-label="Quadrilateral with property markings"></svg>
+        <div class="mark-key" id="niKey"></div>
+        <div id="niGivenText"></div>
+      </div>
+      <div class="card">
+        <h2>What could this quadrilateral be?</h2>
+        <div class="choice-list" id="niChoices"></div>
+        <div class="abtn-row">
+          <button class="btn primary" id="niSubmit">Check my answer</button>
+          <button class="btn" id="niNext">Next scenario ›</button>
+        </div>
+        <div id="niFeedback"></div>
+      </div>
+    </div>
+  `;
+  const choices=sec.querySelector('#niChoices');
+  NAME_IT_OPTIONS.forEach(n=>{
+    const lab=document.createElement('label');
+    lab.className='choice-item';
+    lab.innerHTML=`<input type="checkbox" value="${n}"> <span>${n}</span>`;
+    choices.appendChild(lab);
+  });
+  function loadScenario(){
+    const s=NAME_SCENARIOS[nameItIndex];
+    renderQuadInto(sec.querySelector('#niShape'), clonePts(PRESETS[s.shape]), {conv:s.conv});
+    const keyItems=Object.keys(s.conv).filter(k=>s.conv[k] && MARK_KEY_ITEMS[k]);
+    sec.querySelector('#niKey').innerHTML = keyItems.length
+      ? '<strong>Markings shown:</strong> ' + keyItems.map(k=>MARK_KEY_ITEMS[k]).join(' &nbsp;·&nbsp; ')
+      : '';
+    const given=sec.querySelector('#niGivenText');
+    given.innerHTML=`<h2>This quadrilateral has:</h2><ul style="padding-left:20px;">`
+      + s.given.map(g=>`<li>✓ ${g}</li>`).join('')
+      + s.against.map(g=>`<li>✗ ${g}</li>`).join('')
+      + '</ul>';
+    sec.querySelectorAll('#niChoices input').forEach(i=>i.checked=false);
+    sec.querySelector('#niFeedback').innerHTML='';
+  }
+  sec.querySelector('#niNext').addEventListener('click', ()=>{ nameItIndex=(nameItIndex+1)%NAME_SCENARIOS.length; loadScenario(); });
+  sec.querySelector('#niSubmit').addEventListener('click', ()=>{
+    const s=NAME_SCENARIOS[nameItIndex];
+    const picked=[...sec.querySelectorAll('#niChoices input:checked')].map(i=>i.value);
+    const missed=s.valid.filter(v=>!picked.includes(v));
+    const wrong=picked.filter(v=>!s.valid.includes(v));
+    const correct= missed.length===0 && wrong.length===0;
+    let html=`<div class="feedback ${correct?'good':'bad'}">`;
+    html+= correct ? '✓ Exactly right — you found every valid name and nothing extra.' : '✗ Not quite complete.';
+    if(missed.length) html+=`<br>You missed: <strong>${missed.join(', ')}</strong>.`;
+    if(wrong.length) html+=`<br>Not valid here: <strong>${wrong.join(', ')}</strong>.`;
+    html+=`<br><br>${s.explain}</div>`;
+    sec.querySelector('#niFeedback').innerHTML=html;
+  });
+  loadScenario();
+}
+
+/* ======================================================================
+   TAB 4 — CLASSIFICATION MAP (nested / overlapping hierarchy)
+   ====================================================================== */
+const HIER_REGIONS=[
+  {id:'quad', label:'Quadrilaterals', shape:'general', cls:'hz-quad',
+    shapeSpec:{tag:'rect', x:15,y:15,width:610,height:430,rx:18},
+    labelPos:{x:35,y:38},
+    props:['Four sides, four vertices','Interior angles add to 360°','Every special quadrilateral below is also a member of this set']},
+  {id:'trap', label:'Trapeziums', shape:'trapezium', cls:'hz-trap',
+    shapeSpec:{tag:'rect', x:30,y:335,width:160,height:100,rx:16},
+    labelPos:{x:45,y:358},
+    props:['At least one pair of opposite sides is parallel','Sides are not required to be equal','Diagonals do not need to bisect each other']},
+  {id:'kite', label:'Kites', shape:'kite', cls:'hz-kite',
+    shapeSpec:{tag:'rect', x:460,y:30,width:150,height:100,rx:16},
+    labelPos:{x:475,y:53},
+    props:['Two pairs of ADJACENT sides are equal','Diagonals cross at right angles','Only one diagonal is bisected, and only that one bisects the angles']},
+  {id:'para', label:'Parallelograms', shape:'parallelogram', cls:'hz-para',
+    shapeSpec:{tag:'circle', cx:330,cy:255,r:150},
+    labelPos:{x:330,y:120}, labelAnchor:'middle',
+    props:['Both pairs of opposite sides parallel','Opposite sides equal','Opposite angles equal','Diagonals bisect each other']},
+  {id:'rect', label:'Rectangles', shape:'rectangle', cls:'hz-rect',
+    shapeSpec:{tag:'circle', cx:283,cy:222,r:92},
+    labelPos:{x:222,y:175}, labelAnchor:'middle',
+    props:['All properties of a parallelogram','Four right angles','Diagonals are equal']},
+  {id:'rhom', label:'Rhombuses', shape:'rhombus', cls:'hz-rhom',
+    shapeSpec:{tag:'circle', cx:377,cy:288,r:92},
+    labelPos:{x:438,y:335}, labelAnchor:'middle',
+    props:['All properties of a parallelogram','Four equal sides','Diagonals perpendicular and bisect the angles']},
+  {id:'square', label:'Squares', shape:'square', cls:null,
+    shapeSpec:{tag:'circle', cx:330,cy:255,r:30},
+    labelPos:{x:330,y:255}, labelAnchor:'middle',
+    props:['All properties of a rectangle','All properties of a rhombus','Four equal sides AND four right angles']},
+];
+function initHierarchyTab(){
+  const sec=document.getElementById('panel-hierarchy');
+  sec.innerHTML=`
+    <p class="lede">This map shows how the quadrilateral families sit inside one another. A square sits inside BOTH the rectangle and rhombus circles — because it genuinely belongs to both. Click any region (try the small circle right in the middle) to see its defining properties.</p>
+    <div class="hier-wrap">
+      <div class="card"><svg id="hierSvg" viewBox="0 0 640 460" role="img" aria-label="Nested classification diagram of quadrilaterals" style="width:100%;height:auto;"></svg></div>
+      <div class="card hier-info" id="hierInfo"><h3>Tip</h3><p style="color:var(--ink-soft);font-size:0.85rem;">Click a region of the diagram to explore its properties.</p></div>
+    </div>
+  `;
+  const svg=sec.querySelector('#hierSvg');
+  HIER_REGIONS.forEach(reg=>{
+    const attrs=Object.assign({}, reg.shapeSpec);
+    const tag=attrs.tag; delete attrs.tag;
+    const shapeEl=svgEl(tag, attrs, 'hz-region'+(reg.cls?' '+reg.cls:''));
+    if(!reg.cls) shapeEl.style.fill='transparent';
+    shapeEl.style.cursor='pointer';
+    shapeEl.setAttribute('tabindex','0');
+    shapeEl.setAttribute('role','button');
+    shapeEl.setAttribute('aria-label',reg.label);
+    shapeEl.addEventListener('click', ()=>selectHierRegion(reg.id));
+    shapeEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); selectHierRegion(reg.id);} });
+    shapeEl.dataset.id=reg.id;
+    svg.appendChild(shapeEl);
+  });
+  HIER_REGIONS.forEach(reg=>{
+    if(reg.id==='square') return; // label placed after, small region
+    const t=svgEl('text', {x:reg.labelPos.x, y:reg.labelPos.y, 'text-anchor':reg.labelAnchor||'start'}, 'hier-label');
+    t.style.fontSize= reg.id==='quad' ? '16px':'14px';
+    t.style.pointerEvents='none';
+    t.textContent=reg.label;
+    svg.appendChild(t);
+  });
+  const sqReg=HIER_REGIONS.find(r=>r.id==='square');
+  const sqLabel=svgEl('text',{x:sqReg.labelPos.x, y:sqReg.labelPos.y-40, 'text-anchor':'middle'}, 'hier-label');
+  sqLabel.style.fontSize='13px'; sqLabel.style.pointerEvents='none';
+  sqLabel.textContent='Squares';
+  svg.appendChild(sqLabel);
+
+  selectHierRegion('quad');
+}
+function selectHierRegion(id){
+  const svg=document.getElementById('hierSvg');
+  if(!svg) return;
+  svg.querySelectorAll('.hz-region').forEach(el=>el.classList.toggle('selected', el.dataset.id===id));
+  const reg=HIER_REGIONS.find(r=>r.id===id);
+  const info=document.getElementById('hierInfo');
+  info.innerHTML=`<h3>${reg.label}</h3><ul>${reg.props.map(p=>`<li>${p}</li>`).join('')}</ul><svg class="mini-shape" id="hierMini" role="img" aria-label="Example ${reg.label}"></svg>`;
+  renderQuadInto(document.getElementById('hierMini'), PRESETS[reg.shape], {conv:DEFAULT_CONV, vertexLabels:false});
+}
+
+/* ======================================================================
+   TAB — PROPERTY COMPARISON TOOL
+   ====================================================================== */
+const COMPARE_ROW_DEFS=[
+  {key:'oppParallel', label:'Opposite sides parallel', only:'parallel', test:r=>r.pair1Parallel&&r.pair2Parallel, partial:r=>r.pair1Parallel!==r.pair2Parallel},
+  {key:'oppEqual', label:'Opposite sides equal', only:'equalSides', test:r=>r.pair1Equal&&r.pair2Equal, partial:r=>r.pair1Equal!==r.pair2Equal},
+  {key:'allEqual', label:'All sides equal', only:'equalSides', test:r=>r.allSidesEqual},
+  {key:'rightAngles', label:'Four right angles', only:'rightAngles', test:r=>r.rightAngleCount===4, partial:r=>r.rightAngleCount>0&&r.rightAngleCount<4},
+  {key:'diagEqual', label:'Diagonals equal', only:'diagIntersect', test:r=>r.diagonalsEqual},
+  {key:'diagBisect', label:'Diagonals bisect each other', only:'midpoints', test:r=>r.diagonalsBisect},
+  {key:'diagPerp', label:'Diagonals perpendicular', only:['midpoints','diagIntersect'], test:r=>r.diagonalsPerp},
+  {key:'diagBisectAngle', label:'Diagonals bisect the angles', only:'angleSizes', test:r=>r.diagonalsBisectAngles, partial:r=>r.acBisectsAngles!==r.bdBisectsAngles},
+];
+let compareSelected=['rectangle','rhombus','square'];
+let compareHighlight=null;
+function initCompareTab(){
+  const sec=document.getElementById('panel-compare');
+  sec.innerHTML=`
+    <p class="lede">Choose two to four shapes, then click a property row to highlight exactly what that property looks like on each one.</p>
+    <div class="card">
+      <div class="compare-picker" id="cmpPicker"></div>
+      <div class="table-scroll"><table class="compare" id="cmpTable"></table></div>
+      <div class="mini-grid" id="cmpMinis"></div>
+    </div>
+  `;
+  const picker=sec.querySelector('#cmpPicker');
+  FAMILIES.forEach(fam=>{
+    const b=document.createElement('button');
+    b.className='chip'; b.textContent=FAMILY_LABEL[fam];
+    b.setAttribute('aria-pressed', compareSelected.includes(fam)?'true':'false');
+    b.addEventListener('click', ()=>{
+      if(compareSelected.includes(fam)){
+        compareSelected=compareSelected.filter(f=>f!==fam);
+      } else {
+        if(compareSelected.length>=4) compareSelected.shift();
+        compareSelected.push(fam);
+      }
+      renderCompare();
+    });
+    picker.appendChild(b);
+  });
+  renderCompare();
+}
+function renderCompare(){
+  const picker=document.getElementById('cmpPicker');
+  if(!picker) return;
+  [...picker.children].forEach(b=>b.setAttribute('aria-pressed', compareSelected.includes(FAMILIES.find(f=>FAMILY_LABEL[f]===b.textContent))?'true':'false'));
+  const table=document.getElementById('cmpTable');
+  const analyses=compareSelected.map(fam=>({fam, r:analyze(PRESETS[fam])}));
+  let head='<thead><tr><th>Property</th>'+analyses.map(a=>`<th>${FAMILY_LABEL[a.fam]}</th>`).join('')+'</tr></thead>';
+  let body='<tbody>';
+  COMPARE_ROW_DEFS.forEach(row=>{
+    body+=`<tr data-key="${row.key}" class="${compareHighlight===row.key?'selected':''}"><td>${row.label}</td>`;
+    analyses.forEach(a=>{
+      const val=row.test(a.r);
+      const partial= row.partial ? row.partial(a.r) : false;
+      const cls= val?'true':(partial?'partial':'false');
+      const icon= val?'✓':(partial?'△':'✗');
+      const tail = (!val && row.key==='rightAngles') ? ' generally' : (!val && (row.key==='diagEqual'||row.key==='diagPerp'||row.key==='diagBisectAngle') ? ' generally' : '');
+      body+=`<td class="state ${cls}">${icon}${!val?tail:''}</td>`;
+    });
+    body+='</tr>';
+  });
+  body+='</tbody>';
+  table.innerHTML=head+body;
+  table.querySelectorAll('tbody tr').forEach(tr=>{
+    tr.addEventListener('click', ()=>{ compareHighlight = compareHighlight===tr.dataset.key ? null : tr.dataset.key; renderCompare(); });
+  });
+  const minis=document.getElementById('cmpMinis');
+  minis.innerHTML='';
+  const rowDef= compareHighlight ? COMPARE_ROW_DEFS.find(r=>r.key===compareHighlight) : null;
+  analyses.forEach(a=>{
+    const cell=document.createElement('div'); cell.className='mini-cell';
+    const svg=svgEl('svg',{viewBox:'0 0 600 460'});
+    cell.appendChild(svg);
+    const label=document.createElement('div'); label.textContent=FAMILY_LABEL[a.fam]; label.style.marginTop='6px';
+    cell.appendChild(label);
+    minis.appendChild(cell);
+    if(rowDef){
+      renderQuadInto(svg, PRESETS[a.fam], {only:rowDef.only});
+    } else {
+      renderQuadInto(svg, PRESETS[a.fam], {conv:DEFAULT_CONV});
+    }
+  });
+}
+
+/* ======================================================================
+   TAB 7 — CHALLENGES (Levels 1-6)
+   ====================================================================== */
+const ASN_STATEMENTS=[
+  ['A square is a rectangle.', 'always', 'Every property required of a rectangle (four right angles, etc.) is true of every square.'],
+  ['A rectangle is a square.', 'sometimes', 'Only true when all four sides also happen to be equal.'],
+  ['A rhombus is a parallelogram.', 'always', 'Opposite sides of a rhombus are always parallel, which is exactly the parallelogram condition.'],
+  ['A parallelogram is a rhombus.', 'sometimes', 'Only true when all four sides also happen to be equal.'],
+  ['A square is a rhombus.', 'always', 'Every square has four equal sides, satisfying the rhombus condition.'],
+  ['A rectangle has perpendicular diagonals.', 'sometimes', 'Only when the rectangle is also a square — a "long thin" rectangle\'s diagonals cross at an angle other than 90°.'],
+  ['A rhombus has equal diagonals.', 'sometimes', 'Only when the rhombus is also a square — otherwise the two diagonals have different lengths.'],
+  ['A kite has perpendicular diagonals.', 'always', 'This is one of the defining properties of every kite.'],
+];
+function buildAccordionItem(host, level, title, bodyBuilder){
+  const item=document.createElement('div'); item.className='accordion-item';
+  item.innerHTML=`<button class="accordion-head" type="button"><span><span class="lvl-tag">LEVEL ${level}</span> — ${title}</span><span aria-hidden="true">▸</span></button><div class="accordion-body"></div>`;
+  const body=item.querySelector('.accordion-body');
+  item.querySelector('.accordion-head').addEventListener('click', ()=>{
+    const willOpen=!item.classList.contains('open');
+    item.classList.toggle('open', willOpen);
+    if(willOpen && !body.dataset.built){ bodyBuilder(body); body.dataset.built='1'; }
+  });
+  host.appendChild(item);
+  return item;
+}
+function initChallengesTab(){
+  const sec=document.getElementById('panel-challenges');
+  sec.innerHTML=`<p class="lede">Six levels of reasoning, from simple identification through to constructing a full justification. Work through them in order, or jump to whichever level your class needs.</p><div id="challengeHost"></div>`;
+  const host=sec.querySelector('#challengeHost');
+
+  buildAccordionItem(host, 1, 'Identify the quadrilateral', (body)=>{
+    body.innerHTML=`<div class="split"><svg class="mini-shape" id="c1Shape"></svg><div><p>What type of quadrilateral is this?</p><div class="choice-list" id="c1Choices"></div><div id="c1Feedback"></div><button class="btn" id="c1New" style="margin-top:8px;">🔀 New shape</button></div></div>`;
+    const choices=body.querySelector('#c1Choices');
+    ALL_NAME_OPTIONS.filter(n=>n!=='Quadrilateral').forEach(n=>{
+      const b=document.createElement('button'); b.className='abtn'; b.textContent=n; b.style.marginRight='6px';
+      choices.appendChild(b);
+    });
+    let curFam='';
+    function next(){
+      curFam=FAMILIES[1+Math.floor(Math.random()*(FAMILIES.length-1))]; // skip 'general' for a cleaner Level-1 task
+      renderQuadInto(body.querySelector('#c1Shape'), randomFamilyShape(curFam), {conv:DEFAULT_CONV});
+      body.querySelector('#c1Feedback').innerHTML='';
+    }
+    choices.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const correctLabel=FAMILY_LABEL[curFam];
+        const ok=b.textContent===correctLabel;
+        body.querySelector('#c1Feedback').innerHTML=`<div class="feedback ${ok?'good':'bad'}" style="margin-top:10px;">${ok?'✓ Correct!':'✗ Not quite — this is a '+correctLabel+'.'} Check the property panel in Explore mode if you want to see why.</div>`;
+      });
+    });
+    body.querySelector('#c1New').addEventListener('click', next);
+    next();
+  });
+
+  buildAccordionItem(host, 2, 'Which properties does it have?', (body)=>{
+    body.innerHTML=`<p>This reuses the full activity from the <strong>Which Properties?</strong> tab above — head there for the complete version, or try this quick check:</p>`;
+    const mini=document.createElement('div'); body.appendChild(mini);
+    const pts=randomFamilyShape('rhombus');
+    const svg=document.createElement('svg'); svg.className='mini-shape'; svg.style.maxWidth='260px'; mini.appendChild(svg);
+    renderQuadInto(svg, pts, {conv:DEFAULT_CONV});
+    const q=document.createElement('div');
+    q.innerHTML=`<div class="choice-list">
+      <label class="choice-item"><input type="checkbox" data-k="allEqual"> All four sides are equal</label>
+      <label class="choice-item"><input type="checkbox" data-k="perp"> Adjacent sides are perpendicular</label>
+      <label class="choice-item"><input type="checkbox" data-k="diagPerp"> Diagonals cross at right angles</label>
+    </div><button class="btn primary">Check</button><div class="fb"></div>`;
+    mini.appendChild(q);
+    q.querySelector('button').addEventListener('click', ()=>{
+      const r=analyze(pts);
+      const truth={allEqual:r.allSidesEqual, perp:r.rightAngleCount===4, diagPerp:r.diagonalsPerp};
+      let ok=0, total=0;
+      q.querySelectorAll('input').forEach(i=>{ total++; if(i.checked===truth[i.dataset.k]) ok++; });
+      q.querySelector('.fb').innerHTML=`<div class="feedback ${ok===total?'good':'info'}" style="margin-top:8px;">You got ${ok}/${total} right. A rhombus always has all sides equal and perpendicular diagonals, but is NOT always right-angled at its vertices.</div>`;
+    });
+  });
+
+  buildAccordionItem(host, 3, 'Which quadrilaterals could have these properties?', (body)=>{
+    body.innerHTML=`<p><strong>Given:</strong> opposite sides parallel, opposite sides equal — but the sides are NOT all equal and there are NO right angles.</p><div class="choice-list" id="c3"></div><div id="c3fb"></div>`;
+    const list=body.querySelector('#c3');
+    ALL_NAME_OPTIONS.forEach(n=>{
+      const lab=document.createElement('label'); lab.className='choice-item';
+      lab.innerHTML=`<input type="checkbox" value="${n}"> <span>${n}</span>`;
+      list.appendChild(lab);
+    });
+    const btn=document.createElement('button'); btn.className='btn primary'; btn.textContent='Check'; btn.style.marginTop='8px';
+    body.appendChild(btn);
+    btn.addEventListener('click', ()=>{
+      const picked=[...list.querySelectorAll('input:checked')].map(i=>i.value);
+      const valid=['Parallelogram','Quadrilateral'];
+      const ok= picked.length===valid.length && valid.every(v=>picked.includes(v));
+      body.querySelector('#c3fb').innerHTML=`<div class="feedback ${ok?'good':'bad'}">${ok?'✓ Exactly — ':'✗ The correct answer is — '}Parallelogram and Quadrilateral. These properties are the parallelogram set exactly; no right angles rules out rectangle/square, and unequal sides rules out rhombus/square.</div>`;
+    });
+  });
+
+  buildAccordionItem(host, 4, 'Could this belong to more than one category? Explain.', (body)=>{
+    body.innerHTML=`<svg class="mini-shape" id="c4shape" style="max-width:260px;"></svg><p style="margin-top:10px;">This shape belongs to <strong>five</strong> categories at once — say all five, and explain why each one applies:</p><ul style="padding-left:20px;"><li><strong>Quadrilateral</strong> — it has four straight sides.</li><li><strong>Parallelogram</strong> — both pairs of opposite sides are parallel.</li><li><strong>Rectangle</strong> — it also has four right angles.</li><li><strong>Rhombus</strong> — it also has all four sides equal.</li><li><strong>Square</strong> — because it is both a rectangle AND a rhombus at once.</li></ul>`;
+    renderQuadInto(body.querySelector('#c4shape'), PRESETS.square, {conv:DEFAULT_CONV});
+  });
+
+  buildAccordionItem(host, 5, 'Always, sometimes or never?', (body)=>{
+    ASN_STATEMENTS.forEach(([s,a,e])=> renderASN(body, s, a, e));
+  });
+
+  buildAccordionItem(host, 6, 'Justify it — "Convince me."', (body)=>{
+    renderJustification(body, 'Every square is a rectangle. Convince me.', [
+      {text:'A square has four right angles', correct:true, note:'That is exactly the rectangle-defining property.'},
+      {text:'A square has four equal sides', correct:false, note:'True, but that\'s the rhombus property, not the reason it\'s a rectangle.'},
+      {text:'A square looks like a rectangle', correct:false, note:'Appearance never proves a classification — only properties do.'},
+    ]);
+    renderJustification(body, 'Every rhombus is a parallelogram. Convince me.', [
+      {text:'Opposite sides of a rhombus are parallel', correct:true, note:'That\'s exactly the parallelogram-defining property.'},
+      {text:'A rhombus has perpendicular diagonals', correct:false, note:'True of a rhombus, but perpendicular diagonals are not required for a parallelogram.'},
+    ]);
+  });
+}
+
+/* ======================================================================
+   TAB 8 — FINAL REFLECTION
+   ====================================================================== */
+const REFLECT_PROMPTS=[
+  'What properties are needed for a quadrilateral to be a rectangle?',
+  'What additional property turns a rectangle into a square?',
+  'What properties make a rhombus different from a general parallelogram?',
+  'Why is every square a rectangle?',
+  'Why isn\'t every rectangle a square?',
+  'Can a quadrilateral belong to more than one category? Explain, using an example.',
+];
+function initReflectionTab(){
+  const sec=document.getElementById('panel-reflect');
+  let saved={};
+  try{ saved=JSON.parse(localStorage.getItem('quadlab-reflection')||'{}'); }catch(e){ saved={}; }
+  sec.innerHTML=`
+    <p class="lede">Put what you\'ve discovered into your own words. There\'s no single correct wording — the goal is a clear, property-based explanation.</p>
+    <div class="card">
+      ${REFLECT_PROMPTS.map((p,i)=>`<div class="reflect-item"><label for="ref${i}">${p}</label><textarea id="ref${i}" placeholder="Type your answer…">${(saved['q'+i]||'').replace(/</g,'&lt;')}</textarea></div>`).join('')}
+      <p class="save-note">Your answers are saved automatically in this browser.</p>
+    </div>
+    <div class="card section-gap">
+      <h2>Final challenge</h2>
+      <p>Create a quadrilateral that belongs to at least two categories. Use its properties to justify your classification.</p>
+      <button class="btn primary" id="goExplore">Go to Explore mode ›</button>
+    </div>
+  `;
+  REFLECT_PROMPTS.forEach((p,i)=>{
+    sec.querySelector('#ref'+i).addEventListener('input', (e)=>{
+      saved['q'+i]=e.target.value;
+      try{ localStorage.setItem('quadlab-reflection', JSON.stringify(saved)); }catch(err){}
+    });
+  });
+  sec.querySelector('#goExplore').addEventListener('click', ()=>{ selectTab('explore'); document.getElementById('tabbtn-explore').focus(); });
+}
+
+/* ======================================================================
+   TAB 9 — TEACHER MODE
+   ====================================================================== */
+const QUESTION_TEMPLATES=[
+  r=>`What type of quadrilateral is this? (Level 1 — Identify)`,
+  r=>`Which properties does this quadrilateral have? List as many as you can. (Level 2 — Properties)`,
+  r=>`Could this quadrilateral be classified in more than one way? Justify your answer using its properties. (Level 4)`,
+  r=>`Is it true that "every ${topName(r).toLowerCase()} is a parallelogram"? Always, sometimes or never — explain. (Level 5)`,
+  r=>`Convince a partner that this shape ${r.isSquare? 'is a rectangle AND a rhombus':'has the properties it has'} using precise mathematical language. (Level 6)`,
+];
+function initTeacherTab(){
+  const sec=document.getElementById('panel-teacher');
+  sec.innerHTML=`
+    <p class="lede">Use these controls to steer the Explore tab for a whole-class discussion — settings here apply immediately to the main canvas and property panel.</p>
+    <div class="card">
+      <div class="teacher-grid">
+        <div class="field">
+          <label for="tShape">Shape shown in Explore</label>
+          <select id="tShape">${FAMILIES.map(f=>`<option value="${f}">${FAMILY_LABEL[f]}</option>`).join('')}</select>
+        </div>
+        <div class="field">
+          <label for="tDiff">Difficulty (Which Properties? quiz length)</label>
+          <select id="tDiff"><option value="easy">Easy — 4 properties</option><option value="medium" selected>Medium — 6 properties</option><option value="hard">Hard — all 8 properties</option></select>
+        </div>
+      </div>
+      <div class="teacher-grid section-gap">
+        <div class="switch-row"><span>Hide the shape's name</span><label class="switch"><input type="checkbox" id="tHideName"><span class="track"></span><span class="thumb"></span></label></div>
+        <div class="switch-row"><span>Hide measurements &amp; conventions</span><label class="switch"><input type="checkbox" id="tHideConv"><span class="track"></span><span class="thumb"></span></label></div>
+        <div class="switch-row"><span>Show Sides properties</span><label class="switch"><input type="checkbox" id="tGroupSides" checked><span class="track"></span><span class="thumb"></span></label></div>
+        <div class="switch-row"><span>Show Angles properties</span><label class="switch"><input type="checkbox" id="tGroupAngles" checked><span class="track"></span><span class="thumb"></span></label></div>
+        <div class="switch-row"><span>Show Diagonals properties</span><label class="switch"><input type="checkbox" id="tGroupDiag" checked><span class="track"></span><span class="thumb"></span></label></div>
+        <div class="switch-row"><span>Display only defining (true) properties</span><label class="switch"><input type="checkbox" id="tDefiningOnly"><span class="track"></span><span class="thumb"></span></label></div>
+      </div>
+      <div class="abtn-row section-gap">
+        <button class="btn primary" id="tGenerate">🎲 Generate a question</button>
+        <button class="btn" id="tResetAll">↺ Reset entire activity</button>
+      </div>
+      <div class="readout" id="tReadout">Click "Generate a question" for a ready-to-read prompt based on the shape currently in Explore mode.</div>
+    </div>
+  `;
+  const s=sec.querySelector('#tShape'); s.value=App.explore.family;
+  s.addEventListener('change', ()=>{ setExploreFamily(s.value); selectTab('explore'); document.getElementById('tabbtn-explore').setAttribute('aria-selected','true'); });
+
+  sec.querySelector('#tDiff').addEventListener('change', (e)=>{ App.teacher.difficulty=e.target.value; });
+  sec.querySelector('#tHideName').addEventListener('change', (e)=>{ App.teacher.hideName=e.target.checked; renderExplore(); });
+  sec.querySelector('#tHideConv').addEventListener('change', (e)=>{
+    App.teacher.lockConventions=e.target.checked;
+    if(e.target.checked){
+      Object.keys(App.explore.conv).forEach(k=>App.explore.conv[k]=false);
+      document.querySelectorAll('#convRow .chip').forEach(b=>b.setAttribute('aria-pressed','false'));
+    }
+    renderExplore();
+  });
+  sec.querySelector('#tGroupSides').addEventListener('change', (e)=>{ App.teacher.visibleGroups.Sides=e.target.checked; renderExplore(); });
+  sec.querySelector('#tGroupAngles').addEventListener('change', (e)=>{ App.teacher.visibleGroups.Angles=e.target.checked; renderExplore(); });
+  sec.querySelector('#tGroupDiag').addEventListener('change', (e)=>{ App.teacher.visibleGroups.Diagonals=e.target.checked; renderExplore(); });
+  sec.querySelector('#tDefiningOnly').addEventListener('change', (e)=>{ App.teacher.definingOnly=e.target.checked; renderExplore(); });
+  sec.querySelector('#tGenerate').addEventListener('click', ()=>{
+    const r=analyze(App.explore.pts);
+    const t=QUESTION_TEMPLATES[Math.floor(Math.random()*QUESTION_TEMPLATES.length)];
+    sec.querySelector('#tReadout').textContent=t(r);
+  });
+  sec.querySelector('#tResetAll').addEventListener('click', ()=>{
+    App.explore.family='general';
+    App.explore.pts=clonePts(PRESETS.general);
+    App.explore.breakMode=false;
+    App.explore.conv=Object.assign({}, DEFAULT_CONV);
+    App.teacher={hideName:false, visibleGroups:{Sides:true,Angles:true,Diagonals:true}, lockConventions:false, definingOnly:false, difficulty:'medium'};
+    initTeacherTab();
+    setExploreFamily('general');
+  });
+}
+
+/* ======================================================================
+   BOOTSTRAP
+   ====================================================================== */
+function init(){
+  buildScaffold();
+  initExploreTab();
+  initWhichPropsTab();
+  initNameItTab();
+  initHierarchyTab();
+  initCompareTab();
+  initChallengesTab();
+  initReflectionTab();
+  initTeacherTab();
+  selectTab('explore');
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+})();
+</script>
+</body>
+</html>
