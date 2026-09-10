@@ -30,9 +30,10 @@
     <h1>Teacher Tools</h1>
     <p class="hero-sub">Digital manipulatives for whole-class demonstration, plus worksheet and revision generators — built up over time.</p>
     <div class="filter-chips">
-      <span class="chip active">Stage 4</span>
-      <span class="chip">Stage 5</span>
-      <span class="chip disabled">Stage 6 · coming soon</span>
+      <button type="button" class="chip active" data-stage="all">All stages</button>
+      <button type="button" class="chip" data-stage="4">Stage 4</button>
+      <button type="button" class="chip" data-stage="5">Stage 5</button>
+      <button type="button" class="chip disabled" disabled>Stage 6 · coming soon</button>
     </div>
   </section>
 
@@ -47,7 +48,7 @@
       </div>
       <p class="resource-section-desc">Interactive visual models for demonstrating a concept to the whole class — the same tool students will later see in their own practice.</p>
       <div class="resource-grid">
-        <a class="resource-card" href="rise-and-run.html">
+        <a class="resource-card" href="rise-and-run.html" data-stage="5">
           <h4>Rise &amp; Run — Gradient</h4>
           <p>A four-stage discovery sequence that builds the idea of gradient before the formula. Includes a Teacher demonstration toggle and a Projection mode for the whiteboard.</p>
           <div class="resource-card-tags">
@@ -56,7 +57,7 @@
           </div>
           <span class="open-link">Open tool →</span>
         </a>
-        <a class="resource-card" href="quadrilateral-lab.html">
+        <a class="resource-card" href="quadrilateral-lab.html" data-stage="4">
           <h4>Quadrilateral Lab</h4>
           <p>Drag-and-reshape quadrilaterals with a live properties panel, a classification map and a Teacher Mode for steering whole-class discussion.</p>
           <div class="resource-card-tags">
@@ -99,7 +100,7 @@
       </div>
       <p class="resource-section-desc">Quick revision sets for review lessons, mixing topics already covered.</p>
       <div class="resource-grid">
-        <a class="resource-card" href="which-is-bigger.html">
+        <a class="resource-card" href="which-is-bigger.html" data-stage="5">
           <h4>Which Is Bigger?</h4>
           <p>A fixed teaching-order walk-through for the whole class, comparing whole numbers, large numbers, decimals and scientific notation — then a shuffled 45-question bank for independent revision.</p>
           <div class="resource-card-tags">
@@ -130,5 +131,6 @@
     <a href="#">Contact</a>
   </footer>
 
+<script src="filter.js"></script>
 </body>
 </html>

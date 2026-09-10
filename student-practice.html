@@ -30,9 +30,10 @@
     <h1>Student Practice</h1>
     <p class="hero-sub">Pick a topic and work through it at your own pace — support is there when you need it, and fades as you get more confident.</p>
     <div class="filter-chips">
-      <span class="chip active">Stage 4</span>
-      <span class="chip">Stage 5</span>
-      <span class="chip disabled">Stage 6 · coming soon</span>
+      <button type="button" class="chip active" data-stage="all">All stages</button>
+      <button type="button" class="chip" data-stage="4">Stage 4</button>
+      <button type="button" class="chip" data-stage="5">Stage 5</button>
+      <button type="button" class="chip disabled" disabled>Stage 6 · coming soon</button>
     </div>
   </section>
 
@@ -79,7 +80,7 @@
     <h2 class="section-title">Practice sets</h2>
     <p class="section-sub">Topics will appear here as they're built, organised by stage.</p>
     <div class="resource-grid">
-      <a class="resource-card" href="rise-and-run-quiz.html">
+      <a class="resource-card" href="rise-and-run-quiz.html" data-stage="5">
         <h4>Gradient — Rise &amp; Run Quiz</h4>
         <p>Four levels, Sweet to Spicy. Sweet and Mild keep the plane on screen with the same tool your teacher demonstrated with; Medium and Spicy fade it out, ending with formula only.</p>
         <div class="resource-card-tags">
@@ -88,7 +89,7 @@
         </div>
         <span class="open-link">Start practice →</span>
       </a>
-      <a class="resource-card" href="quadrilateral-lab.html">
+      <a class="resource-card" href="quadrilateral-lab.html" data-stage="4">
         <h4>Quadrilateral Lab</h4>
         <p>Work through Which Properties?, Name the Quadrilateral, the Classification Map and a six-level Challenges ladder — the same shape tool your teacher used to demonstrate, right there to explore as you go.</p>
         <div class="resource-card-tags">
@@ -97,7 +98,7 @@
         </div>
         <span class="open-link">Start practice →</span>
       </a>
-      <a class="resource-card" href="which-is-bigger.html">
+      <a class="resource-card" href="which-is-bigger.html" data-stage="5">
         <h4>Which Is Bigger?</h4>
         <p>Switch to Practice mode for a shuffled 45-question set on comparing whole numbers, large numbers, decimals and scientific notation, with instant feedback and a category breakdown at the end.</p>
         <div class="resource-card-tags">
@@ -126,5 +127,6 @@
     <a href="#">Contact</a>
   </footer>
 
+<script src="filter.js"></script>
 </body>
 </html>

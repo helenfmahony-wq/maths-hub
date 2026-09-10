@@ -166,6 +166,8 @@ nav a:hover, nav a.current { color: var(--primary); }
   margin-top: 22px;
 }
 .chip {
+  appearance: none;
+  font-family: inherit;
   background: rgba(255,255,255,0.14);
   border: 1px solid rgba(255,255,255,0.35);
   color: #fff;
@@ -175,6 +177,8 @@ nav a:hover, nav a.current { color: var(--primary); }
   font-weight: 600;
   cursor: pointer;
 }
+.chip:hover:not(.active):not(.disabled) { background: rgba(255,255,255,0.24); }
+.chip:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .chip.active { background: #fff; color: var(--primary-dark); border-color: #fff; }
 .chip.disabled { opacity: 0.55; cursor: not-allowed; }
 .chip.disabled:hover { background: rgba(255,255,255,0.14); }
