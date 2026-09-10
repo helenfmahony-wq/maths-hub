@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Which Is Bigger?</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap">
+<style>
+  :root{
+    --paper:#f3f5f8;
+    --paper-2:#eaeef4;
+    --ink:#1c2434;
+    --ink-soft:#4a5468;
+    --muted:#7480957f;
+    --line: rgba(28,36,52,0.14);
+    --accent:#2f5fd9;
+    --accent-ink:#0f2f8f;
+    --accent-soft: rgba(47,95,217,0.10);
+    --correct:#137a4f;
+    --correct-soft: rgba(19,122,79,0.12);
+    --incorrect:#c23b2f;
+    --incorrect-soft: rgba(194,59,47,0.12);
+    --surface:#ffffff;
+    --shadow: 0 1px 2px rgba(20,26,40,0.06), 0 10px 30px -12px rgba(20,26,40,0.18);
+    --focus: 0 0 0 3px rgba(47,95,217,0.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#10151d;
+      --paper-2:#161d27;
+      --ink:#eef1f6;
+      --ink-soft:#aab3c4;
+      --muted:#7b879c;
+      --line: rgba(238,241,246,0.14);
+      --accent:#7fa0ff;
+      --accent-ink:#dbe4ff;
+      --accent-soft: rgba(127,160,255,0.14);
+      --correct:#4fd39a;
+      --correct-soft: rgba(79,211,154,0.14);
+      --incorrect:#ff8a7a;
+      --incorrect-soft: rgba(255,138,122,0.14);
+      --surface:#1a212c;
+      --shadow: 0 1px 0 rgba(255,255,255,0.03), 0 20px 45px -20px rgba(0,0,0,0.6);
+      --focus: 0 0 0 3px rgba(127,160,255,0.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#10151d;
+    --paper-2:#161d27;
+    --ink:#eef1f6;
+    --ink-soft:#aab3c4;
+    --muted:#7b879c;
+    --line: rgba(238,241,246,0.14);
+    --accent:#7fa0ff;
+    --accent-ink:#dbe4ff;
+    --accent-soft: rgba(127,160,255,0.14);
+    --correct:#4fd39a;
+    --correct-soft: rgba(79,211,154,0.14);
+    --incorrect:#ff8a7a;
+    --incorrect-soft: rgba(255,138,122,0.14);
+    --surface:#1a212c;
+    --shadow: 0 1px 0 rgba(255,255,255,0.03), 0 20px 45px -20px rgba(0,0,0,0.6);
+    --focus: 0 0 0 3px rgba(127,160,255,0.45);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      repeating-linear-gradient(0deg, var(--line) 0 1px, transparent 1px 34px),
+      repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 34px),
+      var(--paper);
+    background-blend-mode: normal;
+    color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding: clamp(20px, 4vw, 56px) 16px 48px;
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+  }
+
+  .wrap{ width:100%; max-width:640px; display:flex; flex-direction:column; gap:14px; }
+
+  header.top{
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  }
+  .brand{
+    font-family:"Newsreader", Georgia, serif;
+    font-weight:600;
+    font-style:italic;
+    font-size:clamp(1.5rem, 1.1rem + 1.4vw, 2.1rem);
+    letter-spacing:-0.01em;
+    text-wrap:balance;
+    margin:0;
+  }
+  .brand em{
+    font-style:italic;
+    color:var(--accent-ink);
+  }
+  .tally{
+    font-family:"IBM Plex Mono", ui-monospace, monospace;
+    font-size:0.95rem;
+    color:var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+    white-space:nowrap;
+    margin:0;
+  }
+  .tally strong{ color:var(--ink); font-weight:600; }
+
+  .mode-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  }
+  .mode-toggle{
+    display:inline-flex;
+    background: var(--paper-2);
+    border:1px solid var(--line);
+    border-radius:99px;
+    padding:3px;
+    gap:2px;
+  }
+  .mode-btn{
+    appearance:none; border:none; cursor:pointer;
+    font-family:"IBM Plex Sans", inherit;
+    font-size:0.82rem;
+    font-weight:600;
+    padding:7px 13px;
+    border-radius:99px;
+    background:transparent;
+    color:var(--ink-soft);
+    transition: background-color 0.18s ease, color 0.18s ease;
+  }
+  .mode-btn[aria-pressed="true"]{
+    background: var(--accent);
+    color:#fff;
+  }
+  .mode-btn:focus-visible{ outline:none; box-shadow: var(--focus); }
+  .mode-note{
+    font-size:0.78rem; color:var(--muted);
+  }
+
+  .progress-row{
+    display:flex; gap:6px; flex-wrap:wrap;
+  }
+  .dot{
+    width:16px; height:8px; border-radius:99px;
+    background: var(--line);
+    transition: background-color 0.35s ease, transform 0.2s ease;
+  }
+  .dot.current{ background: var(--accent-soft); outline: 2px solid var(--accent); outline-offset:1px; }
+  .dot.correct{ background: var(--correct); }
+  .dot.incorrect{ background: var(--incorrect); }
+
+  main.card{
+    background: var(--surface);
+    border:1px solid var(--line);
+    border-radius:20px;
+    box-shadow: var(--shadow);
+    padding: clamp(20px, 4vw, 34px);
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+    position:relative;
+    overflow:hidden;
+  }
+
+  main.card.enter{ animation: cardIn 0.32s cubic-bezier(.2,.8,.2,1); }
+  @keyframes cardIn{
+    from{ opacity:0; transform: translateY(6px) scale(0.992); }
+    to{ opacity:1; transform:none; }
+  }
+
+  /* When resetting state between questions we kill every transition/animation
+     inside the card so no leftover colour or label can visibly fade or hang
+     around into the next question. */
+  main.card.no-anim, main.card.no-anim *{
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .chip{
+    align-self:flex-start;
+    font-family:"IBM Plex Mono", ui-monospace, monospace;
+    font-size:0.72rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--accent-ink);
+    background: var(--accent-soft);
+    padding:5px 10px;
+    border-radius:99px;
+  }
+
+  .prompt{
+    margin:0;
+    font-size:0.98rem;
+    color:var(--ink-soft);
+  }
+
+  .duel{
+    display:grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items:stretch;
+    gap:10px;
+  }
+  @media (max-width:480px){
+    .duel{ grid-template-columns: 1fr; }
+    .vs{ order:2; margin:2px auto; }
+    .opt.opt-a{ order:1; }
+    .opt.opt-b{ order:3; }
+  }
+
+  .opt{
+    appearance:none;
+    border:2px solid var(--line);
+    background: var(--paper-2);
+    border-radius:16px;
+    padding: clamp(18px,4vw,26px) 14px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    min-height:104px;
+    transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.12s ease, box-shadow 0.18s ease;
+    font-family:inherit;
+    color:var(--ink);
+  }
+  .opt:hover:not(:disabled){ border-color: var(--accent); transform: translateY(-1px); }
+  .opt:active:not(:disabled){ transform: translateY(0); }
+  .opt:focus-visible{ outline:none; box-shadow: var(--focus); }
+  .opt:disabled{ cursor:default; }
+
+  .opt .num{
+    font-family:"IBM Plex Mono", ui-monospace, monospace;
+    font-weight:600;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(1.05rem, 0.85rem + 1.1vw, 1.5rem);
+    line-height:1.25;
+    letter-spacing:-0.01em;
+    word-break:break-word;
+  }
+  .opt .num sup{ font-size:0.62em; }
+
+  .opt.is-correct{
+    border-color: var(--correct);
+    background: var(--correct-soft);
+  }
+  .opt.is-incorrect{
+    border-color: var(--incorrect);
+    background: var(--incorrect-soft);
+  }
+  .opt.is-correct .num{ color: var(--correct); }
+  .opt.is-incorrect .num{ color: var(--incorrect); }
+
+  .badge{
+    display:none;
+    width:22px; height:22px;
+    border-radius:99px;
+    align-items:center; justify-content:center;
+    font-size:0.85rem;
+    font-weight:700;
+    color:#fff;
+    margin-left:8px;
+    flex:none;
+  }
+  .opt.is-correct .badge{ display:inline-flex; background:var(--correct); }
+  .opt.is-incorrect .badge{ display:inline-flex; background:var(--incorrect); }
+  .opt .num-row{ display:flex; align-items:center; justify-content:center; }
+
+  .vs{
+    font-family:"Newsreader", Georgia, serif;
+    font-style:italic;
+    font-weight:600;
+    font-size:1.7rem;
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:40px;
+  }
+  .vs.resolved{ color:var(--accent-ink); }
+
+  .feedback{
+    margin:0;
+    font-size:0.95rem;
+    color:var(--ink-soft);
+    min-height:1.3em;
+  }
+  .feedback strong{ color:var(--ink); }
+
+  .actions{
+    display:flex; justify-content:flex-end;
+  }
+  button.next{
+    appearance:none;
+    border:none;
+    background:var(--accent);
+    color:#fff;
+    font-family:inherit;
+    font-weight:600;
+    font-size:0.95rem;
+    padding:11px 20px;
+    border-radius:12px;
+    cursor:pointer;
+    transition: filter 0.15s ease, transform 0.12s ease;
+  }
+  button.next:hover{ filter:brightness(1.08); }
+  button.next:active{ transform:translateY(1px); }
+  button.next:focus-visible{ outline:none; box-shadow: var(--focus); }
+
+  .hint{
+    text-align:center;
+    color:var(--muted);
+    font-size:0.8rem;
+  }
+
+  /* Summary screen */
+  .summary{ display:flex; flex-direction:column; gap:18px; }
+  .summary .headline{
+    font-family:"Newsreader", Georgia, serif;
+    font-style:italic;
+    font-weight:600;
+    font-size:clamp(1.5rem, 1.1rem + 1.4vw, 2rem);
+    margin:0;
+    text-wrap:balance;
+  }
+  .score-big{
+    font-family:"IBM Plex Mono", ui-monospace, monospace;
+    font-weight:700;
+    font-size:clamp(2.4rem, 2rem + 2vw, 3.2rem);
+    font-variant-numeric: tabular-nums;
+    color:var(--accent-ink);
+  }
+  .breakdown{
+    display:flex; flex-direction:column; gap:8px;
+    border-top:1px solid var(--line);
+    padding-top:14px;
+  }
+  .brow{
+    display:flex; align-items:center; gap:10px;
+  }
+  .brow .label{ flex:1; font-size:0.88rem; color:var(--ink-soft); }
+  .brow .bar{
+    flex:1.3; height:8px; border-radius:99px; background:var(--paper-2); overflow:hidden;
+  }
+  .brow .bar > span{ display:block; height:100%; background:var(--correct); border-radius:99px; }
+  .brow .frac{
+    font-family:"IBM Plex Mono", ui-monospace, monospace;
+    font-size:0.82rem; color:var(--ink-soft); width:2.6em; text-align:right;
+    font-variant-numeric: tabular-nums;
+  }
+  .summary-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  button.restart{
+    appearance:none; border:none; background:var(--ink); color:var(--paper);
+    font-family:inherit; font-weight:600; font-size:0.95rem;
+    padding:12px 20px; border-radius:12px; cursor:pointer;
+    transition: filter 0.15s ease, transform 0.12s ease;
+  }
+  button.restart:hover{ filter:brightness(1.15); }
+  button.restart:focus-visible{ outline:none; box-shadow: var(--focus); }
+  button.switch{
+    appearance:none; background:transparent; color:var(--accent-ink);
+    border:1px solid var(--line);
+    font-family:inherit; font-weight:600; font-size:0.95rem;
+    padding:12px 20px; border-radius:12px; cursor:pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  button.switch:hover{ border-color: var(--accent); background: var(--accent-soft); }
+  button.switch:focus-visible{ outline:none; box-shadow: var(--focus); }
+
+  [hidden]{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <p class="brand">Which is <em>bigger</em>?</p>
+    <p class="tally" id="tally">Question <strong id="tallyPos">1</strong> of <strong id="tallyTotal">15</strong> · Score <strong id="tallyScore">0</strong></p>
+  </header>
+
+  <div class="mode-row">
+    <div class="mode-toggle" role="group" aria-label="Question order">
+      <button type="button" class="mode-btn" id="modeTeachBtn" aria-pressed="true">Teaching order</button>
+      <button type="button" class="mode-btn" id="modePracticeBtn" aria-pressed="false">Practice (random)</button>
+    </div>
+    <span class="mode-note" id="modeNote">Fixed sequence for explaining the concept</span>
+  </div>
+
+  <div class="progress-row" id="progressRow" aria-hidden="true"></div>
+
+  <main class="card" id="card">
+    <div id="quizView">
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <span class="chip" id="chip">Category</span>
+        <p class="prompt">Tap the larger number.</p>
+        <div class="duel">
+          <button class="opt opt-a" id="optA" type="button">
+            <span class="num-row"><span class="num" id="optAnum"></span><span class="badge" id="badgeA"></span></span>
+          </button>
+          <div class="vs" id="vsGlyph" aria-hidden="true">?</div>
+          <button class="opt opt-b" id="optB" type="button">
+            <span class="num-row"><span class="num" id="optBnum"></span><span class="badge" id="badgeB"></span></span>
+          </button>
+        </div>
+        <p class="feedback" id="feedback" aria-live="polite" hidden></p>
+        <div class="actions">
+          <button class="next" id="nextBtn" type="button" hidden>Next question →</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="summaryView" hidden>
+      <div class="summary">
+        <p class="headline" id="summaryHeadline">Nice work.</p>
+        <div class="score-big" id="scoreBig">0 / 15</div>
+        <div class="breakdown" id="breakdown"></div>
+        <div class="summary-actions">
+          <button class="restart" id="restartBtn" type="button">Play again</button>
+          <button class="switch" id="switchModeBtn" type="button">Try practice mode</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <p class="hint">Click a number, or use ← / → to choose and Enter to continue.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // Fixed teaching sequence — always shown in this exact order, never shuffled,
+  // for walking a class through each type of comparison one at a time.
+  var TEACH_QUESTIONS = [
+    { cat:"Whole numbers", a:{d:"15", v:15}, b:{d:"16", v:16} },
+    { cat:"Large numbers · same length", a:{d:"537 000 000", v:537000000}, b:{d:"546 000 000", v:546000000} },
+    { cat:"Large numbers · different length", a:{d:"270 000", v:270000}, b:{d:"27 000", v:27000} },
+    { cat:"Scientific notation · same power", a:{d:"3.2 × 10<sup>6</sup>", v:3.2e6}, b:{d:"4.1 × 10<sup>6</sup>", v:4.1e6} },
+    { cat:"Scientific notation · same power", a:{d:"8.3 × 10<sup>5</sup>", v:8.3e5}, b:{d:"8.9 × 10<sup>5</sup>", v:8.9e5} },
+    { cat:"Scientific notation · different powers", a:{d:"5.6 × 10<sup>4</sup>", v:5.6e4}, b:{d:"2.3 × 10<sup>5</sup>", v:2.3e5} },
+    { cat:"Scientific notation · different powers", a:{d:"4.7 × 10<sup>5</sup>", v:4.7e5}, b:{d:"9.0 × 10<sup>4</sup>", v:9.0e4} },
+    { cat:"Decimals · same scale", a:{d:"0.62", v:0.62}, b:{d:"0.68", v:0.68} },
+    { cat:"Decimals · same scale", a:{d:"3.457", v:3.457}, b:{d:"3.475", v:3.475} },
+    { cat:"Decimals · different scale", a:{d:"0.5", v:0.5}, b:{d:"0.45", v:0.45} },
+    { cat:"Decimals · different scale", a:{d:"0.08", v:0.08}, b:{d:"0.2", v:0.2} },
+    { cat:"Scientific notation (decimals) · same power", a:{d:"7.5 × 10<sup>−3</sup>", v:7.5e-3}, b:{d:"6.9 × 10<sup>−3</sup>", v:6.9e-3} },
+    { cat:"Scientific notation (decimals) · same power", a:{d:"5.2 × 10<sup>−4</sup>", v:5.2e-4}, b:{d:"4.8 × 10<sup>−4</sup>", v:4.8e-4} },
+    { cat:"Scientific notation (decimals) · different powers", a:{d:"9.8 × 10<sup>−4</sup>", v:9.8e-4}, b:{d:"1.2 × 10<sup>−2</sup>", v:1.2e-2} },
+    { cat:"Scientific notation (decimals) · different powers", a:{d:"6.3 × 10<sup>−5</sup>", v:6.3e-5}, b:{d:"2.1 × 10<sup>−3</sup>", v:2.1e-3} }
+  ];
+
+  // Larger practice bank — different numbers from the teaching deck, same
+  // seven categories, shuffled into a new order every time practice mode
+  // is played.
+  var PRACTICE_QUESTIONS = [
+    { cat:"Whole numbers", a:{d:"17", v:17}, b:{d:"18", v:18} },
+    { cat:"Whole numbers", a:{d:"36", v:36}, b:{d:"63", v:63} },
+    { cat:"Whole numbers", a:{d:"29", v:29}, b:{d:"92", v:92} },
+    { cat:"Whole numbers", a:{d:"54", v:54}, b:{d:"45", v:45} },
+    { cat:"Whole numbers", a:{d:"9", v:9}, b:{d:"11", v:11} },
+
+    { cat:"Large numbers · same length", a:{d:"312 000 000", v:312000000}, b:{d:"321 000 000", v:321000000} },
+    { cat:"Large numbers · same length", a:{d:"6 482 000", v:6482000}, b:{d:"6 428 000", v:6428000} },
+    { cat:"Large numbers · same length", a:{d:"91 300 000", v:91300000}, b:{d:"91 030 000", v:91030000} },
+    { cat:"Large numbers · same length", a:{d:"4 715 000", v:4715000}, b:{d:"4 751 000", v:4751000} },
+    { cat:"Large numbers · same length", a:{d:"802 000 000", v:802000000}, b:{d:"820 000 000", v:820000000} },
+
+    { cat:"Large numbers · different length", a:{d:"360 000", v:360000}, b:{d:"36 000", v:36000} },
+    { cat:"Large numbers · different length", a:{d:"1 200 000", v:1200000}, b:{d:"120 000", v:120000} },
+    { cat:"Large numbers · different length", a:{d:"84 000", v:84000}, b:{d:"840 000", v:840000} },
+    { cat:"Large numbers · different length", a:{d:"705 000", v:705000}, b:{d:"7 050 000", v:7050000} },
+    { cat:"Large numbers · different length", a:{d:"2 900 000", v:2900000}, b:{d:"29 000 000", v:29000000} },
+
+    { cat:"Scientific notation · same power", a:{d:"2.4 × 10<sup>5</sup>", v:2.4e5}, b:{d:"2.9 × 10<sup>5</sup>", v:2.9e5} },
+    { cat:"Scientific notation · same power", a:{d:"6.1 × 10<sup>7</sup>", v:6.1e7}, b:{d:"5.8 × 10<sup>7</sup>", v:5.8e7} },
+    { cat:"Scientific notation · same power", a:{d:"8.0 × 10<sup>3</sup>", v:8.0e3}, b:{d:"7.6 × 10<sup>3</sup>", v:7.6e3} },
+    { cat:"Scientific notation · same power", a:{d:"5.5 × 10<sup>6</sup>", v:5.5e6}, b:{d:"6.2 × 10<sup>6</sup>", v:6.2e6} },
+    { cat:"Scientific notation · same power", a:{d:"1.3 × 10<sup>8</sup>", v:1.3e8}, b:{d:"1.7 × 10<sup>8</sup>", v:1.7e8} },
+
+    { cat:"Scientific notation · different powers", a:{d:"7.2 × 10<sup>3</sup>", v:7.2e3}, b:{d:"1.1 × 10<sup>4</sup>", v:1.1e4} },
+    { cat:"Scientific notation · different powers", a:{d:"4.4 × 10<sup>6</sup>", v:4.4e6}, b:{d:"9.9 × 10<sup>5</sup>", v:9.9e5} },
+    { cat:"Scientific notation · different powers", a:{d:"3.1 × 10<sup>2</sup>", v:3.1e2}, b:{d:"3.1 × 10<sup>3</sup>", v:3.1e3} },
+    { cat:"Scientific notation · different powers", a:{d:"9.4 × 10<sup>4</sup>", v:9.4e4}, b:{d:"2.0 × 10<sup>6</sup>", v:2.0e6} },
+    { cat:"Scientific notation · different powers", a:{d:"6.8 × 10<sup>2</sup>", v:6.8e2}, b:{d:"8.1 × 10<sup>3</sup>", v:8.1e3} },
+
+    { cat:"Decimals · same scale", a:{d:"0.34", v:0.34}, b:{d:"0.38", v:0.38} },
+    { cat:"Decimals · same scale", a:{d:"0.71", v:0.71}, b:{d:"0.79", v:0.79} },
+    { cat:"Decimals · same scale", a:{d:"2.183", v:2.183}, b:{d:"2.138", v:2.138} },
+    { cat:"Decimals · same scale", a:{d:"0.905", v:0.905}, b:{d:"0.895", v:0.895} },
+    { cat:"Decimals · same scale", a:{d:"5.62", v:5.62}, b:{d:"5.26", v:5.26} },
+
+    { cat:"Decimals · different scale", a:{d:"0.7", v:0.7}, b:{d:"0.65", v:0.65} },
+    { cat:"Decimals · different scale", a:{d:"0.09", v:0.09}, b:{d:"0.3", v:0.3} },
+    { cat:"Decimals · different scale", a:{d:"0.4", v:0.4}, b:{d:"0.38", v:0.38} },
+    { cat:"Decimals · different scale", a:{d:"0.06", v:0.06}, b:{d:"0.6", v:0.6} },
+    { cat:"Decimals · different scale", a:{d:"1.05", v:1.05}, b:{d:"1.5", v:1.5} },
+
+    { cat:"Scientific notation (decimals) · same power", a:{d:"3.3 × 10<sup>−2</sup>", v:3.3e-2}, b:{d:"3.9 × 10<sup>−2</sup>", v:3.9e-2} },
+    { cat:"Scientific notation (decimals) · same power", a:{d:"1.5 × 10<sup>−5</sup>", v:1.5e-5}, b:{d:"1.8 × 10<sup>−5</sup>", v:1.8e-5} },
+    { cat:"Scientific notation (decimals) · same power", a:{d:"4.6 × 10<sup>−3</sup>", v:4.6e-3}, b:{d:"4.1 × 10<sup>−3</sup>", v:4.1e-3} },
+    { cat:"Scientific notation (decimals) · same power", a:{d:"2.2 × 10<sup>−6</sup>", v:2.2e-6}, b:{d:"2.9 × 10<sup>−6</sup>", v:2.9e-6} },
+    { cat:"Scientific notation (decimals) · same power", a:{d:"7.0 × 10<sup>−2</sup>", v:7.0e-2}, b:{d:"6.4 × 10<sup>−2</sup>", v:6.4e-2} },
+
+    { cat:"Scientific notation (decimals) · different powers", a:{d:"2.5 × 10<sup>−3</sup>", v:2.5e-3}, b:{d:"6.0 × 10<sup>−4</sup>", v:6.0e-4} },
+    { cat:"Scientific notation (decimals) · different powers", a:{d:"8.8 × 10<sup>−6</sup>", v:8.8e-6}, b:{d:"1.0 × 10<sup>−4</sup>", v:1.0e-4} },
+    { cat:"Scientific notation (decimals) · different powers", a:{d:"3.0 × 10<sup>−5</sup>", v:3.0e-5}, b:{d:"4.0 × 10<sup>−4</sup>", v:4.0e-4} },
+    { cat:"Scientific notation (decimals) · different powers", a:{d:"9.1 × 10<sup>−2</sup>", v:9.1e-2}, b:{d:"7.0 × 10<sup>−3</sup>", v:7.0e-3} },
+    { cat:"Scientific notation (decimals) · different powers", a:{d:"5.5 × 10<sup>−6</sup>", v:5.5e-6}, b:{d:"2.0 × 10<sup>−3</sup>", v:2.0e-3} }
+  ];
+
+  var MODE_NOTES = {
+    teach: "Fixed sequence for explaining the concept",
+    practice: "Shuffled every time — for independent practice"
+  };
+
+  var els = {
+    card: document.getElementById('card'),
+    quizView: document.getElementById('quizView'),
+    summaryView: document.getElementById('summaryView'),
+    chip: document.getElementById('chip'),
+    optA: document.getElementById('optA'),
+    optB: document.getElementById('optB'),
+    optAnum: document.getElementById('optAnum'),
+    optBnum: document.getElementById('optBnum'),
+    badgeA: document.getElementById('badgeA'),
+    badgeB: document.getElementById('badgeB'),
+    vsGlyph: document.getElementById('vsGlyph'),
+    feedback: document.getElementById('feedback'),
+    nextBtn: document.getElementById('nextBtn'),
+    progressRow: document.getElementById('progressRow'),
+    tallyPos: document.getElementById('tallyPos'),
+    tallyTotal: document.getElementById('tallyTotal'),
+    tallyScore: document.getElementById('tallyScore'),
+    summaryHeadline: document.getElementById('summaryHeadline'),
+    scoreBig: document.getElementById('scoreBig'),
+    breakdown: document.getElementById('breakdown'),
+    restartBtn: document.getElementById('restartBtn'),
+    switchModeBtn: document.getElementById('switchModeBtn'),
+    modeTeachBtn: document.getElementById('modeTeachBtn'),
+    modePracticeBtn: document.getElementById('modePracticeBtn'),
+    modeNote: document.getElementById('modeNote')
+  };
+
+  var state = null;
+
+  function shuffled(n){
+    var arr = [];
+    for (var i=0;i<n;i++) arr.push(i);
+    for (var j=arr.length-1;j>0;j--){
+      var k = Math.floor(Math.random()*(j+1));
+      var tmp = arr[j]; arr[j]=arr[k]; arr[k]=tmp;
+    }
+    return arr;
+  }
+
+  function identity(n){
+    var arr = [];
+    for (var i=0;i<n;i++) arr.push(i);
+    return arr;
+  }
+
+  function currentSet(mode){
+    return mode === 'practice' ? PRACTICE_QUESTIONS : TEACH_QUESTIONS;
+  }
+
+  function newGame(mode){
+    if (!mode) mode = state ? state.mode : 'teach';
+    var set = currentSet(mode);
+
+    state = {
+      mode: mode,
+      set: set,
+      order: mode === 'practice' ? shuffled(set.length) : identity(set.length),
+      pos: 0,
+      score: 0,
+      answered: false,
+      catTotals: {},
+      catCorrect: {}
+    };
+    set.forEach(function(q){
+      state.catTotals[q.cat] = (state.catTotals[q.cat]||0) + 1;
+      state.catCorrect[q.cat] = state.catCorrect[q.cat] || 0;
+    });
+
+    els.modeTeachBtn.setAttribute('aria-pressed', mode === 'teach' ? 'true' : 'false');
+    els.modePracticeBtn.setAttribute('aria-pressed', mode === 'practice' ? 'true' : 'false');
+    els.modeNote.textContent = MODE_NOTES[mode];
+    els.switchModeBtn.textContent = mode === 'teach' ? 'Try practice mode' : 'Back to teaching order';
+
+    buildProgressDots(set.length);
+    els.summaryView.hidden = true;
+    els.quizView.hidden = false;
+    els.tallyTotal.textContent = set.length;
+    els.scoreBig.textContent = '0 / ' + set.length;
+    loadQuestion(0);
+  }
+
+  function buildProgressDots(count){
+    els.progressRow.innerHTML = '';
+    for (var i=0;i<count;i++){
+      var d = document.createElement('div');
+      d.className = 'dot';
+      d.id = 'dot-'+i;
+      els.progressRow.appendChild(d);
+    }
+  }
+
+  function setDot(pos, outcome){
+    var d = document.getElementById('dot-'+pos);
+    if (!d) return;
+    d.classList.remove('current','correct','incorrect');
+    if (outcome === 'current') d.classList.add('current');
+    else if (outcome === 'correct') d.classList.add('correct');
+    else if (outcome === 'incorrect') d.classList.add('incorrect');
+  }
+
+  // The whole point of this function is to leave ZERO visual trace of the
+  // previous question's answer before the new question is shown. Every
+  // reset happens with transitions/animations forcibly disabled, and only
+  // once everything is neutral do we write in the new content. Nothing
+  // "correct"/"incorrect" is ever pre-computed into a visible class ahead
+  // of a click, so there is nothing for a transition to leak.
+  function loadQuestion(pos){
+    var card = els.card;
+
+    card.classList.add('no-anim');
+
+    // 1. wipe every trace of the previous answer
+    els.optA.classList.remove('is-correct','is-incorrect');
+    els.optB.classList.remove('is-correct','is-incorrect');
+    els.badgeA.textContent = '';
+    els.badgeB.textContent = '';
+    els.optA.disabled = false;
+    els.optB.disabled = false;
+    els.feedback.hidden = true;
+    els.feedback.textContent = '';
+    els.nextBtn.hidden = true;
+    els.vsGlyph.textContent = '?';
+    els.vsGlyph.classList.remove('resolved');
+    state.answered = false;
+
+    // 2. write in the new, still fully-neutral question
+    var q = state.set[state.order[pos]];
+    els.chip.textContent = q.cat;
+    els.optAnum.innerHTML = q.a.d;
+    els.optBnum.innerHTML = q.b.d;
+    els.optA.dataset.correct = q.a.v > q.b.v ? 'true' : 'false';
+    els.optB.dataset.correct = q.b.v > q.a.v ? 'true' : 'false';
+    state.biggerDisplay = q.a.v > q.b.v ? q.a.d.replace(/<[^>]+>/g,'') : q.b.d.replace(/<[^>]+>/g,'');
+    state.currentCat = q.cat;
+    state.pos = pos;
+
+    els.tallyPos.textContent = pos+1;
+    els.tallyScore.textContent = state.score;
+    setDot(pos, 'current');
+
+    // 3. commit the neutral, new-content frame with no transitions...
+    void card.offsetHeight;
+
+    // 4. ...then re-enable transitions and play a small, purely
+    //    decorative entrance on the whole card (never on a single
+    //    answer's colour) on the next frame.
+    requestAnimationFrame(function(){
+      card.classList.remove('no-anim');
+      card.classList.remove('enter');
+      void card.offsetHeight;
+      card.classList.add('enter');
+    });
+  }
+
+  function selectOption(chosen, other, chosenBadge, otherBadge){
+    if (state.answered) return;
+    state.answered = true;
+    els.optA.disabled = true;
+    els.optB.disabled = true;
+
+    var chosenCorrect = chosen.dataset.correct === 'true';
+    chosen.classList.add(chosenCorrect ? 'is-correct' : 'is-incorrect');
+    chosenBadge.textContent = chosenCorrect ? '✓' : '✕';
+    if (!chosenCorrect){
+      other.classList.add('is-correct');
+      otherBadge.textContent = '✓';
+    } else {
+      otherBadge.textContent = '';
+    }
+
+    els.vsGlyph.textContent = els.optA.dataset.correct === 'true' ? '>' : '<';
+    els.vsGlyph.classList.add('resolved');
+
+    els.feedback.hidden = false;
+    els.feedback.innerHTML = (chosenCorrect ? '<strong>Correct.</strong> ' : '<strong>Not quite.</strong> ') +
+      state.biggerDisplay + ' is bigger.';
+
+    if (chosenCorrect){
+      state.score++;
+      state.catCorrect[state.currentCat]++;
+    }
+    els.tallyScore.textContent = state.score;
+    setDot(state.pos, chosenCorrect ? 'correct' : 'incorrect');
+
+    els.nextBtn.hidden = false;
+    els.nextBtn.focus();
+  }
+
+  function goNext(){
+    if (!state.answered) return;
+    var next = state.pos + 1;
+    if (next >= state.set.length){
+      showSummary();
+    } else {
+      loadQuestion(next);
+    }
+  }
+
+  function showSummary(){
+    els.quizView.hidden = true;
+    els.summaryView.hidden = false;
+
+    var total = state.set.length;
+    var pct = state.score / total;
+    var headline;
+    if (pct === 1) headline = "Perfect score.";
+    else if (pct >= 0.8) headline = "Strong work.";
+    else if (pct >= 0.5) headline = "Good progress.";
+    else headline = "Worth another go.";
+    els.summaryHeadline.textContent = headline;
+    els.scoreBig.textContent = state.score + ' / ' + total;
+
+    els.breakdown.innerHTML = '';
+    Object.keys(state.catTotals).forEach(function(cat){
+      var correct = state.catCorrect[cat];
+      var tot = state.catTotals[cat];
+      var row = document.createElement('div');
+      row.className = 'brow';
+      var pctW = Math.round((correct/tot)*100);
+      row.innerHTML =
+        '<span class="label">'+cat+'</span>' +
+        '<span class="bar"><span style="width:'+pctW+'%"></span></span>' +
+        '<span class="frac">'+correct+'/'+tot+'</span>';
+      els.breakdown.appendChild(row);
+    });
+  }
+
+  els.optA.addEventListener('click', function(){ selectOption(els.optA, els.optB, els.badgeA, els.badgeB); });
+  els.optB.addEventListener('click', function(){ selectOption(els.optB, els.optA, els.badgeB, els.badgeA); });
+  els.nextBtn.addEventListener('click', goNext);
+  els.restartBtn.addEventListener('click', function(){ newGame(state.mode); });
+  els.switchModeBtn.addEventListener('click', function(){ newGame(state.mode === 'teach' ? 'practice' : 'teach'); });
+  els.modeTeachBtn.addEventListener('click', function(){ if (state.mode !== 'teach') newGame('teach'); });
+  els.modePracticeBtn.addEventListener('click', function(){ if (state.mode !== 'practice') newGame('practice'); });
+
+  document.addEventListener('keydown', function(e){
+    if (!els.summaryView.hidden){
+      if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); newGame(state.mode); }
+      return;
+    }
+    if (!state) return;
+    if (!state.answered){
+      if (e.key === 'ArrowLeft' || e.key === '1'){ e.preventDefault(); els.optA.click(); }
+      else if (e.key === 'ArrowRight' || e.key === '2'){ e.preventDefault(); els.optB.click(); }
+    } else {
+      if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === ' '){ e.preventDefault(); goNext(); }
+    }
+  });
+
+  newGame('teach');
+})();
+</script>
+</body>
+</html>
