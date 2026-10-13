@@ -48,10 +48,12 @@ svg#plot{width:100%;min-width:620px;height:auto;display:block;touch-action:none;
 .tabs button{border:0;border-radius:8px;padding:8px 18px;font-weight:600;color:var(--muted);background:transparent}
 .tabs button.on{background:var(--accent);color:#fff}
 .hidden{display:none !important}
-.rawlist{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px;min-height:40px}
-.rchip{display:inline-flex;align-items:center;gap:2px;height:36px;padding:0 4px 0 12px;border:1px solid var(--line);border-radius:18px;font-weight:600;font-variant-numeric:tabular-nums;background:var(--bg)}
-.rchip button{border:0;background:transparent;color:var(--muted);padding:2px 8px;font-size:1.05rem;line-height:1;border-radius:12px}
-.rchip button:hover{color:var(--bad);background:var(--badbg)}
+.rawlist{display:flex;flex-wrap:wrap;gap:10px 8px;padding-top:8px;margin:4px 0 12px;min-height:40px}
+.rchip{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:18px;font-weight:600;font-variant-numeric:tabular-nums;background:var(--bg);cursor:default;outline:none}
+.rchip:hover,.rchip:focus-within{border-color:var(--bad)}
+.rchip button{position:absolute;top:-8px;right:-8px;width:22px;height:22px;padding:0;border:0;border-radius:50%;background:var(--bad);color:#fff;font-size:15px;line-height:22px;text-align:center;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .12s}
+.rchip:hover button,.rchip:focus-within button{opacity:1;pointer-events:auto}
+.rchip button:hover{filter:brightness(1.1)}
 .addrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .addrow input{flex:1;min-width:180px}
 .ncount{font-size:.9rem;color:var(--muted);font-weight:600}
@@ -74,6 +76,44 @@ svg#listPlot{width:100%;min-width:620px;height:auto;display:block;margin-top:12p
 #drawSvg{width:100%;min-width:620px;height:auto;display:block;touch-action:none;user-select:none;-webkit-user-select:none;outline:none}
 .drawbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
 .locked{padding:14px;border:2px dashed var(--line);border-radius:10px;color:var(--muted)}
+.cmp-a{--c:var(--lower);--cbg:var(--lowerbg)} .cmp-b{--c:var(--upper);--cbg:var(--upperbg)}
+.ctx{margin:10px 0 0;color:var(--muted);font-size:.93rem}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:.95rem;cursor:pointer}
+.own{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.owngrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.owngrid label{font-size:.85rem;font-weight:700;color:var(--c)}
+.owngrid input,.owngrid textarea,.own .unitrow input{width:100%;font:inherit;font-size:.95rem;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin-top:4px}
+.owngrid textarea{resize:vertical;min-height:70px}
+.own .unitrow{display:flex;gap:8px;align-items:flex-end;margin-top:10px;flex-wrap:wrap}
+.own .unitrow input{max-width:260px}
+.cdata{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cdata .set{border-left:4px solid var(--c);background:var(--cbg);border-radius:8px;padding:8px 12px}
+.cdata .set h3{margin:0 0 4px;font-size:.95rem;color:var(--c)}
+.cdata .set .nums{font-variant-numeric:tabular-nums;word-spacing:2px}
+table.ctab{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.ctab th,.ctab td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right}
+.ctab th:first-child,.ctab td:first-child{text-align:left}
+.ctab thead th{font-size:.9rem}
+.ctab thead th.a{color:var(--lower)} .ctab thead th.b{color:var(--upper)}
+.ctab td.big{font-weight:700}
+.tablewrap{overflow-x:auto}
+.points{margin:0;padding-left:1.2em}
+.points li{margin-bottom:8px}
+.cq{padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px}
+.cq.ok{border-color:var(--ok);background:var(--okbg)} .cq.bad{border-color:var(--bad);background:var(--badbg)}
+.cq .cqt{font-weight:600;margin-bottom:6px}
+.cq input[type=text]{width:120px;font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.cq .opts{display:flex;flex-wrap:wrap;gap:6px 16px}
+.cq .opts label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.cqfb{margin-top:6px;font-size:.92rem}
+.cmplab{font-size:14px;font-weight:700}
+.cmplab.a{fill:var(--lower)} .cmplab.b{fill:var(--upper)}
+.cdot.a{fill:var(--lower)} .cdot.b{fill:var(--upper)}
+.cbox.a{fill:var(--lowerbg);stroke:var(--lower);stroke-width:2} .cbox.b{fill:var(--upperbg);stroke:var(--upper);stroke-width:2}
+.cline.a{stroke:var(--lower);stroke-width:2} .cline.b{stroke:var(--upper);stroke-width:2}
+.cmed{stroke:var(--ink);stroke-width:3.5}
+.cgrid{stroke:var(--line);stroke-width:1}
+@media (max-width:640px){ .owngrid,.cdata{grid-template-columns:1fr} }
 .plotscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .hint{font-size:.88rem;color:var(--muted);margin:6px 0 0}
 .cards{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
@@ -161,10 +201,12 @@ details p,details li{color:var(--muted);font-size:.93rem}
   <div class="tabs" role="tablist" aria-label="Choose a view">
     <button id="tabDot" class="on" role="tab" aria-selected="true">Dot plot</button>
     <button id="tabList" role="tab" aria-selected="false">List of numbers</button>
+    <button id="tabCompare" role="tab" aria-selected="false">Compare two data sets</button>
   </div>
 
   <div class="panel">
     <div class="toolbar">
+      <span id="dataTools" style="display:contents">
       <select id="preset" aria-label="Choose a dataset">
         <option value="">Choose a dataset…</option>
         <option value="odd">Odd number of values (n = 11)</option>
@@ -177,6 +219,7 @@ details p,details li{color:var(--muted);font-size:.93rem}
       <button id="random">Random data</button>
       <button id="addOutlier">Add an outlier</button>
       <button id="clear">Clear</button>
+      </span>
       <span class="spacer"></span>
       <div class="seg" id="modeSeg" role="group" aria-label="Mouse mode">
         <button id="modeAdd" class="on">Add / move</button>
@@ -251,7 +294,7 @@ details p,details li{color:var(--muted);font-size:.93rem}
     </div>
   </div>
 
-  <div class="twocol">
+  <div class="twocol" id="detailCols">
     <div class="panel">
       <h2>Data in order</h2>
       <div class="list" id="list"></div>
@@ -262,6 +305,77 @@ details p,details li{color:var(--muted);font-size:.93rem}
     </div>
   </div>
 
+  <div id="compareWrap" class="hidden">
+    <div class="panel">
+      <div class="toolbar">
+        <select id="cmpPreset" aria-label="Choose two data sets to compare"></select>
+        <button id="cmpRandom">Random pair</button>
+        <button id="cmpOwnToggle">Enter your own data</button>
+        <span class="spacer"></span>
+        <label class="chk"><input type="checkbox" id="cmpDots" checked> Show dot plots</label>
+      </div>
+      <p class="ctx" id="cmpContext"></p>
+      <div id="cmpOwn" class="own hidden">
+        <div class="owngrid">
+          <div class="cmp-a"><label for="ownNameA">Data set A</label>
+            <input id="ownNameA" placeholder="Name, e.g. Class 9M" value="Data set A">
+            <textarea id="ownA" placeholder="Numbers separated by commas or spaces, e.g. 12, 15, 9, 20"></textarea></div>
+          <div class="cmp-b"><label for="ownNameB">Data set B</label>
+            <input id="ownNameB" placeholder="Name, e.g. Class 9T" value="Data set B">
+            <textarea id="ownB" placeholder="Numbers separated by commas or spaces"></textarea></div>
+        </div>
+        <div class="unitrow">
+          <div><label for="ownUnit" class="hint">Units (optional)</label><input id="ownUnit" placeholder="e.g. cm, seconds, marks"></div>
+          <button id="ownGo" class="primary">Compare my data</button>
+          <span class="status" id="ownMsg" style="margin:0"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 id="cmpTitle"></h2>
+      <div class="plotscroll"><svg id="cmpSvg" viewBox="0 0 800 300" aria-label="Parallel box plots"></svg></div>
+    </div>
+
+    <div class="panel">
+      <h2>The data</h2>
+      <div class="cdata" id="cmpData"></div>
+    </div>
+
+    <div class="panel hidden" id="cmpQuiz">
+      <h2 id="cmpQTitle">Question 1</h2>
+      <p class="hint" style="margin:0 0 10px">Use the data and the parallel box plots above to answer each question.</p>
+      <div id="cmpQs"></div>
+      <div class="drawbar">
+        <button id="cmpCheck" class="primary">Check my answers</button>
+        <button id="cmpReveal">Show answers</button>
+        <button id="cmpNext" class="primary">Next question →</button>
+        <span class="score" id="cmpScore"></span>
+      </div>
+    </div>
+
+    <div id="cmpAnswers">
+      <div class="panel">
+        <h2>Summary statistics</h2>
+        <div class="tablewrap"><table class="ctab" id="cmpTable"></table></div>
+        <p class="hint">The standard deviation shown is the population standard deviation (σ), which is σx on a calculator. The larger value in each spread row is in bold.</p>
+      </div>
+      <div class="panel">
+        <h2>Comparing the two data sets</h2>
+        <ul class="points" id="cmpPoints"></ul>
+        <details style="margin-top:10px"><summary>Discussion questions</summary>
+          <ul>
+            <li>Which data set has the higher centre? Is the difference large compared with the spread?</li>
+            <li>Which data set is more consistent? Which measure of spread did you use, and why?</li>
+            <li>Describe the shape of each data set. Where is the longer tail?</li>
+            <li>Would the mean or the median be a better measure of centre for each set? Why?</li>
+            <li>What could explain the differences you see? What other information would you want?</li>
+          </ul>
+        </details>
+      </div>
+    </div>
+  </div>
+
   <div class="panel">
     <details>
       <summary>Teacher notes</summary>
@@ -269,6 +383,7 @@ details p,details li{color:var(--muted);font-size:.93rem}
       <p><strong>Suggested uses</strong></p>
       <ul>
         <li><strong>Two views:</strong> The <em>Dot plot</em> tab uses whole numbers from 0 to 50 and lets students drag values. The <em>List of numbers</em> tab shows the data unsorted, so students have to put it in order themselves. <em>Add a random number</em> adds a whole number near the existing data. Outside quiz mode, <em>Put in order</em> sorts the list. In quiz mode it becomes <em>Check order</em>: students type their ordered list and get feedback on which positions are wrong. Each tab keeps its own data.</li>
+        <li><strong>Compare two data sets:</strong> Choose a pair of sample data sets or enter your own, such as data the class collects. Students see parallel box plots on the same scale, summary statistics (including the mean and standard deviation) and comparison statements about centre, spread and shape. In <em>Student quiz mode</em>, they answer questions about the two sets instead. The built-in data sets are made-up examples for teaching, not official statistics.</li>
         <li><strong>Predict, then reveal:</strong> Switch to <em>Student quiz mode</em> and have students calculate the summary by hand before checking it. Once their five-number summary is correct, students draw the box plot by dragging handles (Step 2) and check it. <em>Next question</em> gives a fresh random dataset. Switch back with <em>Teaching mode</em> at the top.</li>
         <li><strong>Odd vs even n:</strong> Add or remove one value and discuss why the median and quartiles sometimes land on a value and sometimes between two values.</li>
         <li><strong>Range vs IQR:</strong> Press "Add an outlier" and compare how much each measure changes. Why is the IQR described as more resistant to extreme values?</li>
@@ -440,7 +555,7 @@ details p,details li{color:var(--muted);font-size:.93rem}
   function drawListView(st){
     document.getElementById('ncount').textContent = data.length ? `(n = ${data.length})` : '';
     document.getElementById('rawList').innerHTML = data.length
-      ? data.map(d=>`<span class="rchip">${fmt(d.v)}<button data-id="${d.id}" aria-label="Remove ${fmt(d.v)}" title="Remove">×</button></span>`).join('')
+      ? data.map(d=>`<span class="rchip" tabindex="0">${fmt(d.v)}<button data-id="${d.id}" aria-label="Remove ${fmt(d.v)}" title="Remove">×</button></span>`).join('')
       : '<span class="hint">No numbers yet. Type some below or choose a dataset.</span>';
     const ls=document.getElementById('listPlot'); ls.innerHTML='';
     const H=150; ls.setAttribute('viewBox',`0 0 ${W} ${H}`);
@@ -593,23 +708,263 @@ details p,details li{color:var(--muted);font-size:.93rem}
     });
   })();
 
+  // ================= compare two data sets =================
+  const CMP = {
+    tests:   {title:'Test results: Class A vs Class B', unit:'marks out of 10', ctx:'Results from the same 10-mark test for two classes.',
+              a:{name:'Class A', vals:[2,3,4,4,5,5,5,6,6,7,8,9]}, b:{name:'Class B', vals:[4,5,6,6,7,7,7,8,8,8,9,10]}},
+    reaction:{title:'Reaction times: dominant vs non-dominant hand', unit:'hundredths of a second', ctx:'Each student caught a falling ruler with their dominant hand, then with their other hand.',
+              a:{name:'Dominant hand', vals:[18,19,20,20,21,21,22,22,23,24,25,27,30]}, b:{name:'Non-dominant hand', vals:[20,22,23,24,25,25,26,27,28,30,31,33,38]}},
+    temps:   {title:'January maximum temperatures: coastal vs inland town', unit:'°C', ctx:'Daily maximum temperatures for 15 days in January.',
+              a:{name:'Coastal town', vals:[24,25,25,26,26,26,27,27,27,28,28,29,29,31,33]}, b:{name:'Inland town', vals:[27,29,31,32,33,34,35,35,36,37,38,39,40,41,43]}},
+    screen:  {title:'Weekly screen time: Year 7 vs Year 10', unit:'hours', ctx:'Hours of recreational screen time in one week, from a class survey.',
+              a:{name:'Year 7', vals:[6,8,10,11,12,12,14,15,15,16,18,20,22,25,35]}, b:{name:'Year 10', vals:[10,14,16,18,20,21,22,22,24,25,26,28,30,33,38]}},
+    plants:  {title:'Plant growth: with vs without fertiliser', unit:'cm', ctx:'Height of seedlings after 4 weeks in a science experiment.',
+              a:{name:'With fertiliser', vals:[14,16,17,18,18,19,19,20,20,21,21,22,23,24]}, b:{name:'Without fertiliser', vals:[10,11,12,13,13,14,14,15,15,16,16,17,19,22]}},
+    ages:    {title:'Ages of visitors: skate park vs lawn bowls club', unit:'years', ctx:'Ages of people at each place on a Saturday morning. A good pair for comparing skewness.',
+              a:{name:'Skate park', vals:[9,11,12,12,13,13,14,14,15,15,16,17,19,24,31,38]}, b:{name:'Lawn bowls club', vals:[28,45,52,58,61,63,65,66,68,69,70,71,72,74,76,79]}},
+    travel:  {title:'Travel time to school: walk vs bus', unit:'minutes', ctx:'Time taken to get to school for students who walk and students who catch the bus.',
+              a:{name:'Walk', vals:[5,6,8,8,10,10,12,12,13,15,15,18]}, b:{name:'Bus', vals:[12,15,18,20,20,22,25,25,28,30,35,45]}},
+    basket:  {title:'Points per game: Team A vs Team B', unit:'points', ctx:'Points scored by the top player in each basketball team over 12 games. Same median, different spread.',
+              a:{name:'Team A player', vals:[10,11,12,12,13,14,14,15,16,16,17,18]}, b:{name:'Team B player', vals:[2,5,8,10,12,14,14,17,20,22,25,28]}}
+  };
+  let cmp=null, cmpKey='', cmpQSig=null, cmpQs=[], cmpUsed=new Set();
+  (function fillCmpSelect(){
+    const sel=document.getElementById('cmpPreset');
+    sel.innerHTML='<option value="">Choose two data sets…</option>'+Object.entries(CMP).map(([k,d])=>`<option value="${k}">${d.title}</option>`).join('')+'<option value="own" disabled>Your own data</option>';
+  })();
+  const sum=a=>a.reduce((x,y)=>x+y,0);
+  function fullStats(vals){
+    const a=[...vals].sort((x,y)=>x-y), st=stats(a); if(!st) return null;
+    const mean=sum(a)/a.length, sd=Math.sqrt(sum(a.map(v=>(v-mean)**2))/a.length);
+    const lw=st.q1-st.min, uw=st.max-st.q3;
+    let shape='approximately symmetric', strong=false;
+    const meanGap = sd>0 ? (mean-st.med)/sd : 0;
+    if(meanGap>0.12 && uw>lw*1.3){ shape='positively skewed'; strong = meanGap>0.25 && uw>=lw*1.8; }
+    else if(meanGap<-0.12 && lw>uw*1.3){ shape='negatively skewed'; strong = meanGap<-0.25 && lw>=uw*1.8; }
+    else strong = Math.abs(meanGap)<0.06 && Math.max(lw,uw)<=Math.min(lw,uw)*1.25+0.5;
+    return Object.assign(st,{sorted:a, mean, sd, shape, shapeStrong:strong});
+  }
+  const f2 = x => fmt(+x.toFixed(2));
+  function loadCmp(key){
+    const d=CMP[key]; if(!d) return;
+    cmpKey=key; cmpUsed.add(key);
+    cmp={title:d.title, unit:d.unit, ctx:d.ctx, a:{name:d.a.name, vals:d.a.vals.slice()}, b:{name:d.b.name, vals:d.b.vals.slice()}, sample:true};
+    document.getElementById('cmpPreset').value=key;
+    renderCompare();
+  }
+  function randomPair(){
+    const base=20+Math.floor(Math.random()*40), shift=Math.round((Math.random()*2-1)*12);
+    const mk=(centre,spread,skew,n)=>{ const out=[]; for(let i=0;i<n;i++){ let u=(Math.random()+Math.random())/2; if(skew>0) u=u*u; else if(skew<0) u=1-(1-u)*(1-u); out.push(Math.max(0,Math.round(centre+(u-0.5)*spread))); } return out; };
+    const sk=()=>[-1,0,1][Math.floor(Math.random()*3)];
+    cmpKey='random';
+    cmp={title:'Randomly generated data', unit:'', ctx:'Two randomly generated data sets.', sample:true,
+         a:{name:'Data set A', vals:mk(base,20+Math.random()*40,sk(),10+Math.floor(Math.random()*7))},
+         b:{name:'Data set B', vals:mk(base+shift,20+Math.random()*40,sk(),10+Math.floor(Math.random()*7))}};
+    document.getElementById('cmpPreset').value='';
+    renderCompare();
+  }
+  function useOwn(){
+    const pa=parseNums(document.getElementById('ownA').value), pb=parseNums(document.getElementById('ownB').value);
+    const msg=document.getElementById('ownMsg');
+    if(pa.ok.length<4 || pb.ok.length<4){ msg.textContent='Each data set needs at least 4 numbers.'; return; }
+    const capA=pa.ok.slice(0,200), capB=pb.ok.slice(0,200);
+    cmpKey='own';
+    cmp={title:(document.getElementById('ownNameA').value.trim()||'Data set A')+' vs '+(document.getElementById('ownNameB').value.trim()||'Data set B'),
+         unit:document.getElementById('ownUnit').value.trim(), ctx:'Your own data.', sample:false,
+         a:{name:document.getElementById('ownNameA').value.trim()||'Data set A', vals:capA},
+         b:{name:document.getElementById('ownNameB').value.trim()||'Data set B', vals:capB}};
+    let m='Compared '+capA.length+' and '+capB.length+' values.';
+    if(pa.bad||pb.bad) m+=' Entries that were not numbers were ignored.';
+    if(pa.ok.length>200||pb.ok.length>200) m+=' Only the first 200 values of each set were used.';
+    msg.textContent=m;
+    document.getElementById('cmpPreset').value='own';
+    renderCompare();
+  }
+  const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  function drawCmpSvg(sA,sB){
+    const g=document.getElementById('cmpSvg'); g.innerHTML='';
+    const showDots = document.getElementById('cmpDots').checked && !(quizMode && quiz);
+    const [a0,a1,stp]=niceAxis(Math.min(sA.min,sB.min), Math.max(sA.max,sB.max));
+    const X=v=>L+(v-a0)*(R-L)/(a1-a0);
+    const pxPerUnit=(R-L)/(a1-a0);
+    const r=Math.max(3, Math.min(7, pxPerUnit*0.42)), dy=2*r+2;
+    let y=10;
+    const sets=[[sA,cmp.a.name,'a'],[sB,cmp.b.name,'b']];
+    const top=y, layout=[];
+    sets.forEach(([st,name,c])=>{
+      const lab=y+16; y+=26;
+      let dotsTop=y, stack=0;
+      if(showDots){ const cnt={}; st.sorted.forEach(v=>{cnt[v]=(cnt[v]||0)+1; stack=Math.max(stack,cnt[v]);}); y+=stack*dy+6; }
+      const boxY=y+20; y+=48;
+      layout.push({st,name,c,lab,dotsBottom:y-48-6+ (showDots?0:0),boxY,showDots,stack});
+    });
+    const axisY=y+8, H=axisY+40;
+    g.setAttribute('viewBox',`0 0 ${W} ${H}`);
+    // gridlines
+    for(let i=0,t=a0; t<=a1+stp/2; i++, t=a0+i*stp){ el('line',{x1:X(t),y1:top,x2:X(t),y2:axisY,class:'cgrid'},g); }
+    layout.forEach(o=>{
+      el('text',{x:L,y:o.lab,class:'cmplab '+o.c},g,o.name+'  (n = '+o.st.n+')');
+      if(o.showDots){
+        const cnt={}, base=o.boxY-20-6;
+        o.st.sorted.forEach(v=>{ const k=cnt[v]=(cnt[v]||0)+1; el('circle',{cx:X(v),cy:base-r-(k-1)*dy,r:r,class:'cdot '+o.c},g); });
+      }
+      const st=o.st, by=o.boxY, h=30;
+      el('line',{x1:X(st.min),y1:by,x2:X(st.q1),y2:by,class:'cline '+o.c},g);
+      el('line',{x1:X(st.q3),y1:by,x2:X(st.max),y2:by,class:'cline '+o.c},g);
+      el('line',{x1:X(st.min),y1:by-9,x2:X(st.min),y2:by+9,class:'cline '+o.c},g);
+      el('line',{x1:X(st.max),y1:by-9,x2:X(st.max),y2:by+9,class:'cline '+o.c},g);
+      el('rect',{x:X(st.q1),y:by-h/2,width:Math.max(1,X(st.q3)-X(st.q1)),height:h,class:'cbox '+o.c},g);
+      el('line',{x1:X(st.med),y1:by-h/2,x2:X(st.med),y2:by+h/2,class:'cmed'},g);
+    });
+    el('line',{x1:L-10,y1:axisY,x2:R+10,y2:axisY,class:'axis'},g);
+    for(let i=0,t=a0; t<=a1+stp/2; i++, t=a0+i*stp){
+      const tv=+t.toFixed(6);
+      el('line',{x1:X(tv),y1:axisY,x2:X(tv),y2:axisY+8,class:'tick'},g);
+      el('text',{x:X(tv),y:axisY+26,class:'ticklab'},g,fmt(tv));
+    }
+  }
+
+  function cmpPoints(sA,sB){
+    const A=esc(cmp.a.name), B=esc(cmp.b.name), u=cmp.unit?(' '+esc(cmp.unit)):'';
+    const pts=[];
+    // centre
+    if(sA.med===sB.med) pts.push(`<strong>Centre:</strong> Both data sets have the same median (${fmt(sA.med)}${u}). The means are ${f2(sA.mean)} and ${f2(sB.mean)}.`);
+    else { const [hi,lo,sh,sl]= sA.med>sB.med ? [A,B,sA,sB] : [B,A,sB,sA];
+      pts.push(`<strong>Centre:</strong> ${hi} has the higher median (${fmt(sh.med)} compared with ${fmt(sl.med)}${u}), so its values are generally higher. The means tell a similar story (${f2(sh.mean)} and ${f2(sl.mean)}).`); }
+    // spread
+    const more=(x,y)=> x>y ? A : (y>x ? B : null);
+    const iq=more(sA.iqr,sB.iqr), rg=more(sA.range,sB.range), sdm=more(sA.sd,sB.sd);
+    let sp=`<strong>Spread:</strong> IQR ${fmt(sA.iqr)} vs ${fmt(sB.iqr)}, range ${fmt(sA.range)} vs ${fmt(sB.range)}, standard deviation ${f2(sA.sd)} vs ${f2(sB.sd)}. `;
+    if(iq && iq===rg && iq===sdm) sp+=`${iq} is more spread out on every measure, so ${iq===A?B:A} is more consistent.`;
+    else if(iq) sp+=`${iq} has the larger IQR, so its middle 50% is more spread out. The measures don't all agree, so it's worth discussing which one is most useful here.`;
+    else sp+='The IQRs are equal, so the middle 50% of each set is equally spread out.';
+    pts.push(sp);
+    // shape
+    pts.push(`<strong>Shape:</strong> ${A} appears ${sA.shape} and ${B} appears ${sB.shape}.`);
+    // overlap / inference
+    const over=(hiS,loS,hi,lo)=>{
+      if(hiS.min>loS.max) return `Every value in ${hi} is greater than every value in ${lo}. The data sets do not overlap at all.`;
+      if(hiS.q1>loS.q3) return `The lower quartile of ${hi} (${fmt(hiS.q1)}) is above the upper quartile of ${lo} (${fmt(loS.q3)}). So at least 75% of ${hi}'s values are greater than at least 75% of ${lo}'s values.`;
+      if(hiS.med>loS.q3) return `The median of ${hi} (${fmt(hiS.med)}) is above the upper quartile of ${lo} (${fmt(loS.q3)}). So about half of ${hi}'s values are greater than about 75% of ${lo}'s values.`;
+      if(hiS.q1>loS.med) return `The lower quartile of ${hi} (${fmt(hiS.q1)}) is above the median of ${lo} (${fmt(loS.med)}). So about 75% of ${hi}'s values are higher than about half of ${lo}'s values.`;
+      return `The boxes overlap a lot, so the difference between the two data sets is less clear-cut.`;
+    };
+    if(sA.med!==sB.med) pts.push('<strong>Overlap:</strong> '+(sA.med>sB.med ? over(sA,sB,A,B) : over(sB,sA,B,A)));
+    else pts.push('<strong>Overlap:</strong> With equal medians, compare the spread: '+(iq ? `${iq===A?B:A}'s values are more tightly grouped around the median.` : 'the boxes cover a similar spread.'));
+    return pts;
+  }
+
+  function cmpTable(sA,sB){
+    const rows=[['Number of values (n)','n',fmt],['Minimum','min',fmt],['Lower quartile (Q1)','q1',fmt],['Median','med',fmt],['Upper quartile (Q3)','q3',fmt],['Maximum','max',fmt],
+      ['Range','range',fmt,true],['Interquartile range (IQR)','iqr',fmt,true],['Mean','mean',f2],['Standard deviation (σ)','sd',f2,true],['Shape','shape',x=>x]];
+    let h=`<thead><tr><th>Statistic</th><th class="a">${esc(cmp.a.name)}</th><th class="b">${esc(cmp.b.name)}</th></tr></thead><tbody>`;
+    rows.forEach(([lab,k,f,hl])=>{
+      const va=sA[k], vb=sB[k];
+      const ca = hl && va>vb+1e-9 ? ' class="big"' : '', cb = hl && vb>va+1e-9 ? ' class="big"' : '';
+      h+=`<tr><td>${lab}</td><td${ca}>${f(va)}</td><td${cb}>${f(vb)}</td></tr>`;
+    });
+    return h+'</tbody>';
+  }
+
+  function buildCmpQuiz(sA,sB){
+    const A=cmp.a.name, B=cmp.b.name, qs=[];
+    const pick=Math.random()<0.5;
+    qs.push({type:'num', text:`What is the median of ${A}?`, ans:sA.med});
+    qs.push({type:'num', text:`What is the interquartile range of ${B}?`, ans:sB.iqr});
+    qs.push({type:'num', text:`What is the range of ${pick?A:B}?`, ans:(pick?sA:sB).range});
+    qs.push({type:'choice', text:'Which data set has the higher median?', opts:[A,B,'They are equal'], ans: sA.med>sB.med?0:sB.med>sA.med?1:2});
+    qs.push({type:'choice', text:'Which data set has the larger interquartile range?', opts:[A,B,'They are equal'], ans: sA.iqr>sB.iqr?0:sB.iqr>sA.iqr?1:2});
+    const shapeOpts=['Positively skewed','Approximately symmetric','Negatively skewed'], idx=s=>s.shape.startsWith('pos')?0:s.shape.startsWith('neg')?2:1;
+    const cands=[[sA,A],[sB,B]].filter(([s])=>s.shapeStrong);
+    if(cands.length){ const [s,nm]=cands[Math.floor(Math.random()*cands.length)]; qs.push({type:'choice', text:`Describe the shape of ${nm}.`, opts:shapeOpts, ans:idx(s)}); }
+    cmpQs=qs;
+    document.getElementById('cmpQs').innerHTML=qs.map((q,i)=>`<div class="cq" data-i="${i}"><div class="cqt">${i+1}. ${esc(q.text)}</div>`+
+      (q.type==='num' ? `<input type="text" inputmode="decimal" aria-label="Answer ${i+1}">`
+        : `<div class="opts">${q.opts.map((o,j)=>`<label><input type="radio" name="cq${i}" value="${j}"> ${esc(o)}</label>`).join('')}</div>`)+
+      `<div class="cqfb"></div></div>`).join('');
+    document.getElementById('cmpScore').textContent='';
+  }
+  function checkCmpQuiz(reveal){
+    let right=0;
+    cmpQs.forEach((q,i)=>{
+      const box=document.querySelector(`.cq[data-i="${i}"]`), fb=box.querySelector('.cqfb');
+      let val=null;
+      if(q.type==='num'){ const raw=box.querySelector('input').value.trim(); if(raw!=='') val=parseFloat(raw.replace(',','.')); }
+      else { const c=box.querySelector('input:checked'); if(c) val=+c.value; }
+      const ok = val!==null && !isNaN(val) && (q.type==='num' ? Math.abs(val-q.ans)<0.005 : val===q.ans);
+      box.classList.remove('ok','bad');
+      if(val!==null) box.classList.add(ok?'ok':'bad');
+      if(ok) right++;
+      const ansTxt = q.type==='num' ? fmt(q.ans) : q.opts[q.ans];
+      fb.textContent = reveal ? (ok ? '✓ Correct.' : 'Answer: '+ansTxt) : (val===null ? '' : ok ? '✓ Correct.' : '✗ Not quite. Try again.');
+    });
+    document.getElementById('cmpScore').textContent = `${right} of ${cmpQs.length} correct`;
+  }
+
+  function renderCompare(){
+    if(!cmp) { loadCmp('tests'); return; }
+    const sA=fullStats(cmp.a.vals), sB=fullStats(cmp.b.vals);
+    document.getElementById('cmpTitle').textContent=cmp.title+(cmp.unit?` (${cmp.unit})`:'');
+    document.getElementById('cmpContext').textContent=cmp.ctx+(cmp.sample?' These are made-up example data for teaching, not official statistics.':'');
+    const hideAns = quizMode && quiz;
+    document.getElementById('cmpData').innerHTML=[['a',cmp.a,sA],['b',cmp.b,sB]].map(([c,d,st])=>
+      `<div class="set cmp-${c}"><h3>${esc(d.name)} (n = ${d.vals.length})</h3><div class="nums">${st.sorted.map(fmt).join(', ')}</div></div>`).join('');
+    drawCmpSvg(sA,sB);
+    document.getElementById('cmpAnswers').classList.toggle('hidden', hideAns);
+    document.getElementById('cmpTable').innerHTML=cmpTable(sA,sB);
+    document.getElementById('cmpPoints').innerHTML=cmpPoints(sA,sB).map(p=>'<li>'+p+'</li>').join('');
+    const qp=document.getElementById('cmpQuiz');
+    qp.classList.toggle('hidden', !quizMode);
+    if(quizMode){
+      document.getElementById('cmpQTitle').textContent='Question '+qNum;
+      const sig=cmpKey+'|'+cmp.a.vals.join(',')+'|'+cmp.b.vals.join(',');
+      if(sig!==cmpQSig){ cmpQSig=sig; buildCmpQuiz(sA,sB); }
+      document.getElementById('cmpCheck').classList.toggle('hidden', !quiz);
+      document.getElementById('cmpReveal').classList.toggle('hidden', !quiz);
+      if(!quiz) checkCmpQuiz(true);
+    }
+  }
+  document.getElementById('cmpPreset').addEventListener('change',e=>{ if(CMP[e.target.value]) loadCmp(e.target.value); });
+  document.getElementById('cmpRandom').addEventListener('click',randomPair);
+  document.getElementById('cmpDots').addEventListener('change',()=>renderCompare());
+  document.getElementById('cmpOwnToggle').addEventListener('click',()=>{
+    const o=document.getElementById('cmpOwn'); o.classList.toggle('hidden');
+    document.getElementById('cmpOwnToggle').textContent = o.classList.contains('hidden') ? 'Enter your own data' : 'Hide own data';
+  });
+  document.getElementById('ownGo').addEventListener('click',useOwn);
+  document.getElementById('cmpCheck').addEventListener('click',()=>checkCmpQuiz(false));
+  document.getElementById('cmpReveal').addEventListener('click',()=>{ quiz=false; renderCompare(); });
+  document.getElementById('cmpNext').addEventListener('click',()=>{
+    qNum++; quiz=true;
+    const keys=Object.keys(CMP).filter(k=>!cmpUsed.has(k) && k!==cmpKey);
+    if(keys.length) loadCmp(keys[Math.floor(Math.random()*keys.length)]); else randomPair();
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+
   function switchTab(t){
     if(t===tab) return;
-    store[tab]={data, prevStats, preset:document.getElementById('preset').value};
+    if(tab!=='compare') store[tab]={data, prevStats, preset:document.getElementById('preset').value};
     tab=t;
     const s=store[t];
-    document.getElementById('tabDot').classList.toggle('on',t==='dot');
-    document.getElementById('tabList').classList.toggle('on',t==='list');
-    document.getElementById('tabDot').setAttribute('aria-selected',t==='dot');
-    document.getElementById('tabList').setAttribute('aria-selected',t==='list');
+    [['tabDot','dot'],['tabList','list'],['tabCompare','compare']].forEach(([id,k])=>{
+      document.getElementById(id).classList.toggle('on',t===k);
+      document.getElementById(id).setAttribute('aria-selected',t===k);
+    });
+    const isC = t==='compare';
+    ['summaryPanel','detailCols','dataTools'].forEach(id=>document.getElementById(id).classList.toggle('hidden',isC));
+    document.getElementById('compareWrap').classList.toggle('hidden',!isC);
+    if(isC) document.getElementById('drawPanel').classList.add('hidden');
     document.getElementById('dotPanel').classList.toggle('hidden',t!=='dot');
     document.getElementById('listPanel').classList.toggle('hidden',t!=='list');
     document.getElementById('modeSeg').classList.toggle('hidden',t!=='dot');
     document.getElementById('customRow').classList.toggle('hidden',t!=='dot');
     document.getElementById('subText').textContent = t==='dot'
       ? 'Build a dataset on the dot plot. Watch how the median, quartiles, range and interquartile range respond.'
-      : 'Work from a list of numbers. Put them in order, then find the median, quartiles, range and interquartile range.';
+      : t==='list' ? 'Work from a list of numbers. Put them in order, then find the median, quartiles, range and interquartile range.'
+      : 'Compare two data sets using parallel box plots and summary statistics: centre, spread and shape.';
     lastSig=null; status('');
+    if(isC){ renderCompare(); return; }
     if(s){ data=s.data; prevStats=s.prevStats; document.getElementById('preset').value=s.preset; fitAxis(); render(); }
     else { document.getElementById('preset').value='odd'; setData(PRESETS.odd); }
   }
@@ -725,6 +1080,9 @@ details p,details li{color:var(--muted);font-size:.93rem}
   }
 
   function render(){
+    document.getElementById('modeTeach').classList.toggle('on', !quizMode);
+    document.getElementById('modeQuiz').classList.toggle('on', quizMode);
+    if(tab==='compare'){ renderCompare(); return; }
     const st=currentStats();
     if(tab==='dot') drawPlot(st); else drawListView(st);
     drawList(st); drawSteps(st); drawCards(st);
@@ -821,6 +1179,7 @@ details p,details li{color:var(--muted);font-size:.93rem}
   document.getElementById('customData').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('useCustom').click(); });
   document.getElementById('tabDot').addEventListener('click',()=>switchTab('dot'));
   document.getElementById('tabList').addEventListener('click',()=>switchTab('list'));
+  document.getElementById('tabCompare').addEventListener('click',()=>switchTab('compare'));
   document.getElementById('listAdd').addEventListener('click',listAdd);
   // animate chips sliding to their new positions (FLIP)
   function reorder(newData){

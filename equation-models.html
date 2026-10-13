@@ -1,0 +1,1104 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Equation Models</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* Layout: projector-first workbench. View tabs, model switcher, big equation, graph-paper stage with the algebra record beside it, step controls underneath. Worksheet view previews A4 sheets. */
+:root{
+  --bg:#e8edf2; --surface:#ffffff; --paper:#fdfdfb; --grid:#e3eaf0; --band:#f1f5f8;
+  --ink:#15212d; --muted:#5b6977; --line:#c5d0da;
+  --accent:#1f4e79; --accent-ink:#ffffff; --accent-soft:#dbe7f2;
+  --x:#c2185b; --x-soft:#f6c3d8; --on-x:#ffffff;
+  --unit:#0e7fa0; --unit-soft:#bfe4ef; --on-unit:#ffffff;
+  --const:#e9a516; --on-const:#3a2800;
+  --neg:#d4470f; --on-neg:#ffffff; --tile-edge:#14212d66;
+  --good:#2b7a33; --eq:#ffe14d; --eq-ink:#3a3000;
+  --font-ui:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --font-display:"Bricolage Grotesque","Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --r:14px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e141a; --surface:#16202a; --paper:#1a242f; --grid:#223140; --band:#1f2c39;
+    --ink:#e6edf4; --muted:#9fb1c2; --line:#34485b;
+    --accent:#86bbe8; --accent-ink:#0a1621; --accent-soft:#1d3247;
+    --x:#f06a9b; --x-soft:#5b2541; --on-x:#2a0616;
+    --unit:#4cc2e6; --unit-soft:#17465a; --on-unit:#05222c;
+    --const:#f3bb4d; --on-const:#2e2000;
+    --neg:#ff8152; --on-neg:#2a0a00; --tile-edge:#ffffff55;
+    --good:#7dd88e; --eq:#ffe14d; --eq-ink:#3a3000;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e141a; --surface:#16202a; --paper:#1a242f; --grid:#223140; --band:#1f2c39;
+  --ink:#e6edf4; --muted:#9fb1c2; --line:#34485b;
+  --accent:#86bbe8; --accent-ink:#0a1621; --accent-soft:#1d3247;
+  --x:#f06a9b; --x-soft:#5b2541; --on-x:#2a0616;
+  --unit:#4cc2e6; --unit-soft:#17465a; --on-unit:#05222c;
+  --const:#f3bb4d; --on-const:#2e2000;
+  --neg:#ff8152; --on-neg:#2a0a00; --tile-edge:#ffffff55;
+  --good:#7dd88e; --eq:#ffe14d; --eq-ink:#3a3000;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:16px;line-height:1.45}
+.app{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:16px 32px;display:flex;flex-direction:column;gap:14px}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.logo{width:42px;height:42px;border-radius:10px;background:var(--x);color:var(--on-x);display:grid;place-items:center;font:italic 700 26px/1 var(--font-ui)}
+.brand h1{margin:0;font:800 22px/1.1 var(--font-display);letter-spacing:-.01em}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.views{display:flex;gap:4px;border-bottom:2px solid var(--line)}
+.views button{border:0;background:none;padding:10px 16px 12px;font:700 16px/1 var(--font-ui);color:var(--muted);border-bottom:4px solid transparent;margin-bottom:-2px}
+.views button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--x)}
+.models{display:flex;flex-wrap:wrap;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:6px}
+.models button{display:flex;align-items:center;gap:10px;border:0;background:transparent;border-radius:11px;padding:10px 16px;font:600 17px/1 var(--font-display);color:var(--ink)}
+.models button svg{width:34px;height:22px;flex:none}
+.models button:hover{background:var(--accent-soft)}
+.models button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.models kbd{font:12px/1 var(--font-ui);border:1px solid currentColor;border-radius:5px;padding:2px 5px;opacity:.6}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 16px;font-weight:700}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.4;cursor:default}
+
+/* settings */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px 28px}
+.panel h2{margin:0 0 8px;font:700 13px/1.2 var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.field label{font-weight:700;font-size:15px}
+select,input[type=text],input[type=number]{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:8px 10px;min-width:0}
+.check{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+.check input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none}
+.check span small{display:block;color:var(--muted);font-size:14px}
+.own{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px}
+.own .f{display:flex;flex-direction:column;gap:4px}
+.own .f label{font-size:13px;color:var(--muted);font-weight:700}
+.own input{width:76px;font-size:18px;text-align:center}
+.own select{font-size:18px}
+.own .x,.own .is{font:italic 700 22px/1 var(--font-ui);padding-bottom:9px}
+.own .is{font-style:normal}
+.hint{color:var(--muted);font-size:14px;margin:8px 0 0}
+.err{color:var(--neg);font-weight:700;font-size:14px;margin:6px 0 0}
+
+/* equation */
+.eqbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 20px}
+.eyebrow{font:700 13px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.eq{font-size:clamp(34px,6vw,56px);font-weight:700;line-height:1.1;margin-right:auto;font-variant-numeric:tabular-nums;white-space:nowrap}
+var{font-style:italic;color:var(--x);font-weight:700}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;font-size:.62em;line-height:1.05;margin:0 .08em}
+.fr>span:first-child{border-bottom:.08em solid currentColor;padding:0 .1em}
+.eqbar .meta{color:var(--muted);font-size:15px}
+
+/* work */
+.work{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:14px}
+.work.noalg{grid-template-columns:minmax(0,1fr)}
+.stage{background-color:var(--paper);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:26px 26px;border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0;overflow-x:auto}
+.stage svg{display:block;width:100%;height:auto;min-width:560px;font-family:var(--font-ui)}
+.algebra{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;min-width:0}
+.algebra h2{margin:0 0 10px;font:700 13px/1.2 var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.algebra ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.algebra li{display:flex;flex-direction:column;gap:2px;animation:pop .35s ease}
+.algebra .op{font-size:14px;color:var(--neg);font-weight:700}
+.algebra .ln{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}
+.algebra .ln.check{font-size:18px;color:var(--good)}
+
+/* steps */
+.stepbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.stepbar .btn{font-size:18px;padding:14px 20px}
+.cap{min-width:0}
+.stepnum{font:700 13px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+#caption{margin:0;font-size:clamp(18px,2.2vw,23px);line-height:1.35;text-wrap:pretty}
+.dots{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.dots button{width:30px;height:8px;border-radius:5px;border:0;background:var(--line);padding:0}
+.dots button.on{background:var(--accent)}
+.keys{margin:0;color:var(--muted);font-size:14px;text-align:center}
+
+.enter{animation:pop .45s ease both}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.enter,.algebra li{animation:none}}
+
+/* worksheet controls */
+.ws-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 24px;align-items:end}
+.ws-controls .actions{display:flex;flex-wrap:wrap;gap:8px}
+.range{display:flex;align-items:center;gap:10px}
+.range input{flex:1;accent-color:var(--accent)}
+.range output{font-weight:700;font-size:20px;min-width:2ch;font-variant-numeric:tabular-nums}
+.ws-note{grid-column:1/-1;margin:0;color:var(--muted);font-size:14px}
+
+/* worksheet sheets: always light, print-ready */
+.sheet{
+  --bg:#ffffff; --surface:#ffffff; --paper:#ffffff; --grid:#e6ecf1; --band:#f3f6f8;
+  --ink:#111a22; --muted:#55626e; --line:#b9c4ce;
+  --x:#c2185b; --x-soft:#f6c3d8; --on-x:#ffffff;
+  --unit:#0e7fa0; --unit-soft:#bfe4ef; --on-unit:#ffffff;
+  --const:#e9a516; --on-const:#3a2800;
+  --neg:#d4470f; --on-neg:#ffffff; --tile-edge:#14212d66;
+  --good:#2b7a33; --eq:#ffe14d; --eq-ink:#3a3000;
+  color-scheme:light;
+  background:#fff;color:var(--ink);width:min(100%,210mm);margin:0 auto;padding:12mm 13mm;
+  box-shadow:0 2px 14px #0000002e;border-radius:4px;font-size:14.5px;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+}
+.sheet + .sheet{margin-top:24px}
+.sheet header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:8px 20px;border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:12px}
+.sheet h1{margin:0;font:800 23px/1.15 var(--font-display);letter-spacing:-.01em;text-wrap:balance}
+.sheet .sub{margin:3px 0 0;color:var(--muted)}
+.namerow{display:flex;flex-wrap:wrap;gap:6px 18px;font-weight:700}
+.namerow span{display:inline-flex;gap:6px;align-items:flex-end}
+.namerow i{display:inline-block;border-bottom:1.5px solid var(--ink);width:110px;height:1.1em}
+.namerow span:first-child i{width:170px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;font-size:13px;color:var(--muted);margin:-4px 0 10px}
+.legend svg{height:18px;width:auto;vertical-align:middle;margin-right:4px}
+.sec{margin-top:14px}
+.sec h2{margin:0;font:800 17px/1.2 var(--font-display);display:flex;gap:10px;align-items:baseline}
+.sec h2 b{font:700 12px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:#fff;background:var(--ink);padding:4px 7px;border-radius:4px}
+.sec .instr{margin:4px 0 10px;color:var(--muted)}
+.qs{display:grid;gap:10px}
+.qs.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.q{border:1px solid var(--line);border-radius:8px;padding:9px 11px;break-inside:avoid;page-break-inside:avoid;min-width:0}
+.q .qh{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.q .n{font-weight:800;min-width:1.6em}
+.q .e{font-size:19px;font-weight:700}
+.q .e var,.sheet var{color:var(--ink)}
+.q .t{line-height:1.45;flex:1;min-width:0}
+.qc .qh{flex-wrap:nowrap}
+.qa{display:grid;grid-template-columns:minmax(0,1fr) 165px;gap:10px}
+.qa .dg svg{display:block;width:100%;height:auto;max-height:190px}
+.dg{margin-top:6px}
+.wk{border:1.5px dashed var(--line);border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;justify-content:space-between;min-height:110px;font-size:12.5px;color:var(--muted)}
+.ans{font-weight:700;color:var(--ink);font-size:15px;white-space:nowrap}
+.ans i{display:inline-block;border-bottom:1.5px solid var(--ink);width:70px;height:1em}
+.draw{margin:8px 0;height:128px;border:1.5px dotted var(--line);border-radius:6px;background-image:radial-gradient(var(--line) 1px,transparent 1.2px);background-size:14px 14px;position:relative}
+.draw::after{content:"Draw a model if it helps";position:absolute;top:4px;left:8px;font-size:11px;color:var(--muted)}
+.lines{height:84px;margin:6px 0;background-image:repeating-linear-gradient(transparent 0 27px,var(--line) 27px 28px)}
+.qc .dg svg{display:block;width:100%;max-width:470px;height:auto;max-height:180px}
+.cmp{display:flex;flex-wrap:wrap;gap:6px 30px;font-size:18px;font-weight:700;margin:6px 0}
+.blank{display:inline-block;width:1.5em;height:1.1em;border:2px solid var(--ink);vertical-align:-.15em;border-radius:3px}
+.key h2{margin:14px 0 6px;font:800 16px/1.2 var(--font-display)}
+.key ol{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px 14px}
+.key ol.long{grid-template-columns:1fr}
+.key li{display:flex;gap:8px;break-inside:avoid;padding:3px 0;border-bottom:1px solid var(--grid)}
+.key li b{min-width:1.8em}
+
+@media (max-width:860px){
+  .work{grid-template-columns:minmax(0,1fr)}
+  .models{width:100%}
+  .models button{flex:1;justify-content:center;padding:10px 8px;font-size:15px}
+  .models kbd{display:none}
+}
+@media (max-width:620px){
+  .qa{grid-template-columns:minmax(0,1fr)}
+  .qs.two{grid-template-columns:minmax(0,1fr)}
+  .key ol{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sheet{padding:16px}
+}
+@media (max-width:520px){
+  .stepbar{grid-template-columns:1fr 1fr}
+  .stepbar .cap{grid-column:1/-1;grid-row:1}
+  .models button svg{display:none}
+}
+@page{size:A4;margin:11mm}
+@media print{
+  body{background:#fff}
+  .app{padding:0;max-width:none;display:block}
+  .app > *:not(#wsView){display:none!important}
+  #wsView > *:not(#wsPreview){display:none!important}
+  .sheet{box-shadow:none;width:auto;padding:0;margin:0;border-radius:0}
+  .sheet + .sheet{margin-top:0;break-before:page;page-break-before:always}
+  .qa{grid-template-columns:minmax(0,1fr) 165px}
+  .qs.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .key ol{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .key ol.long{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">x</div>
+      <div><h1>Equation Models</h1><p>Solving one- and two-step equations visually</p></div>
+    </div>
+    <nav class="models" role="tablist" aria-label="Choose a visual model">
+      <button role="tab" id="tab-numberline" data-model="numberline" aria-selected="true">
+        <svg viewBox="0 0 34 22" aria-hidden="true"><path d="M2 6h30M2 16h30" stroke="currentColor" stroke-width="2"/><path d="M5 3v6M14 3v6M23 3v6M5 13v6M14 13v6M23 13v6" stroke="currentColor" stroke-width="2"/></svg>
+        <span>Number line</span><kbd>1</kbd></button>
+      <button role="tab" id="tab-bar" data-model="bar" aria-selected="false">
+        <svg viewBox="0 0 34 22" aria-hidden="true"><rect x="2" y="2" width="30" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v8M22 2v8" stroke="currentColor" stroke-width="2"/><rect x="2" y="12" width="30" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        <span>Bar model</span><kbd>2</kbd></button>
+      <button role="tab" id="tab-tiles" data-model="tiles" aria-selected="false">
+        <svg viewBox="0 0 34 22" aria-hidden="true"><rect x="1" y="2" width="20" height="7" rx="1" fill="currentColor"/><rect x="1" y="12" width="20" height="7" rx="1" fill="currentColor"/><rect x="25" y="2" width="7" height="7" rx="1" fill="currentColor"/><rect x="25" y="12" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        <span>Algebra tiles</span><kbd>3</kbd></button>
+    </nav>
+  </header>
+
+  <nav class="views" role="tablist" aria-label="Choose a view">
+    <button role="tab" id="view-class" data-view="class" aria-selected="true">Classroom tool</button>
+    <button role="tab" id="view-ws" data-view="ws" aria-selected="false">Worksheet generator</button>
+  </nav>
+
+  <!-- ============ CLASSROOM VIEW ============ -->
+  <div id="classView" style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;justify-content:flex-end">
+      <button id="settingsBtn" class="btn" aria-expanded="false" aria-controls="settings">Teacher settings</button>
+    </div>
+    <section id="settings" class="panel settings" hidden>
+      <div>
+        <h2>Questions</h2>
+        <div class="field">
+          <label for="typeSel">Equation type</label>
+          <select id="typeSel"></select>
+        </div>
+        <label class="check"><input type="checkbox" id="algChk" checked><span>Show the algebra record<small>Writes each step as algebra beside the model.</small></span></label>
+        <label class="check"><input type="checkbox" id="predChk"><span>Pause to predict<small>Adds a stop before the last move so students can predict x.</small></span></label>
+      </div>
+      <div>
+        <h2>Type your own equation</h2>
+        <form id="ownForm" class="own" novalidate>
+          <div class="f"><label for="c-coef">Number of x</label><input type="text" id="c-coef" value="2/5" aria-describedby="ownHint"></div>
+          <span class="x" aria-hidden="true">x</span>
+          <div class="f"><label for="c-op">Sign</label><select id="c-op"><option value="1">+</option><option value="-1">−</option></select></div>
+          <div class="f"><label for="c-b">Number</label><input type="number" id="c-b" value="2" min="0" max="60"></div>
+          <span class="is" aria-hidden="true">=</span>
+          <div class="f"><label for="c-c">Equals</label><input type="number" id="c-c" value="3" min="0" max="60"></div>
+          <button class="btn primary" type="submit">Show it</button>
+        </form>
+        <p class="hint" id="ownHint">Number of x can be a whole number (3) or a fraction (2/5). Use 1/4 for x ÷ 4, and 0 for a one-step equation. Whole numbers up to 60; the answer must be positive.</p>
+        <p class="err" id="ownErr" hidden></p>
+      </div>
+    </section>
+
+    <section class="eqbar" aria-live="polite">
+      <span class="eyebrow">Solve</span>
+      <div id="eq" class="eq"></div>
+      <span class="meta" id="eqType"></span>
+      <button id="newBtn" class="btn primary">New question</button>
+    </section>
+
+    <section class="work" id="work">
+      <div class="stage" id="stage" role="img" aria-label="Visual model"></div>
+      <aside class="algebra" id="algebra">
+        <h2>Recording the algebra</h2>
+        <ol id="algList"></ol>
+      </aside>
+    </section>
+
+    <section class="stepbar">
+      <button id="backBtn" class="btn">← Back</button>
+      <div class="cap" aria-live="polite">
+        <div class="stepnum" id="stepNum"></div>
+        <p id="caption"></p>
+        <div class="dots" id="dots"></div>
+      </div>
+      <button id="nextBtn" class="btn primary">Next →</button>
+    </section>
+    <p class="keys">Keyboard: → next step · ← back · Enter new question · 1, 2, 3 switch model</p>
+  </div>
+
+  <!-- ============ WORKSHEET VIEW ============ -->
+  <div id="wsView" hidden style="flex-direction:column;gap:18px">
+    <section class="panel ws-controls">
+      <div class="field" style="margin:0">
+        <label for="wsType">Equation type</label>
+        <select id="wsType"></select>
+      </div>
+      <div class="field" style="margin:0">
+        <label for="wsN">Number of questions</label>
+        <div class="range"><input type="range" id="wsN" min="20" max="30" value="24"><output id="wsNOut" for="wsN">24</output></div>
+      </div>
+      <label class="check" style="margin:0"><input type="checkbox" id="wsKey" checked><span>Answer key<small>Printed on its own page at the end.</small></span></label>
+      <div class="actions">
+        <button id="wsNew" class="btn">New version</button>
+        <button id="wsPrint" class="btn primary">Print or save as PDF</button>
+      </div>
+      <p class="ws-note" id="wsNote"></p>
+    </section>
+    <div id="wsPreview"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const MINUS = '−';
+
+/* ---------- fractions ---------- */
+const gcd = (a,b) => { a=Math.abs(a); b=Math.abs(b); while(b){ [a,b]=[b,a%b]; } return a||1; };
+function F(n,d=1){ if(d<0){n=-n;d=-d;} const g=gcd(n,d); return {n:n/g, d:d/g}; }
+const val = f => f.n/f.d;
+const VUL = {'1/2':'½','1/3':'⅓','2/3':'⅔','1/4':'¼','3/4':'¾','1/5':'⅕','2/5':'⅖','3/5':'⅗','4/5':'⅘','1/6':'⅙','5/6':'⅚','1/7':'⅐','1/8':'⅛','3/8':'⅜','5/8':'⅝','7/8':'⅞','1/9':'⅑','1/10':'⅒'};
+const glyph = (n,d) => VUL[n+'/'+d] || null;
+function fmt(f){
+  if(f.n<0) return MINUS+fmt({n:-f.n,d:f.d});
+  if(f.d===1) return String(f.n);
+  const w=Math.floor(f.n/f.d), r=f.n-w*f.d, g=glyph(r,f.d);
+  if(g) return (w?w:'')+g;
+  return (w? w+' ':'')+r+'/'+f.d;
+}
+const sn = n => n<0 ? MINUS+(-n) : String(n);
+function termTxt(k,q){
+  const f=F(k,q);
+  if(f.d===1) return f.n===1 ? 'x' : f.n+'x';
+  const g=glyph(f.n,f.d);
+  return g ? g+'x' : '('+f.n+'/'+f.d+')x';
+}
+const lhsTxt = eq => termTxt(eq.p,eq.q) + (eq.b ? (eq.sign>0?' + ':' '+MINUS+' ')+eq.b : '');
+
+/* HTML maths */
+const fr = (n,d) => `<span class="fr"><span>${n}</span><span>${d}</span></span>`;
+const XV = '<var>x</var>';
+function termH(k,q){
+  const f=F(k,q);
+  if(f.d===1) return f.n===1 ? XV : f.n+XV;
+  if(f.n===1) return fr(XV,f.d);
+  return fr(f.n,f.d)+XV;
+}
+function numH(f){
+  if(f.n<0) return MINUS+numH({n:-f.n,d:f.d});
+  if(f.d===1) return String(f.n);
+  const w=Math.floor(f.n/f.d), r=f.n-w*f.d;
+  return (w?w:'')+fr(r,f.d);
+}
+const lhsH = eq => termH(eq.p,eq.q) + (eq.b ? ` ${eq.sign>0?'+':MINUS} ${eq.b}` : '');
+const eqH = eq => lhsH(eq) + ` = ${sn(eq.c)}`;
+function derive(eq){
+  const R = eq.sign>0 ? eq.c-eq.b : eq.c+eq.b;
+  return { R, part:F(R,eq.p), x:F(R*eq.q,eq.p) };
+}
+
+/* ---------- question generator ---------- */
+const rnd = (a,b) => { a=Math.round(a); b=Math.round(b); if(b<a) b=a; return a + Math.floor(Math.random()*(b-a+1)); };
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const lerp = (a,b,L) => Math.round(a+(b-a)*L);
+const E = (p,q,sign,b,c) => ({p,q,sign,b,c});
+const GEN = {
+  add: L => { const x=rnd(2,lerp(8,30,L)), b=rnd(1,lerp(6,25,L)); return E(1,1,1,b,x+b); },
+  sub: L => { const x=rnd(lerp(4,10,L),lerp(10,35,L)); const b=rnd(1,Math.min(x-1,lerp(6,25,L))); return E(1,1,-1,b,x-b); },
+  mul: L => { const a=rnd(2,lerp(3,9,L)), x=rnd(2,lerp(5,12,L)); return E(a,1,1,0,a*x); },
+  div: L => { const q=rnd(2,lerp(3,8,L)), c=rnd(lerp(1,3,L),lerp(4,12,L)); return E(1,q,1,0,c); },
+  'two-add': L => { const a=rnd(2,lerp(3,8,L)), x=rnd(1,lerp(4,12,L)), b=rnd(1,lerp(5,20,L)); return E(a,1,1,b,a*x+b); },
+  'two-sub': L => { const a=rnd(2,lerp(3,8,L)), x=rnd(2,lerp(4,12,L)); const b=rnd(1,Math.min(a*x-1,lerp(5,20,L))); return E(a,1,-1,b,a*x-b); },
+  frac: L => {
+    let p,q; do{ q=rnd(2,lerp(3,6,L)); p=rnd(1,Math.min(4,q-1)); }while(gcd(p,q)!==1);
+    const R = (L<0.4 || Math.random()<.5) ? p*rnd(1,lerp(2,5,L)) : rnd(1,lerp(4,10,L));
+    const b=rnd(1,lerp(3,12,L)); return E(p,q,1,b,R+b);
+  }
+};
+const TYPES = [
+  ['mixed-all','Mixed: all types'],['mixed-one','Mixed: one-step'],['mixed-two','Mixed: two-step'],
+  ['add','One-step: x + a = b'],['sub','One-step: x − a = b'],['mul','One-step: ax = b'],['div','One-step: x ÷ a = b'],
+  ['two-add','Two-step: ax + b = c'],['two-sub','Two-step: ax − b = c'],['frac','Two-step: fraction of x + b = c']
+];
+const TYPE_LABEL = Object.fromEntries(TYPES);
+const MIX = {
+  'mixed-one':['add','sub','mul','div'],
+  'mixed-two':['two-add','two-sub','frac'],
+  'mixed-all':['add','sub','mul','div','two-add','two-sub','frac']
+};
+const kindsFor = t => MIX[t] || [t];
+const sameEq = (a,b) => a.p===b.p && a.q===b.q && a.sign===b.sign && a.b===b.b && a.c===b.c;
+const eqKey = e => [e.p,e.q,e.sign,e.b,e.c].join(',');
+function classify(eq){ const ops=(eq.b?1:0)+((eq.p>1)?1:0)+((eq.q>1)?1:0); return ops<=1?'One-step equation':'Two-step equation'; }
+function generate(type){
+  const kind = pick(kindsFor(type));
+  let eq, tries=0;
+  do{ eq=GEN[kind](Math.random()*0.6); tries++; } while(S.eq && sameEq(eq,S.eq) && tries<20);
+  return eq;
+}
+
+/* ---------- state ---------- */
+const S = { view:'class', model:'numberline', type:'mixed-all', showAlg:true, predict:false, eq:null, steps:[], i:0, wsType:'two-add', wsN:24, wsKey:true, ws:null };
+try{
+  const saved = JSON.parse(localStorage.getItem('eqmodels')||'{}');
+  ['model','type','showAlg','predict','wsType','wsN','wsKey'].forEach(k=>{ if(saved[k]!==undefined) S[k]=saved[k]; });
+}catch(e){}
+if(S.model==='pieces') S.model='tiles';
+if(!['numberline','bar','tiles'].includes(S.model)) S.model='numberline';
+const h0 = (location.hash||'').slice(1);
+if(['numberline','bar','tiles'].includes(h0)) S.model=h0;
+if(h0==='worksheets') S.view='ws';
+function save(){ try{ localStorage.setItem('eqmodels', JSON.stringify({model:S.model,type:S.type,showAlg:S.showAlg,predict:S.predict,wsType:S.wsType,wsN:S.wsN,wsKey:S.wsKey})); }catch(e){} }
+
+function makeSteps(eq){
+  const s=['setup'];
+  if(eq.b) s.push('undo');
+  if(eq.p>1) s.push('split');
+  if(eq.q>1) s.push('build');
+  if(S.predict && s.length>1) s.splice(s.length-1,0,'predict');
+  s.push('answer');
+  return s;
+}
+function setEq(eq){ S.eq=eq; S.steps=makeSteps(eq); S.i=0; render(); }
+
+/* ---------- captions ---------- */
+const pl = (n,w,wp) => n+' '+(n===1?w:(wp||w+'s'));
+function caption(model,key,eq,d){
+  const L=lhsTxt(eq), T=termTxt(eq.p,eq.q), u1=termTxt(1,eq.q), P=fmt(d.part), Xs=fmt(d.x), b=eq.b, c=eq.c, R=d.R, p=eq.p, q=eq.q;
+  if(key==='predict') return 'Pause and predict: what is x? Press Next to check.';
+  if(model==='numberline'){
+    switch(key){
+      case 'setup': return 'The top line shows the algebra and the bottom line shows its value. ' +
+        (b ? (eq.sign>0 ? `${L} lines up with ${c}. The jump of ${b} is the + ${b}.` : `${L} lines up with ${c}, so ${T} is ${b} further along.`) : `${T} lines up with ${c}.`);
+      case 'undo': return eq.sign>0 ? `Jump back ${b} on both lines. Now ${T} lines up with ${R}.` : `Jump forward ${b} on both lines. Now ${T} lines up with ${R}.`;
+      case 'split': return `Split 0 to ${R} into ${p} equal jumps. Each jump is ${u1}, worth ${P}.`;
+      case 'build': return q>p ? `Keep making jumps of ${P} until you reach x. A whole x takes ${q} jumps.` : `x is ${pl(q,'jump')} of ${P}.`;
+      case 'answer': return `x lines up with ${Xs}, so x = ${Xs}.`;
+    }
+  }
+  if(model==='bar'){
+    switch(key){
+      case 'setup': return b ? (eq.sign>0 ? `The top bar is ${L}. The bottom bar is ${c}. Both bars are the same length.` : `${T} take away ${b} leaves ${c}. The bottom bar is ${b} short of the full ${T}.`)
+                            : `The top bar is ${T}. The bottom bar is ${c}. Both bars are the same length.`;
+      case 'undo': return eq.sign>0 ? `Take ${b} off both bars. Now ${T} matches ${R}.` : `Add ${b} to the bottom bar so it covers all of ${T}. Now ${T} matches ${R}.`;
+      case 'split': return `${T} is ${p} equal boxes, so split ${R} into ${p} equal parts. Each box is worth ${P}.`;
+      case 'build': return `A whole x is ${pl(q,'box','boxes')} of ${u1}: ${q} × ${P} = ${Xs}.`;
+      case 'answer': return q===1 ? `Each x box is worth ${Xs}, so x = ${Xs}.` : `The whole x bar is worth ${Xs}, so x = ${Xs}.`;
+    }
+  }
+  // algebra tiles
+  const xt = q===1 ? pl(p,'x tile') : `${p} of the ${q} parts of an x tile`;
+  const one = q===1 ? 'x tile' : `${u1} part`;
+  switch(key){
+    case 'setup': {
+      const left = xt + (b ? (eq.sign>0 ? ` and ${pl(b,'unit tile')}` : ` and ${pl(b,'negative unit tile')}`) : '');
+      return `Left side: ${left}. Right side: ${pl(c,'unit tile')}. The two sides balance.`;
+    }
+    case 'undo': return eq.sign>0
+      ? `Add ${pl(b,'negative unit tile')} to both sides. Each +1 and −1 make a zero pair, so remove them. Now ${T} balances ${pl(R,'unit tile')}.`
+      : `Add ${pl(b,'positive unit tile')} to both sides. On the left they make zero pairs with the negative tiles. Now ${T} balances ${pl(R,'unit tile')}.`;
+    case 'split': return `Share the ${pl(R,'unit tile')} equally between the ${p} ${q===1?'x tiles':'parts'}. Each ${one} gets ${P}.` + (d.part.d>1 ? ' Cut unit tiles where needed so the shares are equal.' : '');
+    case 'build': return q>p ? `A whole x tile is ${q} parts. Add ${pl(q-p,'more part')}, each worth ${P}.` : `A whole x tile is ${q} parts, each worth ${P}.`;
+    case 'answer': return q===1 ? `Each x tile balances ${pl(d.x.n,'unit tile')}, so x = ${Xs}.` : `The whole x tile balances ${Xs} unit tiles, so x = ${Xs}.`;
+  }
+  return '';
+}
+
+/* ---------- algebra record ---------- */
+function algebraLines(eq,d){
+  const out=[];
+  for(let k=0;k<=S.i;k++){
+    const key=S.steps[k];
+    if(key==='setup') out.push({op:'', h:eqH(eq)});
+    if(key==='undo') out.push({op: eq.sign>0 ? `Subtract ${eq.b} from both sides` : `Add ${eq.b} to both sides`, h: termH(eq.p,eq.q)+' = '+d.R});
+    if(key==='split') out.push({op:`Divide both sides by ${eq.p}`, h: termH(1,eq.q)+' = '+numH(d.part)});
+    if(key==='build') out.push({op:`Multiply both sides by ${eq.q}`, h: XV+' = '+numH(d.x)});
+    if(key==='answer'){
+      let lhs; const xs=numH(d.x);
+      if(eq.p===1 && eq.q===1) lhs = xs;
+      else if(eq.q===1) lhs = `${eq.p} × ${xs}`;
+      else if(eq.p===1) lhs = `${xs} ÷ ${eq.q}`;
+      else lhs = `${fr(eq.p,eq.q)} × ${xs}`;
+      const tail = eq.b ? ` ${eq.sign>0?'+':MINUS} ${eq.b} = ${d.R} ${eq.sign>0?'+':MINUS} ${eq.b} = ${eq.c}` : ` = ${eq.c}`;
+      out.push({op:'Check', h: lhs+tail+' ✓', check:true});
+    }
+  }
+  return out;
+}
+
+/* ---------- SVG helpers ---------- */
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+function T(x,y,txt,o={}){
+  return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${o.a||'middle'}" dominant-baseline="${o.db||'auto'}" font-size="${o.s||24}" font-weight="${o.w||400}" ${o.it?'font-style="italic"':''} style="fill:${o.c||'var(--ink)'};font-family:var(--font-ui)">${esc(txt)}</text>`;
+}
+const DEFS = `<defs>
+  <marker id="arr-c" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--const)"/></marker>
+  <marker id="arr-n" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--neg)"/></marker>
+  <marker id="arr-i" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink)"/></marker>
+  <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="10" style="fill:var(--neg)"/></pattern>
+</defs>`;
+const KIND = { x:{f:'var(--x)', t:'var(--on-x)'}, unit:{f:'var(--unit)', t:'var(--on-unit)'}, c:{f:'var(--const)', t:'var(--on-const)'} };
+function fitText(cx,cy,w,label,color,max=26){
+  const s = Math.min(max, (w-8)/(String(label).length*0.6));
+  if(s<11) return '';
+  return T(cx,cy,label,{s, w:700, c:color, db:'central'});
+}
+
+/* ---------- Model 1: double number line ---------- */
+function rowsFor(list,cw){
+  const ends=[];
+  list.slice().sort((a,b)=>a.x-b.x).forEach(l=>{
+    const w=l.t.length*cw+16; let r=0;
+    while(ends[r]!=null && l.x-w/2 < ends[r]) r++;
+    ends[r]=l.x+w/2; l.r=r;
+  });
+  return Math.max(1,ends.length);
+}
+function svgNumberLine(eq,d,has,cur){
+  const X0=60, X1=950, LEN=X1-X0-50;
+  const xv=val(d.x), pv=val(d.part);
+  const Emax=Math.max(eq.c,d.R,xv);
+  const P=v=>X0+v/Emax*LEN;
+  const marks=[{v:0,top:'0',bot:'0'}];
+  if(eq.b){
+    marks.push({v:eq.c, top:lhsTxt(eq), bot:String(eq.c)});
+    marks.push({v:d.R, top:termTxt(eq.p,eq.q), bot: has('undo')?String(d.R):'?', q:!has('undo'), step:has('undo')?'undo':null});
+  } else {
+    marks.push({v:d.R, top:termTxt(eq.p,eq.q), bot:String(eq.c)});
+  }
+  if(has('split')) for(let k=1;k<eq.p;k++) marks.push({v:k*pv, top:termTxt(k,eq.q), bot:fmt(F(k*d.R,eq.p)), step:'split'});
+  if(has('build')) for(let k=eq.p+1;k<=eq.q;k++) marks.push({v:k*pv, top:termTxt(k,eq.q), bot:fmt(F(k*d.R,eq.p)), step:'build'});
+  if(has('answer')) marks.forEach(m=>{ if(m.top==='x' && Math.abs(m.v-xv)<1e-9) m.hl=true; });
+
+  const tops=marks.map(m=>({x:P(m.v), t:m.top, m})), bots=marks.map(m=>({x:P(m.v), t:m.bot, m}));
+  const nTop=rowsFor(tops,13.5), nBot=rowsFor(bots,13.5);
+  const arcSpace = eq.b ? 78 : 12, RH=32;
+  const topY = arcSpace + nTop*RH + 22;
+  const botY = topY + 120;
+  const lowArcBase = botY + 36 + (nBot-1)*RH + 18;
+  const H = lowArcBase + (eq.b ? 78 : 20);
+  const nw = k => cur===k ? ' class="enter"' : '';
+  let s=DEFS;
+
+  if(has('split') || (eq.p===1 && has('build'))){
+    const n = has('build') ? Math.max(eq.p,eq.q) : eq.p;
+    for(let k=0;k<n;k++){
+      const dash = k>=eq.p;
+      s+=`<line x1="${P(k*pv)}" y1="${topY}" x2="${P((k+1)*pv)}" y2="${topY}" style="stroke:${k%2?'var(--x-soft)':'var(--x)'};stroke-width:12;${dash?'stroke-dasharray:10 6;':''}" ${dash?nw('build'):(k>0?nw('split'):'')}/>`;
+      s+=`<line x1="${P(k*pv)}" y1="${botY}" x2="${P((k+1)*pv)}" y2="${botY}" style="stroke:${k%2?'var(--unit-soft)':'var(--unit)'};stroke-width:12;${dash?'stroke-dasharray:10 6;':''}"/>`;
+    }
+  } else {
+    s+=`<line x1="${P(0)}" y1="${topY}" x2="${P(d.R)}" y2="${topY}" style="stroke:var(--x-soft);stroke-width:12"/>`;
+    if(has('undo') || !eq.b) s+=`<line x1="${P(0)}" y1="${botY}" x2="${P(d.R)}" y2="${botY}" style="stroke:var(--unit-soft);stroke-width:12"/>`;
+  }
+  s+=`<line x1="${X0-14}" y1="${topY}" x2="${X1}" y2="${topY}" style="stroke:var(--ink);stroke-width:3" marker-end="url(#arr-i)"/>`;
+  s+=`<line x1="${X0-14}" y1="${botY}" x2="${X1}" y2="${botY}" style="stroke:var(--ink);stroke-width:3" marker-end="url(#arr-i)"/>`;
+
+  marks.forEach(m=>{
+    const x=P(m.v);
+    let g=`<line x1="${x}" y1="${topY+14}" x2="${x}" y2="${botY-14}" style="stroke:var(--line);stroke-width:2;stroke-dasharray:3 5"/>`;
+    g+=`<line x1="${x}" y1="${topY-12}" x2="${x}" y2="${topY+12}" style="stroke:var(--ink);stroke-width:3"/>`;
+    g+=`<line x1="${x}" y1="${botY-12}" x2="${x}" y2="${botY+12}" style="stroke:var(--ink);stroke-width:3"/>`;
+    const tl=tops.find(t=>t.m===m), bl=bots.find(t=>t.m===m);
+    g+=T(x, topY-22-tl.r*RH, m.top, {s:24, w:700, c: m.hl?'var(--good)':'var(--x)'});
+    const by = botY+40+bl.r*RH;
+    if(m.hl) g+=`<rect x="${x-bl.t.length*8-14}" y="${by-28}" width="${bl.t.length*16+28}" height="38" rx="10" style="fill:none;stroke:var(--good);stroke-width:3" class="enter"/>`;
+    g+=T(x, by, m.bot, {s:24, w:700, c: m.q?'var(--muted)':(m.hl?'var(--good)':'var(--unit)')});
+    s+=`<g${m.step?nw(m.step):''}>${g}</g>`;
+  });
+
+  if(eq.b){
+    const base = topY-22-(nTop-1)*RH-30;
+    const x1=P(d.R), x2=P(eq.c), mx=(x1+x2)/2;
+    s+=`<path d="M${x1},${base} Q${mx},${base-62} ${x2},${base}" style="fill:none;stroke:var(--const);stroke-width:3" marker-end="url(#arr-c)"/>`;
+    s+=T(mx, base-36, (eq.sign>0?'+ ':MINUS+' ')+eq.b, {s:22,w:700,c:'var(--const)'});
+    if(has('undo')){
+      const y=lowArcBase;
+      s+=`<g${nw('undo')}><path d="M${x2},${y} Q${mx},${y+62} ${x1},${y}" style="fill:none;stroke:var(--neg);stroke-width:3" marker-end="url(#arr-n)"/>`+
+         T(mx, y+52, (eq.sign>0?MINUS+' ':'+ ')+eq.b, {s:22,w:700,c:'var(--neg)'})+`</g>`;
+    }
+  }
+  return {svg:s, h:H};
+}
+
+/* ---------- Model 2: bar model ---------- */
+function svgBar(eq,d,has,cur){
+  const X0=50, X1=950, BH=74;
+  const xv=val(d.x), pv=val(d.part);
+  const Emax=Math.max(eq.c,d.R,xv), u=(X1-X0)/Emax;
+  const nw = k => cur===k ? ' class="enter"' : '';
+  const y1=46, y2=y1+BH+56;
+  let s=DEFS;
+  const box=(x,y,w,h,kind,label,o={})=>{
+    const K=KIND[kind];
+    let g=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" style="fill:${o.empty?'var(--paper)':K.f};stroke:${o.hl?'var(--good)':(o.empty?'var(--ink)':'var(--paper)')};stroke-width:${o.hl?5:(o.empty?2:3)};${o.empty?'stroke-dasharray:8 6;':''}"/>`;
+    g+=fitText(x+w/2, y+h/2, w, label, o.empty?'var(--muted)':K.t, 28);
+    return `<g${o.ghost?' opacity=".28"':''}${o.cls?` class="${o.cls}"`:''}>${g}</g>`;
+  };
+  s+=T(X0, y1-14, 'Top bar', {a:'start', s:15, c:'var(--muted)'});
+  s+=T(X0, y2-14, 'Bottom bar', {a:'start', s:15, c:'var(--muted)'});
+
+  for(let i=0;i<eq.p;i++) s+=box(X0+i*pv*u, y1, pv*u, BH, 'x', termTxt(1,eq.q), {hl: has('answer') && eq.q===1 && i===0});
+  if(eq.b && eq.sign>0){
+    s+=box(X0+d.R*u, y1, eq.b*u, BH, 'c', String(eq.b), {ghost:has('undo')});
+    if(has('undo')){
+      const xa=X0+d.R*u, xb=X0+eq.c*u;
+      s+=`<g${nw('undo')}><line x1="${xa}" y1="${y1+BH}" x2="${xb}" y2="${y1}" style="stroke:var(--neg);stroke-width:4"/>`+T((xa+xb)/2, y1-14, MINUS+' '+eq.b, {s:22,w:700,c:'var(--neg)'})+`</g>`;
+    }
+  }
+  if(eq.b && eq.sign<0 && !has('undo')){
+    const xa=X0+eq.c*u, xb=X0+d.R*u;
+    s+=`<rect x="${xa}" y="${y1}" width="${xb-xa}" height="${BH}" style="fill:url(#hatch);opacity:.55"/>`;
+    s+=`<path d="M${xa},${y1-6} v-10 H${xb} v10" style="fill:none;stroke:var(--neg);stroke-width:3"/>`;
+    s+=T((xa+xb)/2, y1-24, 'take away '+eq.b, {s:20,w:700,c:'var(--neg)'});
+  }
+
+  let below=0;
+  if(has('split')){
+    for(let k=0;k<eq.p;k++){
+      s+=`<g${nw('split')}>`+box(X0+k*pv*u, y2, pv*u, BH, 'unit', fmt(d.part))+`</g>`;
+      if(k>0) s+=`<line x1="${X0+k*pv*u}" y1="${y1+BH}" x2="${X0+k*pv*u}" y2="${y2}" style="stroke:var(--muted);stroke-width:2;stroke-dasharray:4 5"${nw('split')}/>`;
+    }
+  } else if(eq.b && eq.sign>0){
+    if(!has('undo')) s+=box(X0, y2, eq.c*u, BH, 'unit', String(eq.c));
+    else {
+      s+=box(X0, y2, d.R*u, BH, 'unit', String(d.R), {cls: cur==='undo'?'enter':''});
+      s+=box(X0+d.R*u, y2, eq.b*u, BH, 'c', String(eq.b), {ghost:true});
+      const xa=X0+d.R*u, xb=X0+eq.c*u;
+      s+=`<g${nw('undo')}><line x1="${xa}" y1="${y2+BH}" x2="${xb}" y2="${y2}" style="stroke:var(--neg);stroke-width:4"/>`+T((xa+xb)/2, y2+BH+30, MINUS+' '+eq.b, {s:22,w:700,c:'var(--neg)'})+`</g>`;
+      below=34;
+    }
+  } else if(eq.b && eq.sign<0){
+    s+=box(X0, y2, eq.c*u, BH, 'unit', String(eq.c));
+    if(!has('undo')) s+=box(X0+eq.c*u, y2, eq.b*u, BH, 'c', '?', {empty:true});
+    else s+=`<g${nw('undo')}>`+box(X0+eq.c*u, y2, eq.b*u, BH, 'c', '+ '+eq.b)+`</g>`;
+  } else {
+    s+=box(X0, y2, eq.c*u, BH, 'unit', String(eq.c));
+  }
+  let y = y2+BH+below+30;
+
+  if(has('build')){
+    const y3=y+40;
+    let g=T(X0, y3-14, 'One whole x', {a:'start', s:15, c:'var(--muted)'});
+    for(let k=0;k<eq.q;k++){
+      g+=box(X0+k*pv*u, y3, pv*u, BH, 'x', termTxt(1,eq.q), {hl:has('answer')});
+      g+=T(X0+(k+0.5)*pv*u, y3+BH+28, fmt(d.part), {s:20,w:700,c:'var(--unit)'});
+    }
+    const xe=X0+xv*u, yb=y3+BH+42;
+    g+=`<path d="M${X0},${yb} q0,14 14,14 H${(X0+xe)/2-10} l10,12 l10,-12 H${xe-14} q14,0 14,-14" style="fill:none;stroke:var(--ink);stroke-width:2.5"/>`;
+    g+=T((X0+xe)/2, yb+52, `x = ${eq.q} × ${fmt(d.part)} = ${fmt(d.x)}`, {s:24,w:700,c:has('answer')?'var(--good)':'var(--ink)'});
+    s+=`<g${nw('build')}>${g}</g>`;
+    y = yb+70;
+  }
+  if(has('answer')){
+    s+=`<g class="enter">`+T(500, y+34, `x = ${fmt(d.x)}`, {s:38,w:700,c:'var(--good)'})+`</g>`;
+    y+=60;
+  }
+  return {svg:s, h:y+10};
+}
+
+/* ---------- Model 3: algebra tiles on an equation mat ---------- */
+const XW=176, XH=48, UT=38, UG=8;
+function xTile(x,y,o={}){
+  return `<rect x="${x}" y="${y}" width="${XW}" height="${XH}" rx="5" style="fill:var(--x);stroke:${o.hl?'var(--good)':'var(--tile-edge)'};stroke-width:${o.hl?4:2}"/>`+
+         T(x+XW/2, y+XH/2+1, 'x', {s:28,w:700,it:true,c:'var(--on-x)',db:'central'});
+}
+/* whole x tiles cut into q parts; the first `filled` parts are shown, the rest dashed */
+function partedTiles(x,y,q,filled,o={}){
+  const n=Math.max(1,Math.ceil(filled/q)), sw=XW/q, lab=(glyph(1,q)||'1/'+q)+'x';
+  let s='';
+  for(let t=0;t<n;t++){
+    const ty=y+t*(XH+12);
+    for(let k=0;k<q;k++){
+      const on = t*q+k < filled;
+      s+=`<rect x="${(x+k*sw).toFixed(1)}" y="${ty}" width="${sw.toFixed(1)}" height="${XH}" rx="3" style="fill:${on?'var(--x)':'none'};stroke:${on?(o.hl?'var(--good)':'var(--tile-edge)'):'var(--muted)'};stroke-width:${on&&o.hl?3:2};${on?'':'stroke-dasharray:5 4;'}"/>`;
+      if(on && sw>=26) s+=T(x+(k+.5)*sw, ty+XH/2+1, lab, {s:Math.min(17,sw/2.2),w:700,c:'var(--on-x)',db:'central'});
+    }
+  }
+  return {svg:s, h:n*(XH+12)-12};
+}
+function partTile(x,y,q,o={}){
+  const sw=XW/q, lab=(glyph(1,q)||'1/'+q)+'x';
+  return `<rect x="${x}" y="${y}" width="${sw.toFixed(1)}" height="${XH}" rx="3" style="fill:var(--x);stroke:var(--tile-edge);stroke-width:2"/>`+
+    `<rect x="${(x+sw).toFixed(1)}" y="${y}" width="${(XW-sw).toFixed(1)}" height="${XH}" rx="3" style="fill:none;stroke:var(--line);stroke-width:1.5;stroke-dasharray:4 5"/>`+
+    T(x+sw/2, y+XH/2+1, lab, {s:Math.min(17,sw/2.2),w:700,c:'var(--on-x)',db:'central'});
+}
+function unitTile(x,y,o={}){
+  if(o.neg) return `<rect x="${x}" y="${y}" width="${UT}" height="${UT}" rx="4" style="fill:var(--neg);stroke:${o.neu?'var(--const)':'var(--tile-edge)'};stroke-width:${o.neu?4:2}"/>`+
+    `<line x1="${x+11}" y1="${y+UT/2}" x2="${x+UT-11}" y2="${y+UT/2}" style="stroke:var(--on-neg);stroke-width:4;stroke-linecap:round"/>`;
+  if(o.frac!=null) return `<rect x="${x}" y="${y}" width="${UT}" height="${UT}" rx="4" style="fill:none;stroke:var(--unit);stroke-width:2;stroke-dasharray:4 3"/>`+
+    `<rect x="${x}" y="${y}" width="${(UT*o.frac).toFixed(1)}" height="${UT}" rx="3" style="fill:var(--unit);stroke:var(--tile-edge);stroke-width:2"/>`;
+  return `<rect x="${x}" y="${y}" width="${UT}" height="${UT}" rx="4" style="fill:var(--unit);stroke:${o.neu?'var(--const)':'var(--tile-edge)'};stroke-width:${o.neu?4:2}"/>`;
+}
+function unitsGrid(x0,y0,n,cols,o={}){
+  const v=typeof n==='number'?n:val(n), whole=Math.floor(v+1e-9), frac=v-whole, hasFrac=frac>1e-9;
+  const total=whole+(hasFrac?1:0);
+  let s='';
+  for(let i=0;i<total;i++){
+    const x=x0+(i%cols)*(UT+UG), y=y0+Math.floor(i/cols)*(UT+UG);
+    const neu=o.newFrom!=null && i>=o.newFrom;
+    const t=unitTile(x,y,{neg:o.neg, neu, frac:(i===whole&&hasFrac)?frac:null});
+    s+= neu&&o.newCls ? `<g class="${o.newCls}">${t}</g>` : t;
+  }
+  const rows=Math.ceil(total/cols);
+  return {svg:s, h: rows ? rows*(UT+UG)-UG : 0, w: Math.min(total,cols)*(UT+UG)-UG};
+}
+/* zero pairs: a positive and a negative unit tile side by side, faded out */
+function pairsGrid(x0,y0,n,perRow,o={}){
+  const pw=2*UT+6, pg=14, rh=UT+16;
+  let g='';
+  for(let i=0;i<n;i++){
+    const x=x0+(i%perRow)*(pw+pg), y=y0+Math.floor(i/perRow)*rh;
+    g+=`<rect x="${x-4}" y="${y-4}" width="${pw+8}" height="${UT+8}" rx="8" style="fill:none;stroke:var(--muted);stroke-width:1.5"/>`;
+    g+=unitTile(x,y,{neu:o.posNew});
+    g+=unitTile(x+UT+6,y,{neg:true,neu:o.negNew});
+  }
+  const rows=Math.ceil(n/perRow), h=rows*rh;
+  return {svg:`<g opacity=".42">${g}</g>`+T(x0, y0+h+12, 'zero pairs (each pair is 0)', {a:'start',s:15,w:700,c:'var(--muted)'}), h:h+18};
+}
+function svgTiles(eq,d,has,cur){
+  const nw = k => cur===k ? ' class="enter"' : '';
+  const pv=val(d.part);
+  let s=DEFS, body='', y, matEnd=null;
+  const eqCard=(cx,cy)=>`<rect x="${cx-24}" y="${cy-20}" width="48" height="40" rx="6" style="fill:var(--eq)"/>`+T(cx,cy+2,'=',{s:32,w:700,c:'var(--eq-ink)',db:'central'});
+  const rowsMode = has('split') || has('build');
+  const top=58;
+
+  if(!rowsMode){
+    let lh;
+    if(eq.q===1){ for(let i=0;i<eq.p;i++) body+=xTile(30, top+i*(XH+12), {hl: has('answer') && i===0}); lh=eq.p*(XH+12)-12; }
+    else { const r=partedTiles(30, top, eq.q, eq.p, {hl:has('answer')}); body+=r.svg; lh=r.h; }
+    let uh=0;
+    if(eq.b){
+      if(!has('undo')){ const r=unitsGrid(228, top, eq.b, 5, {neg:eq.sign<0}); body+=r.svg; uh=r.h; }
+      else { const r=pairsGrid(228, top, eq.b, 3, {posNew:eq.sign<0, negNew:eq.sign>0}); body+=`<g${nw('undo')}>${r.svg}</g>`; uh=r.h; }
+    }
+    const leftH = top+Math.max(lh,uh);
+    let rightH;
+    if(eq.b && has('undo') && eq.sign>0){
+      const a=unitsGrid(528, top, d.R, 10); body+=a.svg;
+      const py=top+a.h+20;
+      const pr=pairsGrid(528, py, eq.b, 5, {negNew:true}); body+=`<g${nw('undo')}>${pr.svg}</g>`;
+      rightH = py+pr.h;
+    } else if(eq.b && has('undo') && eq.sign<0){
+      const a=unitsGrid(528, top, d.R, 10, {newFrom:eq.c, newCls: cur==='undo'?'enter':''}); body+=a.svg; rightH=top+a.h;
+    } else {
+      const a=unitsGrid(528, top, eq.c, 10); body+=a.svg; rightH=top+a.h;
+    }
+    y=Math.max(leftH,rightH)+26;
+  } else {
+    const rows = has('build') ? eq.q : eq.p;
+    const g0 = unitsGrid(0,0,d.part,8);
+    const rowH = Math.max(XH+34, g0.h+30);
+    for(let r=0;r<rows;r++){
+      const isNew=r>=eq.p, yr=top+r*rowH;
+      const hl = has('answer') && eq.q===1 && r===0;
+      let g=`<rect x="22" y="${yr+4}" width="956" height="${rowH-8}" rx="10" style="fill:var(--band);stroke:${isNew?'var(--x)':(hl?'var(--good)':'none')};stroke-width:${hl?4:2};${isNew?'stroke-dasharray:8 6;':''}"/>`;
+      g+= eq.q===1 ? xTile(30+8, yr+(rowH-XH)/2) : partTile(30+8, yr+(rowH-XH)/2, eq.q);
+      g+=T(500, yr+rowH/2+2, '=', {s:32,w:700,c:'var(--muted)',db:'central'});
+      const gr=unitsGrid(528, yr+(rowH-g0.h)/2, d.part, 8);
+      g+=gr.svg + T(528+gr.w+16, yr+rowH/2+2, fmt(d.part), {a:'start',s:22,w:700,c:'var(--unit)',db:'central'});
+      body+=`<g${isNew?nw('build'):nw('split')}>${g}</g>`;
+    }
+    y=top+rows*rowH+20;
+  }
+
+  if(has('answer')){
+    let g='';
+    if(eq.q>1){
+      const gx=unitsGrid(0,0,d.x,10);
+      const bh=Math.max(XH+40, gx.h+34);
+      g+=`<rect x="22" y="${y}" width="956" height="${bh}" rx="10" style="fill:none;stroke:var(--good);stroke-width:3"/>`;
+      g+=partedTiles(38, y+(bh-XH)/2, eq.q, eq.q).svg;
+      g+=eqCard(500, y+bh/2);
+      g+=unitsGrid(528, y+(bh-gx.h)/2, d.x, 10).svg;
+      y+=bh+8;
+    }
+    matEnd=y;
+    g+=T(500, y+42, `x = ${fmt(d.x)}`, {s:38,w:700,c:'var(--good)'});
+    y+=64;
+    body+=`<g class="enter">${g}</g>`;
+  }
+  // the mat sits behind everything
+  const matH=(matEnd==null?y-10:matEnd)-40;
+  let mat=`<rect x="10" y="40" width="478" height="${matH}" rx="12" style="fill:none;stroke:var(--line);stroke-width:2"/>`+
+          `<rect x="512" y="40" width="478" height="${matH}" rx="12" style="fill:none;stroke:var(--line);stroke-width:2"/>`;
+  mat+=T(249, 28, 'Left side', {s:16,w:700,c:'var(--muted)'})+T(751, 28, 'Right side', {s:16,w:700,c:'var(--muted)'});
+  if(!rowsMode) mat+=eqCard(500, 30);
+  return {svg:s+mat+body, h:y+6};
+}
+
+const MODEL = {
+  numberline:{fn:svgNumberLine, label:'Double number line', noun:'double number line', a:'a double number line'},
+  bar:{fn:svgBar, label:'Bar model', noun:'bar model', a:'a bar model'},
+  tiles:{fn:svgTiles, label:'Algebra tiles', noun:'algebra tile model', a:'an algebra tile model'}
+};
+let uidN=0;
+function diagram(model,eq,has,cur){
+  const out=MODEL[model].fn(eq,derive(eq),has,cur);
+  const id='u'+(++uidN);
+  const svg=out.svg.replace(/(arr-[cni]|hatch)\b/g,'$1-'+id);
+  return `<svg viewBox="0 0 1000 ${Math.ceil(out.h)}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${MODEL[model].label} for ${esc(lhsTxt(eq))} = ${eq.c}">${svg}</svg>`;
+}
+
+/* ---------- classroom render ---------- */
+function render(){
+  document.querySelectorAll('.models button').forEach(b=>b.setAttribute('aria-selected', String(b.dataset.model===S.model)));
+  document.querySelectorAll('.views button').forEach(b=>b.setAttribute('aria-selected', String(b.dataset.view===S.view)));
+  $('#classView').hidden = S.view!=='class';
+  $('#wsView').hidden = S.view!=='ws';
+  $('#wsView').style.display = S.view==='ws' ? 'flex' : '';
+  if(S.view==='ws'){ if(!S.ws) buildAndRenderWS(); else renderWS(); return; }
+
+  const eq=S.eq, d=derive(eq), key=S.steps[S.i];
+  const reached=new Set(S.steps.slice(0,S.i+1)), has=k=>reached.has(k);
+  $('#eq').innerHTML = eqH(eq);
+  $('#eqType').textContent = classify(eq);
+  $('#stage').innerHTML = diagram(S.model,eq,has,key);
+  $('#stage').setAttribute('aria-label', MODEL[S.model].label+' for '+lhsTxt(eq)+' = '+eq.c);
+  $('#caption').textContent = caption(S.model,key,eq,d);
+  $('#stepNum').textContent = `Step ${S.i+1} of ${S.steps.length}`;
+  $('#dots').innerHTML = S.steps.map((k,i)=>`<button class="${i<=S.i?'on':''}" data-i="${i}" aria-label="Go to step ${i+1}"></button>`).join('');
+  $('#backBtn').disabled = S.i===0;
+  $('#nextBtn').disabled = S.i===S.steps.length-1;
+  $('#work').classList.toggle('noalg', !S.showAlg);
+  $('#algebra').hidden = !S.showAlg;
+  $('#algList').innerHTML = algebraLines(eq,d).map(l=>`<li>${l.op?`<span class="op">${l.op}</span>`:''}<span class="ln${l.check?' check':''}">${l.h}</span></li>`).join('');
+}
+
+/* =====================================================================
+   WORKSHEET GENERATOR
+   ===================================================================== */
+const NAMES=['Jordan','Priya','Mateo','Aisha','Lachlan','Mei','Tama','Sofia','Kai','Zara'];
+const FORM={add:'x + a = b', sub:'x − a = b', mul:'ax = b', div:'x ÷ a = b', 'two-add':'ax + b = c', 'two-sub':'ax − b = c', frac:'(fraction of x) + b = c'};
+const xAns = eq => `${XV} = ${numH(derive(eq).x)}`;
+const isInt = f => f.d===1;
+const fitsDiagram = eq => { const d=derive(eq); return eq.c<=30 && eq.b<=12 && val(d.x)<=30 && eq.p<=6 && d.R>0; };
+const fitsDraw = eq => { const d=derive(eq); return eq.c<=60 && val(d.x)<=60 && d.R>0; };
+
+function genFrom(kind,L,used,test){
+  let eq;
+  for(let t=0;t<60;t++){
+    eq=GEN[kind](L);
+    if((!test||test(eq)) && !used.has(eqKey(eq))) break;
+  }
+  used.add(eqKey(eq));
+  return eq;
+}
+/* large-number versions for extension */
+const BIG = {
+  add:()=>{ const x=rnd(120,480), b=rnd(45,350); return E(1,1,1,b,x+b); },
+  sub:()=>{ const x=rnd(200,600), b=rnd(50,x-20); return E(1,1,-1,b,x-b); },
+  mul:()=>{ const a=rnd(12,25), x=rnd(12,40); return E(a,1,1,0,a*x); },
+  div:()=>{ const q=rnd(8,15), c=rnd(12,40); return E(1,q,1,0,c); },
+  'two-add':()=>{ const a=rnd(6,15), x=rnd(12,40), b=rnd(20,150); return E(a,1,1,b,a*x+b); },
+  'two-sub':()=>{ const a=rnd(6,15), x=rnd(12,40), b=rnd(20,a*x-10); return E(a,1,-1,b,a*x-b); },
+  frac:()=>{ const q=pick([4,5,8,10]); let p; do{p=rnd(1,3);}while(gcd(p,q)!==1); const k=rnd(10,40), b=rnd(20,120); return E(p,q,1,b,p*k+b); }
+};
+/* answers that are negative or not whole numbers */
+const STRETCH = {
+  add:()=>{ const b=rnd(8,20), c=rnd(1,b-2); return {eq:E(1,1,1,b,c), what:'negative'}; },
+  sub:()=>{ const b=rnd(5,12), x=rnd(1,b-1); return {eq:E(1,1,-1,b,x-b), what:'negative'}; },
+  mul:()=>{ const a=pick([2,4,5]); let c; do{c=rnd(3,30);}while(c%a===0); return {eq:E(a,1,1,0,c), what:'fraction'}; },
+  div:()=>{ const q=rnd(2,5), c=-rnd(2,6); return {eq:E(1,q,1,0,c), what:'negative'}; },
+  'two-add':()=>{ const a=rnd(2,5), x=-rnd(1,4), b=rnd(a*-x+1, a*-x+9); return {eq:E(a,1,1,b,a*x+b), what:'negative'}; },
+  'two-sub':()=>{ const a=pick([2,4]); let x; do{ x=F(rnd(5,30),a);}while(x.d===1); const b=rnd(1,9); return {eq:E(a,1,-1,b,a*val(x)-b), what:'fraction'}; },
+  frac:()=>{ const q=rnd(3,5), p=rnd(1,q-1)>1&&gcd(2,q)===1?2:1; const k=-rnd(1,4), b=rnd(p*-k+1,p*-k+8); return {eq:E(p,q,1,b,p*k+b), what:'negative'}; }
+};
+function kindOf(eq){
+  if(eq.q>1) return (eq.p>1||eq.b) ? 'frac' : 'div';
+  if(eq.p>1) return eq.b ? (eq.sign>0?'two-add':'two-sub') : 'mul';
+  return eq.sign>0 ? 'add' : 'sub';
+}
+function puzzleText(eq){
+  let t='I think of a number.';
+  if(eq.p>1 && eq.q===1) t+=` I multiply it by ${eq.p}.`;
+  else if(eq.p===1 && eq.q>1) t+=` I divide it by ${eq.q}.`;
+  else if(eq.q>1) t+=` I find ${fr(eq.p,eq.q)} of it.`;
+  if(eq.b) t+= eq.sign>0 ? ` Then I add ${eq.b}.` : ` Then I subtract ${eq.b}.`;
+  return t+` The answer is ${sn(eq.c)}. Write an equation and solve it to find my number.`;
+}
+function storyText(eq){
+  const k=kindOf(eq), {p,q,b,c}=eq;
+  switch(k){
+    case 'add': return `Ella had some marbles. Her brother gave her ${b} more and now she has ${c}. Write an equation and find how many marbles Ella started with.`;
+    case 'sub': return `The canteen made some sandwiches and sold ${b} of them. There are ${c} left. Write an equation and find how many sandwiches were made.`;
+    case 'mul': return `${p} identical boxes hold ${c} pencils altogether. Write an equation and find how many pencils are in each box.`;
+    case 'div': return `A restaurant bill was shared equally by ${q} friends. Each friend paid $${c}. Write an equation and find the total bill.`;
+    case 'two-add': return `Sam bought ${p} packs of footy cards. He already had ${b} cards and now has ${c}. Write an equation and find how many cards are in each pack.`;
+    case 'two-sub': return `Ava bought ${p} movie tickets and used a $${b} voucher. She paid $${c}. Write an equation and find the price of one ticket.`;
+    case 'frac': return `Liam spent ${fr(p,q)} of his savings on a book and $${b} on lunch. He spent $${c} altogether. Write an equation and find how much Liam had saved.`;
+  }
+}
+function errorQ(eq){
+  const d=derive(eq), who=pick(NAMES);
+  let wrong, why;
+  if(eq.b){
+    if(eq.sign>0){ wrong=F((eq.c+eq.b)*eq.q,eq.p); why=`added ${eq.b} to both sides instead of subtracting ${eq.b}`; }
+    else if(eq.c-eq.b>0){ wrong=F((eq.c-eq.b)*eq.q,eq.p); why=`subtracted ${eq.b} from both sides instead of adding ${eq.b}`; }
+    else { wrong=F((eq.c+eq.b)*eq.p,eq.q); why=`multiplied by ${eq.p} instead of dividing by ${eq.p}`; }
+  } else if(eq.q===1){ wrong=F(eq.c*eq.p); why=`multiplied by ${eq.p} instead of dividing by ${eq.p}`; }
+  else { wrong=F(eq.c*eq.p,eq.q); why=`divided by ${eq.q} instead of multiplying by ${eq.q}`; }
+  return {
+    t:`${who} solved ${eqH(eq)} and got ${XV} = ${numH(wrong)}. Substitute ${who}'s answer to check it. What mistake did ${who} make? Find the correct answer.`,
+    a:`${who} ${why}. Correct answer: ${xAns(eq)}`
+  };
+}
+function missingQ(eq){
+  const d=derive(eq), xs=numH(d.x);
+  if(eq.b) return { t:`${XV} = ${xs} is the solution of ${termH(eq.p,eq.q)} ${eq.sign>0?'+':MINUS} <span class="blank"></span> = ${eq.c}. What number goes in the box? Explain how you know.`, a:`${eq.b}` };
+  if(eq.q===1) return { t:`${XV} = ${xs} is the solution of <span class="blank"></span>${XV} = ${eq.c}. What number goes in the box? Explain how you know.`, a:`${eq.p}` };
+  return { t:`${XV} = ${xs} is the solution of ${fr(XV,'<span class="blank"></span>')} = ${eq.c}. What number goes in the box? Explain how you know.`, a:`${eq.q}` };
+}
+
+function buildWorksheet(model,type,N){
+  const kinds=kindsFor(type), used=new Set(), noun=MODEL[model].noun, anoun=MODEL[model].a;
+  const nC=Math.round((N-6)*0.45), nB=N-6-nC;
+  const A=[], B=[], C=[];
+  for(let i=0;i<6;i++){
+    const kind=kinds[Math.floor(i*kinds.length/6)] || kinds[i%kinds.length];
+    const L=0.35*i/5;
+    A.push({eq:genFrom(kind,L,used,fitsDiagram)});
+  }
+  for(let i=0;i<nB;i++){
+    const kind=kinds[Math.floor(i*kinds.length/nB)];
+    const L=0.3+0.7*i/Math.max(1,nB-1);
+    B.push({eq:genFrom(kind,L,used,fitsDraw)});
+  }
+  let order=['puzzle','write','missing','story','error','compare','big','stretch','create'];
+  if(model==='numberline') order=order.filter(k=>k!=='write');
+  for(let i=0;i<nC;i++){
+    const ek=order[i%order.length];
+    const kind=kinds[i%kinds.length];
+    const L=0.45+0.4*Math.random();
+    let q;
+    switch(ek){
+      case 'puzzle': { const eq=genFrom(kind,L,used); q={t:puzzleText(eq), a:`${eqH(eq)}, so ${xAns(eq)}`}; break; }
+      case 'write': { const eq=genFrom(kind,0.3,used,fitsDiagram); q={t:`Write the equation shown by this ${noun}. Then solve it.`, dg:eq, a:`${eqH(eq)}, so ${xAns(eq)}`}; break; }
+      case 'missing': { const eq=genFrom(kind,L,used); q=missingQ(eq); break; }
+      case 'story': { const eq=genFrom(kind,L,used,e=>isInt(derive(e).x)); q={t:storyText(eq), a:`${eqH(eq)}, so ${xAns(eq)}`}; break; }
+      case 'error': { const eq=genFrom(kind,L,used); q=errorQ(eq); q.lines=3; break; }
+      case 'compare': {
+        const a=genFrom(kind,L,used); let b, t=0;
+        do{ b=genFrom(kind,L,used); t++; }while(val(derive(a).x)===val(derive(b).x) && t<20);
+        const xa=val(derive(a).x), xb=val(derive(b).x);
+        q={t:`Which equation has the larger solution? Predict first, then solve both to check.<div class="cmp"><span>A: ${eqH(a)}</span><span>B: ${eqH(b)}</span></div>`,
+           a:`A: ${xAns(a)}; B: ${xAns(b)}. ${xa>xb?'A':'B'} has the larger solution.`}; break;
+      }
+      case 'big': { const eq=BIG[kind](); used.add(eqKey(eq)); q={t:`Solve ${eqH(eq)}. Would drawing ${anoun} still help with numbers this large? Explain your thinking.`, a:`${xAns(eq)}. Explanations will vary.`}; break; }
+      case 'stretch': {
+        const st=STRETCH[kind](); const eq=st.eq; used.add(eqKey(eq));
+        const why = st.what==='negative' ? 'The answer is a negative number.' : 'The answer is not a whole number.';
+        q={t:`Solve ${eqH(eq)}. ${why} How could you show this with ${anoun}? If you think it is hard to show, explain why.`, a:`${xAns(eq)}. Explanations will vary.`}; break;
+      }
+      case 'create': {
+        const eq=genFrom(kind,0.3,used,e=>isInt(derive(e).x)&&fitsDiagram(e));
+        q={t:`Write your own equation in the form ${FORM[kind]} that has the solution ${XV} = ${numH(derive(eq).x)}. Draw ${anoun} to show your equation works.`, a:`Answers will vary, for example ${eqH(eq)}.`, lines:4}; break;
+      }
+    }
+    C.push(q);
+  }
+  return {model,type,N,A,B,C};
+}
+
+function legendHTML(model){
+  if(model!=='tiles') return '';
+  const sw=(w,h,fill,minus)=>`<svg viewBox="0 0 ${w+4} ${h+4}"><rect x="2" y="2" width="${w}" height="${h}" rx="3" style="fill:${fill};stroke:var(--tile-edge);stroke-width:1.5"/>${minus?`<line x1="${2+w*.3}" y1="${2+h/2}" x2="${2+w*.7}" y2="${2+h/2}" style="stroke:#fff;stroke-width:2.5"/>`:''}</svg>`;
+  return `<div class="legend"><span>${sw(52,16,'var(--x)')} x tile</span><span>${sw(16,16,'var(--unit)')} +1 unit tile</span><span>${sw(16,16,'var(--neg)',true)} −1 unit tile</span><span>A +1 and a −1 make a zero pair.</span></div>`;
+}
+function renderWS(){
+  const ws=S.ws, M=MODEL[ws.model];
+  const setupHas=k=>k==='setup';
+  let n=0, h='';
+  h+=`<article class="sheet">
+    <header><div><h1>Solving equations: ${M.label.toLowerCase()==='algebra tiles'?'Algebra tiles':M.label}</h1><p class="sub">${TYPE_LABEL[ws.type]} · ${ws.N} questions</p></div>
+    <div class="namerow"><span>Name <i></i></span><span>Class <i></i></span><span>Date <i></i></span></div></header>`;
+  h+=legendHTML(ws.model);
+  h+=`<section class="sec"><h2><b>Part A</b> Use the model</h2><p class="instr">Each ${M.noun} matches its equation. Use it to solve the equation, then check your answer.</p><div class="qs">`;
+  ws.A.forEach(q=>{ n++;
+    h+=`<div class="q qa"><div><div class="qh"><span class="n">${n}.</span><span class="e">${eqH(q.eq)}</span></div><div class="dg">${diagram(ws.model,q.eq,setupHas,null)}</div></div>
+        <div class="wk"><span>Working</span><span class="ans">${XV} = <i></i></span></div></div>`;
+  });
+  h+=`</div></section>`;
+  h+=`<section class="sec"><h2><b>Part B</b> Draw it if it helps</h2><p class="instr">Solve each equation. Sketch ${M.a} in the box if it helps you.</p><div class="qs two">`;
+  ws.B.forEach(q=>{ n++;
+    h+=`<div class="q"><div class="qh"><span class="n">${n}.</span><span class="e">${eqH(q.eq)}</span></div><div class="draw"></div><span class="ans">${XV} = <i></i></span></div>`;
+  });
+  h+=`</div></section>`;
+  h+=`<section class="sec"><h2><b>Part C</b> Extension</h2><p class="instr">Use what you know about equations. Show your working.</p><div class="qs">`;
+  ws.C.forEach(q=>{ n++;
+    h+=`<div class="q qc"><div class="qh"><span class="n">${n}.</span><span class="t">${q.t}</span></div>${q.dg?`<div class="dg">${diagram(ws.model,q.dg,setupHas,null)}</div>`:''}<div class="lines" style="height:${(q.lines||2)*28}px"></div></div>`;
+  });
+  h+=`</div></section></article>`;
+
+  if(S.wsKey){
+    let k=0;
+    h+=`<article class="sheet key"><header><div><h1>Answer key</h1><p class="sub">${M.label} · ${TYPE_LABEL[ws.type]}</p></div></header>`;
+    h+=`<h2>Part A</h2><ol>`+ws.A.map(q=>`<li><b>${++k}.</b><span>${xAns(q.eq)}</span></li>`).join('')+`</ol>`;
+    h+=`<h2>Part B</h2><ol>`+ws.B.map(q=>`<li><b>${++k}.</b><span>${xAns(q.eq)}</span></li>`).join('')+`</ol>`;
+    h+=`<h2>Part C</h2><ol class="long">`+ws.C.map(q=>`<li><b>${++k}.</b><span>${q.a}</span></li>`).join('')+`</ol></article>`;
+  }
+  $('#wsPreview').innerHTML=h;
+  $('#wsNote').textContent = `Part A: questions 1–6 with the ${M.noun} drawn. Part B: questions 7–${6+ws.B.length}, space to draw. Part C: questions ${7+ws.B.length}–${ws.N}, extension. Switch the model at the top to make the same kind of worksheet for another model.`;
+}
+function buildAndRenderWS(){ S.ws=buildWorksheet(S.model,S.wsType,S.wsN); renderWS(); }
+
+/* ---------- events ---------- */
+const opts = TYPES.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+$('#typeSel').innerHTML=opts; $('#wsType').innerHTML=opts;
+function setModel(m){
+  S.model=m; save();
+  try{ history.replaceState(null,'','#'+(S.view==='ws'?'worksheets':m)); }catch(e){}
+  if(S.view==='ws') S.ws=null;
+  render();
+}
+function setView(v){ S.view=v; try{ history.replaceState(null,'','#'+(v==='ws'?'worksheets':S.model)); }catch(e){} render(); }
+document.querySelectorAll('.models button').forEach(b=>b.addEventListener('click',()=>setModel(b.dataset.model)));
+document.querySelectorAll('.views button').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+const next=()=>{ if(S.i<S.steps.length-1){ S.i++; render(); } };
+const back=()=>{ if(S.i>0){ S.i--; render(); } };
+$('#nextBtn').addEventListener('click',next);
+$('#backBtn').addEventListener('click',back);
+$('#dots').addEventListener('click',e=>{ const i=e.target.dataset && e.target.dataset.i; if(i!=null){ S.i=+i; render(); } });
+$('#newBtn').addEventListener('click',()=>setEq(generate(S.type)));
+$('#settingsBtn').addEventListener('click',()=>{ const p=$('#settings'); p.hidden=!p.hidden; $('#settingsBtn').setAttribute('aria-expanded', String(!p.hidden)); });
+$('#typeSel').value=S.type;
+$('#typeSel').addEventListener('change',e=>{ S.type=e.target.value; save(); setEq(generate(S.type)); });
+$('#algChk').checked=S.showAlg;
+$('#algChk').addEventListener('change',e=>{ S.showAlg=e.target.checked; save(); render(); });
+$('#predChk').checked=S.predict;
+$('#predChk').addEventListener('change',e=>{
+  S.predict=e.target.checked; save();
+  const key=S.steps[S.i]; S.steps=makeSteps(S.eq);
+  const j=S.steps.indexOf(key); S.i = j>=0 ? j : Math.min(S.i,S.steps.length-1);
+  render();
+});
+$('#ownForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const err=$('#ownErr'); err.hidden=true;
+  const fail=m=>{ err.textContent=m; err.hidden=false; };
+  const cs=$('#c-coef').value.trim().replace(/\s/g,'');
+  const m=cs.match(/^(\d+)(?:\/(\d+))?$/);
+  if(!m) return fail('Number of x must be a whole number like 3 or a fraction like 2/5.');
+  let p=+m[1], q=m[2]?+m[2]:1;
+  if(p<1||q<1) return fail('Number of x must be more than 0.');
+  ({n:p,d:q}=F(p,q));
+  if(p>12||q>12) return fail('Keep the numbers in the fraction at 12 or less so the model fits on screen.');
+  const b=+$('#c-b').value, c=+$('#c-c').value, sign=+$('#c-op').value;
+  if(!Number.isInteger(b)||!Number.isInteger(c)||b<0||c<0||b>60||c>60) return fail('Use whole numbers from 0 to 60.');
+  const eq={p,q,sign,b,c}, d=derive(eq);
+  if(d.R<=0) return fail('With these numbers x would be 0 or negative. These models need a positive answer, so try a larger number after the equals sign.');
+  if(val(d.x)>80) return fail('x would be larger than 80, which is too big to draw clearly. Try smaller numbers.');
+  setEq(eq);
+});
+$('#wsType').value=S.wsType;
+$('#wsType').addEventListener('change',e=>{ S.wsType=e.target.value; save(); buildAndRenderWS(); });
+$('#wsN').value=S.wsN; $('#wsNOut').textContent=S.wsN;
+$('#wsN').addEventListener('input',e=>{ $('#wsNOut').textContent=e.target.value; });
+$('#wsN').addEventListener('change',e=>{ S.wsN=+e.target.value; save(); buildAndRenderWS(); });
+$('#wsKey').checked=S.wsKey;
+$('#wsKey').addEventListener('change',e=>{ S.wsKey=e.target.checked; save(); renderWS(); });
+$('#wsNew').addEventListener('click',buildAndRenderWS);
+$('#wsPrint').addEventListener('click',()=>window.print());
+document.addEventListener('keydown',e=>{
+  if(e.target.closest && e.target.closest('input,select,textarea')) return;
+  if(e.key==='1') return setModel('numberline');
+  if(e.key==='2') return setModel('bar');
+  if(e.key==='3') return setModel('tiles');
+  if(S.view!=='class') return;
+  if(e.key==='ArrowRight'){ e.preventDefault(); next(); }
+  else if(e.key==='ArrowLeft'){ e.preventDefault(); back(); }
+  else if(e.key==='Enter' && !(e.target.closest && e.target.closest('button'))){ setEq(generate(S.type)); }
+});
+
+S.eq={p:3,q:1,sign:1,b:4,c:19}; S.steps=makeSteps(S.eq); S.i=0;
+render();
+})();
+</script>
+</body>
+</html>
