@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[Site Name] — Teacher Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="draft-note"><strong>Draft build</strong> — no tools are live yet. This page shows the structure ready to hold them as they're built.</div>
+
+  <header>
+    <a class="brand-group" href="index.html">
+      <div class="logo-mark">M</div>
+      <div class="brand">[Site Name]<small>Placeholder — name TBD</small></div>
+    </a>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="teacher-tools.html" class="current">Teacher Tools</a>
+      <a href="student-practice.html">Student Practice</a>
+      <a href="#">About</a>
+    </nav>
+  </header>
+
+  <section class="page-hero">
+    <h1>Teacher Tools</h1>
+    <p class="hero-sub">Digital manipulatives for whole-class demonstration, plus worksheet and revision generators — grouped by syllabus strand.</p>
+    <div class="filter-chips">
+      <button type="button" class="chip active" data-stage="all">All stages</button>
+      <button type="button" class="chip" data-stage="4">Stage 4</button>
+      <button type="button" class="chip" data-stage="5">Stage 5</button>
+      <button type="button" class="chip disabled" disabled>Stage 6 · coming soon</button>
+    </div>
+  </section>
+
+  <section class="block">
+
+    <div class="resource-section">
+      <div class="resource-section-head">
+        <div class="tile-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="12" x2="4" y2="8"/><line x1="20" y1="12" x2="20" y2="8"/><line x1="12" y1="12" x2="12" y2="6"/></svg>
+        </div>
+        <h3>Digital Manipulatives</h3>
+      </div>
+      <p class="resource-section-desc">Interactive visual models for demonstrating a concept to the whole class — the same tool students will later see in their own practice.</p>
+      <div class="strand-group" data-strand="na">
+        <h4 class="strand-head strand-na"><span class="strand-num">01</span>Number and Algebra</h4>
+        <div class="resource-grid">
+          <a class="resource-card" href="equation-models.html#numberline" data-stage="4">
+            <h4>Equation Models</h4>
+            <p>Step-by-step visual solving of one- and two-step equations with a double number line, bar model or algebra tiles, alongside the matching algebra. Includes a pause-to-predict option and a type-your-own equation box.</p>
+            <div class="resource-card-tags">
+              <span class="status-badge available">Available</span>
+              <span class="status-badge available">Stage 4 · Equations</span>
+            </div>
+            <span class="open-link">Open tool →</span>
+          </a>
+          <a class="resource-card" href="rise-and-run.html" data-stage="5">
+            <h4>Rise &amp; Run — Gradient</h4>
+            <p>A four-stage discovery sequence that builds the idea of gradient before the formula. Includes a Teacher demonstration toggle and a Projection mode for the whiteboard.</p>
+            <div class="resource-card-tags">
+              <span class="status-badge available">Available</span>
+              <span class="status-badge available">Stage 5 · Gradient</span>
+            </div>
+            <span class="open-link">Open tool →</span>
+          </a>
+        </div>
+      </div>
+      <div class="strand-group" data-strand="ms">
+        <h4 class="strand-head strand-ms"><span class="strand-num">02</span>Measurement and Space</h4>
+        <div class="resource-grid">
+          <a class="resource-card" href="quadrilateral-lab.html" data-stage="4">
+            <h4>Quadrilateral Lab</h4>
+            <p>Drag-and-reshape quadrilaterals with a live properties panel, a classification map and a Teacher Mode for steering whole-class discussion.</p>
+            <div class="resource-card-tags">
+              <span class="status-badge available">Available</span>
+              <span class="status-badge available">Stage 4 · Quadrilaterals</span>
+            </div>
+            <span class="open-link">Open tool →</span>
+          </a>
+        </div>
+      </div>
+      <div class="strand-group" data-strand="sp">
+        <h4 class="strand-head strand-sp"><span class="strand-num">03</span>Statistics and Probability</h4>
+        <div class="resource-grid">
+          <a class="resource-card" href="quartiles-iqr-explorer.html" data-stage="5">
+            <h4>Quartiles &amp; IQR Explorer</h4>
+            <p>Build a dataset on a dot plot (or work from a list of numbers) and watch the five-number summary, range and IQR respond live. A Compare tab sets two data sets side by side with parallel box plots, using preset contexts or your own class data. Teaching and Student quiz modes throughout.</p>
+            <div class="resource-card-tags">
+              <span class="status-badge available">Available</span>
+              <span class="status-badge available">Stage 5 · Data &amp; Statistics</span>
+            </div>
+            <span class="open-link">Open tool →</span>
+          </a>
+        </div>
+      </div>
+      <div class="resource-grid strand-ghost">
+        <div class="empty-card">
+          <div class="plus">+</div>
+          <p>More manipulatives coming soon</p>
+          <p class="small">Next one will appear here once built</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="resource-section">
+      <div class="resource-section-head">
+        <div class="tile-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+        </div>
+        <h3>Worksheet Generator</h3>
+      </div>
+      <p class="resource-section-desc">Printable worksheets matched to stage and topic, ready to hand out or set as homework.</p>
+      <div class="strand-group" data-strand="na">
+        <h4 class="strand-head strand-na"><span class="strand-num">01</span>Number and Algebra</h4>
+        <div class="resource-grid">
+          <a class="resource-card" href="equation-models.html#worksheets" data-stage="4">
+            <h4>Equation Models — Worksheets</h4>
+            <p>Printable 20–30 question worksheets on one- and two-step equations: Part A with the model drawn, Part B with space to sketch, Part C extension. Choose number line, bar model or algebra tiles; answer key included.</p>
+            <div class="resource-card-tags">
+              <span class="status-badge available">Available</span>
+              <span class="status-badge available">Stage 4 · Equations</span>
+            </div>
+            <span class="open-link">Open generator →</span>
+          </a>
+        </div>
+      </div>
+      <div class="resource-grid strand-ghost">
+        <div class="empty-card">
+          <div class="plus">+</div>
+          <p>More generators coming soon</p>
+          <p class="small">Next one will appear here once built</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="resource-section">
+      <div class="resource-section-head">
+        <div class="tile-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
+        </div>
+        <h3>Revision Generator</h3>
+      </div>
+      <p class="resource-section-desc">Quick revision sets for review lessons, mixing topics already covered.</p>
+      <div class="strand-group" data-strand="na">
+        <h4 class="strand-head strand-na"><span class="strand-num">01</span>Number and Algebra</h4>
+        <div class="resource-grid">
+          <a class="resource-card" href="which-is-bigger.html" data-stage="5">
+            <h4>Which Is Bigger?</h4>
+            <p>A fixed teaching-order walk-through for the whole class, comparing whole numbers, large numbers, decimals and scientific notation — then a shuffled 45-question bank for independent revision.</p>
+            <div class="resource-card-tags">
+              <span class="status-badge available">Available</span>
+              <span class="status-badge available">Stage 5 · Number</span>
+            </div>
+            <span class="open-link">Open tool →</span>
+          </a>
+        </div>
+      </div>
+      <div class="resource-grid strand-ghost">
+        <div class="empty-card">
+          <div class="plus">+</div>
+          <p>More generators coming soon</p>
+          <p class="small">Next one will appear here once built</p>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <div class="search-block">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Search teacher tools… e.g. equations, ratio, number lines" />
+    </div>
+  </div>
+
+  <footer>
+    <span>[Site Name] &middot; Built for NSW Stage 4&ndash;5 mathematics</span>
+    <a href="#">Contact</a>
+  </footer>
+
+<script src="filter.js"></script>
+</body>
+</html>

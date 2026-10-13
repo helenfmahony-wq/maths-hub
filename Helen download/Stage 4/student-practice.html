@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[Site Name] — Student Practice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="draft-note"><strong>Draft build</strong> — no practice sets are live yet. This page shows the structure ready to hold them as they're built.</div>
+
+  <header>
+    <a class="brand-group" href="index.html">
+      <div class="logo-mark">M</div>
+      <div class="brand">[Site Name]<small>Placeholder — name TBD</small></div>
+    </a>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="teacher-tools.html">Teacher Tools</a>
+      <a href="student-practice.html" class="current">Student Practice</a>
+      <a href="#">About</a>
+    </nav>
+  </header>
+
+  <section class="page-hero">
+    <h1>Student Practice</h1>
+    <p class="hero-sub">Pick a topic and work through it at your own pace — support is there when you need it, and fades as you get more confident.</p>
+    <div class="filter-chips">
+      <button type="button" class="chip active" data-stage="all">All stages</button>
+      <button type="button" class="chip" data-stage="4">Stage 4</button>
+      <button type="button" class="chip" data-stage="5">Stage 5</button>
+      <button type="button" class="chip disabled" disabled>Stage 6 · coming soon</button>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="section-eyebrow">How it works</div>
+    <h2 class="section-title">Every topic follows the same levels</h2>
+    <p class="section-sub">Your teacher shows you the idea in class first. Then, on this page, you work through it yourself.</p>
+
+    <div class="context-strip">
+      <div class="context-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      </div>
+      <div>
+        <div class="context-label">Already happened, in class</div>
+        <p>Your teacher introduced the idea using a digital manipulative (e.g. a double number line).</p>
+      </div>
+    </div>
+    <div class="context-arrow">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+      Then, you practise on your own
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">Level 1 · Guided</div>
+        <h4>Tool available</h4>
+        <p>You get the same manipulative your teacher used, and instant feedback on every answer.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">Middle levels</div>
+        <h4>Support fades</h4>
+        <p>The tool becomes less available as you move up — feedback stays instant the whole way.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">Final level · Independent</div>
+        <h4>No tool</h4>
+        <p>Just you and the question — a real test of what you've learned.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="section-eyebrow">Get started</div>
+    <h2 class="section-title">Practice sets</h2>
+    <p class="section-sub">Grouped by syllabus strand. Use the stage buttons at the top to show just your stage.</p>
+    <div class="strand-group" data-strand="na">
+      <h4 class="strand-head strand-na"><span class="strand-num">01</span>Number and Algebra</h4>
+      <div class="resource-grid">
+        <a class="resource-card" href="rise-and-run-quiz.html" data-stage="5">
+            <h4>Gradient — Rise &amp; Run Quiz</h4>
+            <p>Four levels, Sweet to Spicy. Sweet and Mild keep the plane on screen with the same tool your teacher demonstrated with; Medium and Spicy fade it out, ending with formula only.</p>
+            <div class="resource-card-tags">
+              <span class="status-badge available">Available</span>
+              <span class="status-badge available">Stage 5 · Gradient</span>
+            </div>
+            <span class="open-link">Start practice →</span>
+          </a>
+        <a class="resource-card" href="which-is-bigger.html" data-stage="5">
+            <h4>Which Is Bigger?</h4>
+            <p>Switch to Practice mode for a shuffled 45-question set on comparing whole numbers, large numbers, decimals and scientific notation, with instant feedback and a category breakdown at the end.</p>
+            <div class="resource-card-tags">
+              <span class="status-badge available">Available</span>
+              <span class="status-badge available">Stage 5 · Number</span>
+            </div>
+            <span class="open-link">Start practice →</span>
+          </a>
+      </div>
+    </div>
+    <div class="strand-group" data-strand="ms">
+      <h4 class="strand-head strand-ms"><span class="strand-num">02</span>Measurement and Space</h4>
+      <div class="resource-grid">
+        <a class="resource-card" href="quadrilateral-lab.html" data-stage="4">
+            <h4>Quadrilateral Lab</h4>
+            <p>Work through Which Properties?, Name the Quadrilateral, the Classification Map and a six-level Challenges ladder — the same shape tool your teacher used to demonstrate, right there to explore as you go.</p>
+            <div class="resource-card-tags">
+              <span class="status-badge available">Available</span>
+              <span class="status-badge available">Stage 4 · Quadrilaterals</span>
+            </div>
+            <span class="open-link">Start practice →</span>
+          </a>
+      </div>
+    </div>
+    <div class="strand-group" data-strand="sp">
+      <h4 class="strand-head strand-sp"><span class="strand-num">03</span>Statistics and Probability</h4>
+      <div class="resource-grid">
+        <a class="resource-card" href="quartiles-iqr-explorer.html" data-stage="5">
+            <h4>Quartiles &amp; IQR Explorer</h4>
+            <p>Switch to Student quiz mode: work out the five-number summary from a fresh dataset and draw the box plot yourself — or use the Compare tab to answer questions about two data sets side by side.</p>
+            <div class="resource-card-tags">
+              <span class="status-badge available">Available</span>
+              <span class="status-badge available">Stage 5 · Data &amp; Statistics</span>
+            </div>
+            <span class="open-link">Start practice →</span>
+          </a>
+      </div>
+    </div>
+    <div class="resource-grid strand-ghost">
+      <div class="empty-card">
+        <div class="plus">+</div>
+        <p>More practice sets coming soon</p>
+        <p class="small">Next one will appear here once built</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="search-block">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Search practice sets… e.g. equations, ratio, number lines" />
+    </div>
+  </div>
+
+  <footer>
+    <span>[Site Name] &middot; Built for NSW Stage 4&ndash;5 mathematics</span>
+    <a href="#">Contact</a>
+  </footer>
+
+<script src="filter.js"></script>
+</body>
+</html>
