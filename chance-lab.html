@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Chance Lab: a Year 8 experimental probability manipulative. The computer flips a coin, spins a spinner or rolls a dice; students record each result on their worksheet.">
+<title>Chance Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* Layout: a maths-book grid page; one experiment bench at a time, three steps across the top. */
+:root{
+  --bg:#eef3f6; --grid:#dce6ec; --panel:#ffffff; --ink:#15212c; --muted:#56687a; --line:#cfdbe3;
+  --accent:#0a6a86; --accent-ink:#ffffff; --mark:#ffe36e; --mark-ink:#15212c;
+  --good:#1f8a4c; --good-bg:#e3f5ea; --bad:#b4372f; --bad-bg:#fbe9e7;
+  --red:#d64545; --blue:#2f6fd6; --green:#2a9a58; --gold:#d79b00; --slate:#5b6b7c; --violet:#7a4cc9;
+  --display:"Bricolage Grotesque", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#10171e; --grid:#18222b; --panel:#18222c; --ink:#e7eef4; --muted:#9db0c0; --line:#2b3a47;
+  --accent:#4fb6d6; --accent-ink:#06202a; --mark:#f2cf45; --mark-ink:#15212c;
+  --good:#5fd08f; --good-bg:#14301f; --bad:#ff8a80; --bad-bg:#3a1c1a;
+  --red:#f06b6b; --blue:#6c9cf0; --green:#4cc283; --gold:#f2c14e; --slate:#9aaabb; --violet:#a98af0;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#10171e; --grid:#18222b; --panel:#18222c; --ink:#e7eef4; --muted:#9db0c0; --line:#2b3a47;
+  --accent:#4fb6d6; --accent-ink:#06202a; --mark:#f2cf45; --mark-ink:#15212c;
+  --good:#5fd08f; --good-bg:#14301f; --bad:#ff8a80; --bad-bg:#3a1c1a;
+  --red:#f06b6b; --blue:#6c9cf0; --green:#4cc283; --gold:#f2c14e; --slate:#9aaabb; --violet:#a98af0;
+  color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{margin:0;
+  background:var(--bg); color:var(--ink); font-family:var(--body); font-size:17px; line-height:1.5;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:28px 28px;
+}
+.wrap{max-width:980px; margin:0 auto; padding-block:20px 48px;
+  padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px));
+  display:flex; flex-direction:column; gap:20px}
+h1,h2,h3{font-family:var(--display); line-height:1.15; text-wrap:balance; margin:0}
+h1{font-size:clamp(30px,6vw,44px); font-weight:800; letter-spacing:-.01em}
+h2{font-size:26px; font-weight:800}
+h3{font-size:19px; font-weight:600}
+p{margin:0}
+.hl{background:var(--mark); color:var(--mark-ink); padding:0 .25em; border-radius:3px}
+header{display:flex; flex-wrap:wrap; align-items:end; justify-content:space-between; gap:12px 24px}
+header p{color:var(--muted); max-width:52ch}
+
+/* steps */
+.steps{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+.step{font:inherit; color:var(--ink); background:var(--panel); border:2px solid var(--line); border-radius:12px;
+  padding:10px 12px; text-align:left; cursor:pointer; display:flex; gap:10px; align-items:center; min-width:0}
+.step b{font-family:var(--display); font-size:22px; width:36px; height:36px; flex:none; border-radius:50%;
+  display:grid; place-items:center; background:var(--bg); color:var(--accent)}
+.step span{font-weight:700; line-height:1.2}
+.step small{display:block; font-weight:400; color:var(--muted); font-size:14px}
+.step[aria-selected="true"]{border-color:var(--accent); box-shadow:0 3px 0 var(--accent)}
+.step[aria-selected="true"] b{background:var(--accent); color:var(--accent-ink)}
+@media (max-width:560px){ .step small{display:none} .step{padding:8px} .step b{width:30px;height:30px;font-size:18px} }
+
+.panel{background:var(--panel); border:2px solid var(--line); border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:16px; min-width:0}
+.muted{color:var(--muted)}
+
+/* experiment chooser */
+.choose{display:grid; grid-template-columns:repeat(3,1fr); gap:10px}
+.exp-btn{font:inherit; color:var(--ink); background:var(--bg); border:2px solid var(--line); border-radius:12px; padding:12px;
+  cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center}
+.exp-btn svg{width:44px; height:44px}
+.exp-btn strong{font-size:16px}
+.exp-btn .count{font-size:13px; color:var(--muted)}
+.exp-btn[aria-pressed="true"]{border-color:var(--accent); background:var(--panel); box-shadow:0 3px 0 var(--accent)}
+@media (max-width:480px){ .exp-btn strong{font-size:14px} }
+
+.bench{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:20px; align-items:start}
+@media (max-width:720px){ .bench{grid-template-columns:1fr} }
+.stage{background:var(--bg); border-radius:14px; min-height:250px; display:grid; place-items:center; padding:20px; position:relative}
+.result-word{font-family:var(--display); font-size:24px; font-weight:800; text-align:center; min-height:1.4em}
+
+.coin{width:150px; height:150px; border-radius:50%; display:grid; place-items:center; font-family:var(--display); font-weight:800;
+  font-size:22px; color:#3b2a00; background:radial-gradient(circle at 35% 30%, #ffe9a3, #e2b13c 60%, #b98a17);
+  box-shadow:inset 0 0 0 8px rgba(0,0,0,.12), 0 6px 0 rgba(0,0,0,.15)}
+.coin.flip{animation:flip .6s ease-in-out}
+@keyframes flip{0%{transform:rotateX(0) translateY(0)}50%{transform:rotateX(900deg) translateY(-40px) scale(1.1)}100%{transform:rotateX(1800deg) translateY(0)}}
+
+.die{width:140px; height:140px; border-radius:22px; background:#fbfbfb; border:3px solid #22303c; display:grid;
+  grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); padding:16px; box-shadow:0 6px 0 rgba(0,0,0,.18)}
+.die i{width:22px; height:22px; border-radius:50%; background:#1b2630; place-self:center; visibility:hidden}
+.die i.on{visibility:visible}
+.die.roll{animation:roll .55s ease-out}
+@keyframes roll{0%{transform:rotate(0) scale(.8)}60%{transform:rotate(380deg) scale(1.08)}100%{transform:rotate(360deg) scale(1)}}
+
+.spinner{width:220px; max-width:100%; height:auto}
+.spinner .ptr{transform-origin:100px 100px; transition:transform 1.1s cubic-bezier(.2,.8,.25,1)}
+@media (prefers-reduced-motion:reduce){ .coin.flip,.die.roll{animation:none} .spinner .ptr{transition:none} }
+
+.controls{display:flex; flex-direction:column; gap:14px; min-width:0}
+.btn-row{display:flex; flex-wrap:wrap; gap:10px}
+.btn{font:inherit; font-weight:700; border-radius:12px; padding:12px 18px; cursor:pointer; border:2px solid var(--accent);
+  background:var(--accent); color:var(--accent-ink); box-shadow:0 3px 0 rgba(0,0,0,.2)}
+.btn:active{transform:translateY(2px); box-shadow:none}
+.btn.big{font-size:20px; padding:14px 22px}
+.btn.ghost{background:transparent; color:var(--accent); box-shadow:none}
+.btn.quiet{background:transparent; color:var(--muted); border-color:var(--line); box-shadow:none; font-weight:400; padding:8px 14px}
+.btn:disabled{opacity:.45; cursor:not-allowed}
+:focus-visible{outline:3px solid var(--mark); outline-offset:2px}
+
+.progress{display:flex; flex-direction:column; gap:6px}
+.bar{height:14px; background:var(--bg); border-radius:99px; overflow:hidden; border:1px solid var(--line)}
+.bar > div{height:100%; background:var(--accent); width:0; transition:width .3s}
+.recent{display:flex; flex-wrap:wrap; gap:5px; min-height:30px}
+.chip{min-width:30px; height:30px; padding:0 6px; border-radius:8px; display:inline-grid; place-items:center; font-weight:700; font-size:14px; color:#fff}
+.chip.new{outline:3px solid var(--mark)}
+
+.words{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px}
+.word{background:var(--bg); border-radius:10px; padding:10px 12px; font-size:15px}
+.word b{display:block; font-family:var(--display); font-size:16px}
+
+/* data */
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse; width:100%; min-width:520px; font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line); padding:10px 8px; text-align:left; vertical-align:middle}
+th{font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:700}
+td.num{text-align:right; font-weight:700}
+tfoot td{font-weight:700; border-bottom:none}
+.swatch{display:inline-block; width:14px; height:14px; border-radius:4px; margin-right:8px; vertical-align:-2px}
+.tally{display:flex; flex-wrap:wrap; gap:4px 10px; max-width:260px}
+.tg{display:inline-flex; gap:3px; position:relative; padding:0 2px}
+.tg i{width:2.5px; height:18px; background:var(--ink); border-radius:2px}
+.tg.five::after{content:""; position:absolute; left:-3px; right:-3px; top:50%; height:2.5px; background:var(--ink); transform:rotate(-28deg)}
+.formula{background:var(--bg); border-radius:12px; padding:14px 16px; display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center}
+.frac{display:inline-flex; flex-direction:column; align-items:center; font-weight:700; line-height:1.15; vertical-align:middle}
+.frac span:first-child{border-bottom:2px solid currentColor; padding:0 4px}
+.chart-box{overflow-x:auto}
+.chart-box svg{width:100%; min-width:360px; height:auto; display:block}
+.toggle{display:flex; gap:8px; align-items:center; cursor:pointer; font-weight:700}
+.toggle input{width:22px; height:22px; accent-color:var(--accent)}
+.summary{font-size:18px}
+.empty{background:var(--bg); border-radius:12px; padding:18px; text-align:center; display:flex; flex-direction:column; gap:10px; align-items:center}
+
+/* questions */
+.qs{display:flex; flex-direction:column; gap:14px}
+.q{border:2px solid var(--line); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:12px}
+.q.ok{border-color:var(--good)}
+.q-head{display:flex; gap:12px; align-items:flex-start}
+.q-num{font-family:var(--display); font-weight:800; font-size:16px; background:var(--bg); border-radius:8px; padding:4px 9px; flex:none}
+.q.ok .q-num{background:var(--good); color:var(--panel)}
+.tag{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; background:var(--mark); color:var(--mark-ink); padding:2px 7px; border-radius:6px; margin-left:6px; vertical-align:2px}
+.answer{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+.answer input{font:inherit; font-size:20px; font-weight:700; width:110px; padding:8px 10px; border:2px solid var(--line); border-radius:10px; background:var(--panel); color:var(--ink); text-align:center}
+.answer input:focus{border-color:var(--accent)}
+.fracin{display:inline-flex; flex-direction:column; align-items:center; gap:4px}
+.fracin input{width:90px}
+.fracin .den{border-top:3px solid var(--ink); width:100%; text-align:center; font-size:20px; font-weight:700; padding-top:4px}
+.opt{font:inherit; font-weight:700; padding:10px 16px; border-radius:10px; border:2px solid var(--line); background:var(--bg); color:var(--ink); cursor:pointer}
+.opt[aria-pressed="true"]{border-color:var(--accent)}
+.opt.right{border-color:var(--good); background:var(--good-bg)}
+.opt.wrong{border-color:var(--bad); background:var(--bad-bg)}
+.fb{font-weight:700; border-radius:10px; padding:8px 12px}
+.fb.good{background:var(--good-bg); color:var(--good)}
+.fb.bad{background:var(--bad-bg); color:var(--bad)}
+details.hint summary{cursor:pointer; color:var(--accent); font-weight:700; width:fit-content}
+details.hint p{margin-top:6px; background:var(--bg); border-radius:10px; padding:10px 12px}
+.score{display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:space-between}
+.score strong{font-family:var(--display); font-size:22px}
+.stars{display:flex; gap:4px}
+.stars i{width:16px; height:16px; border-radius:50%; background:var(--line)}
+.stars i.on{background:var(--good)}
+.notice{background:var(--mark); color:var(--mark-ink); border-radius:10px; padding:10px 14px; font-weight:700}
+.copied{color:var(--good); font-weight:700}
+textarea.copybox{width:100%; min-height:140px; font:14px/1.4 ui-monospace,monospace; border-radius:10px; border:2px solid var(--line); padding:10px; background:var(--bg); color:var(--ink)}
+
+.teacher summary{cursor:pointer; font-family:var(--display); font-weight:600; font-size:18px}
+.teacher ul{margin:6px 0 0; padding-left:20px; display:flex; flex-direction:column; gap:4px}
+.teacher .cols{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; margin-top:12px}
+.confirm{display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:var(--bad-bg); color:var(--bad); padding:8px 12px; border-radius:10px; font-weight:700}
+</style>
+<style>
+.log{display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:6px}
+.cell{border:2px solid var(--line); border-radius:10px; padding:4px 6px; display:flex; align-items:center; gap:6px; font-variant-numeric:tabular-nums; background:var(--panel)}
+.cell em{font-style:normal; color:var(--muted); font-size:13px; min-width:20px}
+.cell .chip{flex:1}
+.cell.new{border-color:var(--accent); box-shadow:0 0 0 3px var(--mark)}
+.trialno{font-family:var(--display); font-weight:800; font-size:18px}
+.done-msg{background:var(--good-bg); color:var(--good); border-radius:10px; padding:10px 14px; font-weight:700}
+.howto{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin:0; padding:0; list-style:none; counter-reset:h}
+.howto li{background:var(--bg); border-radius:10px; padding:10px 12px 10px 48px; position:relative; counter-increment:h; font-size:16px}
+.howto li::before{content:counter(h); position:absolute; left:12px; top:10px; width:26px; height:26px; border-radius:50%; background:var(--accent); color:var(--accent-ink); display:grid; place-items:center; font-weight:700; font-size:15px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Chance Lab</h1>
+      <p>The computer does the experiment. You <span class="hl">record every result</span> on your worksheet.</p>
+    </div>
+  </header>
+
+  <ol class="howto">
+    <li>Choose the experiment that matches your worksheet.</li>
+    <li>Press the big button once. Write the result in the next box on your worksheet.</li>
+    <li>Repeat until you have done at least 30 trials.</li>
+    <li>Check your worksheet against the results list at the bottom.</li>
+  </ol>
+
+  <section class="panel">
+    <div>
+      <h2>Choose your experiment</h2>
+      <p class="muted">Each flip, spin or roll is one <b>trial</b>.</p>
+    </div>
+    <div class="choose" id="choose"></div>
+
+    <div class="bench">
+      <div class="stage" id="stage"></div>
+      <div class="controls">
+        <p class="trialno" id="trialNo">Trial 1</p>
+        <p class="result-word" id="resultWord" aria-live="polite">Press the button to start</p>
+        <div class="btn-row"><button class="btn big" id="go1">Flip the coin</button></div>
+        <div class="progress">
+          <p><b id="trialCount">0</b> of 30 trials done.</p>
+          <div class="bar" aria-hidden="true"><div id="goalBar"></div></div>
+        </div>
+        <p class="done-msg" id="doneMsg" hidden>You have done 30 trials. Check your worksheet, then move on to the table.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; align-items:center">
+      <div>
+        <h2>Results list</h2>
+        <p class="muted">Every trial, in order. Use this to check your worksheet.</p>
+      </div>
+      <button class="btn quiet" id="reset">Start again</button>
+    </div>
+    <div id="confirmBox" hidden></div>
+    <div class="log" id="log"></div>
+  </section>
+</div>
+
+<script>
+(function(){
+const EXPS = {
+  coin:{ name:"Coin", btn:"Flip the coin", busy:"Flipping…",
+    outcomes:[{id:"H",label:"Heads",short:"H",color:"--gold"},{id:"T",label:"Tails",short:"T",color:"--slate"}] },
+  spinner:{ name:"Spinner", btn:"Spin the spinner", busy:"Spinning…",
+    outcomes:[{id:"R",label:"Red",short:"Red",color:"--red"},{id:"B",label:"Blue",short:"Blue",color:"--blue"},{id:"G",label:"Green",short:"Green",color:"--green"}] },
+  die:{ name:"Dice", btn:"Roll the dice", busy:"Rolling…",
+    outcomes:[1,2,3,4,5,6].map(n=>({id:String(n),label:String(n),short:String(n),color:"--violet"})) }
+};
+const GOAL=30;
+let state={exp:"coin", results:{coin:[],spinner:[],die:[]}};
+try{ const s=JSON.parse(localStorage.getItem("chancelab-v2")||"null"); if(s&&s.results) state=s; }catch(e){}
+function save(){ try{ localStorage.setItem("chancelab-v2", JSON.stringify(state)); }catch(e){} }
+const $=id=>document.getElementById(id), E=()=>EXPS[state.exp], R=()=>state.results[state.exp], cssv=v=>`var(${v})`;
+const label=id=>E().outcomes.find(o=>o.id===id).label;
+
+const ICONS={
+  coin:`<svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="var(--gold)"/><circle cx="22" cy="22" r="13" fill="none" stroke="var(--panel)" stroke-width="2" opacity=".6"/></svg>`,
+  spinner:`<svg viewBox="0 0 44 44"><path d="M22 22 L22 4 A18 18 0 0 1 22 40 Z" fill="var(--red)"/><path d="M22 22 L22 40 A18 18 0 0 1 4 22 Z" fill="var(--blue)"/><path d="M22 22 L4 22 A18 18 0 0 1 22 4 Z" fill="var(--green)"/></svg>`,
+  die:`<svg viewBox="0 0 44 44"><rect x="5" y="5" width="34" height="34" rx="7" fill="var(--panel)" stroke="var(--ink)" stroke-width="2.5"/><circle cx="14" cy="14" r="3" fill="var(--ink)"/><circle cx="22" cy="22" r="3" fill="var(--ink)"/><circle cx="30" cy="30" r="3" fill="var(--ink)"/></svg>`
+};
+function renderChooser(){
+  $("choose").innerHTML=Object.keys(EXPS).map(k=>`<button class="exp-btn" data-exp="${k}" aria-pressed="${k===state.exp}">${ICONS[k]}<strong>${EXPS[k].name}</strong><span class="count">${state.results[k].length} trials</span></button>`).join("");
+  $("choose").querySelectorAll(".exp-btn").forEach(b=>b.onclick=()=>{ if(busy) return; state.exp=b.dataset.exp; save(); renderAll(); });
+}
+let spinAngle=0, busy=false;
+const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+function pt(a,r){ const t=a*Math.PI/180; return [100+r*Math.sin(t),100-r*Math.cos(t)]; }
+function sector(a0,a1,fill){ const [x0,y0]=pt(a0,90),[x1,y1]=pt(a1,90); return `<path d="M100 100 L${x0} ${y0} A90 90 0 ${a1-a0>180?1:0} 1 ${x1} ${y1} Z" fill="${fill}" stroke="var(--panel)" stroke-width="3"/>`; }
+function sLabel(a,t){ const [x,y]=pt(a,55); return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="var(--display)" font-weight="800" font-size="16" fill="#fff">${t}</text>`; }
+function renderStage(){
+  const k=state.exp, last=R()[R().length-1];
+  if(k==="coin") $("stage").innerHTML=`<div class="coin" id="coin">${last?label(last):"?"}</div>`;
+  else if(k==="die"){ const n=last?+last:5; $("stage").innerHTML=`<div class="die" id="die">${Array.from({length:9},(_,i)=>`<i class="${PIPS[n].includes(i)?"on":""}"></i>`).join("")}</div>`; }
+  else $("stage").innerHTML=`<svg class="spinner" viewBox="0 0 200 200" role="img" aria-label="Spinner: red half, blue quarter, green quarter">
+      ${sector(0,180,"var(--red)")}${sector(180,270,"var(--blue)")}${sector(270,360,"var(--green)")}
+      ${sLabel(90,"Red")}${sLabel(225,"Blue")}${sLabel(315,"Green")}
+      <g class="ptr" id="ptr" style="transform:rotate(${spinAngle}deg)"><path d="M100 26 L108 100 L92 100 Z" fill="var(--ink)"/><circle cx="100" cy="100" r="11" fill="var(--ink)"/><circle cx="100" cy="100" r="4" fill="var(--panel)"/></g></svg>`;
+}
+function trial(){
+  if(state.exp==="spinner"){ const a=Math.random()*360; return {id:a<180?"R":a<270?"B":"G", angle:a}; }
+  if(state.exp==="coin") return {id:Math.random()<0.5?"H":"T"};
+  return {id:String(1+Math.floor(Math.random()*6))};
+}
+function go(){
+  if(busy) return; busy=true; $("go1").disabled=true;
+  const r=trial(), k=state.exp, n=R().length+1;
+  $("resultWord").textContent=E().busy;
+  const finish=()=>{ R().push(r.id); save(); busy=false; $("go1").disabled=false;
+    $("resultWord").innerHTML=`Trial ${n}: <span class="hl">${label(r.id)}</span>`; renderInfo(true); renderChooser(); };
+  if(k==="coin"){ const c=$("coin"); c.classList.remove("flip"); void c.offsetWidth; c.classList.add("flip"); c.textContent="…"; setTimeout(()=>{ c.textContent=label(r.id); finish(); },600); }
+  else if(k==="die"){ const d=$("die"); d.classList.remove("roll"); void d.offsetWidth; d.classList.add("roll"); setTimeout(()=>{ d.querySelectorAll("i").forEach((p,i)=>p.className=PIPS[+r.id].includes(i)?"on":""); finish(); },550); }
+  else { spinAngle=spinAngle-(spinAngle%360)+1080+r.angle; $("ptr").style.transform=`rotate(${spinAngle}deg)`; setTimeout(finish,1100); }
+}
+function renderInfo(flash){
+  const n=R().length;
+  $("trialCount").textContent=n;
+  $("trialNo").textContent=`Next: trial ${n+1}`;
+  $("goalBar").style.width=Math.min(100,n/GOAL*100)+"%";
+  $("doneMsg").hidden = n<GOAL;
+  $("reset").disabled = n===0;
+  $("log").innerHTML = n ? R().map((id,i)=>{ const o=E().outcomes.find(x=>x.id===id); return `<div class="cell ${flash&&i===n-1?"new":""}"><em>${i+1}</em><span class="chip" style="background:${cssv(o.color)}">${o.short}</span></div>`; }).join("") : `<p class="muted">No trials yet. Press the button above.</p>`;
+}
+function renderControls(){
+  $("go1").textContent=E().btn;
+  const n=R().length;
+  $("resultWord").innerHTML = n ? `Trial ${n}: <span class="hl">${label(R()[n-1])}</span>` : "Press the button to start";
+}
+$("go1").onclick=go;
+$("reset").onclick=()=>{
+  const box=$("confirmBox"); box.hidden=false;
+  box.innerHTML=`<div class="confirm">Delete all ${R().length} ${E().name.toLowerCase()} results? <button class="btn" id="yesReset" style="background:var(--bad);border-color:var(--bad);color:var(--panel)">Yes, start again</button><button class="btn quiet" id="noReset">Keep them</button></div>`;
+  $("noReset").onclick=()=>box.hidden=true;
+  $("yesReset").onclick=()=>{ state.results[state.exp]=[]; save(); box.hidden=true; renderAll(); };
+};
+function renderAll(){ renderChooser(); renderStage(); renderControls(); renderInfo(); }
+renderAll();
+})();
+</script>
+</body>
+</html>

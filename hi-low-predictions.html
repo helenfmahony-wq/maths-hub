@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hi-Low Predictions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+/* Layout: card-table felt with a scoreboard on top, the 9-card row as the hero, then three numbered step panels (predict → probability → wager) that light up in turn. Single deliberate look. */
+:root{
+  --felt:#0f5a3c; --felt-deep:#0a4430; --rail:#5b3a1e; --rail-hi:#8a5a2e;
+  --chalk:#f4f1e6; --paper:#fbf9f2; --muted:#b9d3c4; --gold:#f2c14e;
+  --card:#ffffff; --ink:#1b1b1f; --ink-soft:#4a4a52; --red:#c8202f;
+  --good:#5fd38d; --good-ink:#17834a; --bad:#ff7a6b;
+  --display:"Alfa Slab One", Rockwell, "Roboto Slab", Georgia, serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  color-scheme:dark;
+}
+html,body{min-height:100%}
+body{
+  margin:0;
+  background:radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-deep) 80%) fixed, var(--felt-deep);
+  color:var(--chalk); font-family:var(--body); font-size:16px; line-height:1.45;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:20px 32px;
+}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+
+/* Scoreboard */
+.board{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px}
+.tile{justify-self:start;border:2px solid var(--gold);border-radius:10px;padding:8px 18px;text-align:center;min-width:110px;background:rgba(0,0,0,.18)}
+.tile.right{justify-self:end}
+.tile .lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:700}
+.tile .val{font-family:var(--display);font-size:2rem;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--gold)}
+.tile .val.flash-up{animation:up .6s}
+.tile .val.flash-down{animation:down .6s}
+@keyframes up{30%{color:var(--good);transform:scale(1.15)}}
+@keyframes down{30%{color:var(--bad);transform:scale(.9)}}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(1.8rem,5vw,3rem);line-height:1;text-align:center;margin:0;text-wrap:balance;text-shadow:0 3px 0 rgba(0,0,0,.35)}
+h1 span{color:var(--gold)}
+
+/* Suit picker */
+.suits{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px}
+.suits .lbl{font-size:.8rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:700;margin-right:4px}
+.suit-btn{font:inherit;font-weight:700;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:2px solid transparent;background:var(--card);color:var(--ink);cursor:pointer;transition:transform .12s}
+.suit-btn .sym{font-size:1.3rem;line-height:1}
+.suit-btn.red .sym{color:var(--red)}
+.suit-btn:hover{transform:translateY(-2px)}
+.suit-btn[aria-pressed="true"]{border-color:var(--gold);box-shadow:0 0 0 3px rgba(242,193,78,.45)}
+.suit-btn.random{background:transparent;color:var(--chalk);border-color:var(--muted)}
+.suit-btn.random[aria-pressed="true"]{border-color:var(--gold)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+/* Cards */
+.table{border:10px solid var(--rail);border-radius:18px;box-shadow:inset 0 0 0 2px var(--rail-hi), 0 8px 24px rgba(0,0,0,.35);padding:18px 18px 26px;background:rgba(0,0,0,.12)}
+.row{display:grid;grid-template-columns:repeat(9,1fr);gap:clamp(4px,1.2vw,12px)}
+.card{aspect-ratio:5/7;max-width:100%;perspective:600px;position:relative}
+.card .inner{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.card.up .inner{transform:rotateY(180deg)}
+.face,.back{position:absolute;inset:0;border-radius:8px;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.back{background:repeating-linear-gradient(45deg, rgba(255,255,255,.12) 0 4px, transparent 4px 10px), linear-gradient(160deg,#7d1e2a,#4c0f18);border:3px solid var(--card)}
+.face{transform:rotateY(180deg);background:var(--card);color:var(--ink);display:grid;place-items:center;container-type:inline-size}
+.face.red{color:var(--red)}
+.face .pip{font-size:52cqw;line-height:1}
+.face .court{font-family:var(--display);font-size:44cqw;line-height:1}
+.face .corner{position:absolute;top:5%;left:8%;font-weight:700;font-size:20cqw;line-height:.95;text-align:center}
+.face .corner.br{top:auto;left:auto;bottom:5%;right:8%;transform:rotate(180deg)}
+.card .mark{position:absolute;left:50%;bottom:-14px;transform:translateX(-50%);min-width:26px;height:26px;padding:0 6px;border-radius:13px;display:grid;place-items:center;font-weight:700;font-size:.8rem;color:var(--felt-deep);z-index:2;white-space:nowrap;font-variant-numeric:tabular-nums}
+.card .mark.ok{background:var(--good)}
+.card .mark.no{background:var(--bad)}
+.card.next .back{outline:3px solid var(--gold);outline-offset:3px}
+
+/* Steps */
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.step{background:var(--paper);color:var(--ink);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 18px rgba(0,0,0,.3);transition:opacity .25s, transform .25s;position:relative}
+.step.idle{opacity:.45}
+.step.active{box-shadow:0 0 0 4px var(--gold), 0 6px 18px rgba(0,0,0,.3)}
+.step-no{font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:var(--ink-soft)}
+.step h2{font-family:var(--body);font-weight:700;font-size:1.05rem;line-height:1.35;margin:0;text-wrap:balance}
+.choices{display:flex;gap:10px;flex-wrap:wrap}
+.big{font:inherit;font-weight:700;font-size:1.05rem;padding:10px 18px;border-radius:10px;border:none;cursor:pointer;flex:1 1 100px;transition:transform .1s, filter .1s}
+.big:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.08)}
+.big:disabled{opacity:.4;cursor:not-allowed}
+.big.hi{background:var(--felt);color:var(--chalk)}
+.big.lo{background:var(--rail);color:var(--chalk)}
+.big.go{background:var(--gold);color:var(--ink)}
+.big.chosen{box-shadow:0 0 0 3px var(--gold);opacity:1}
+
+.fraction-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.fraction{display:flex;flex-direction:column;align-items:center;gap:6px}
+.fraction input{width:4.2ch;font-family:var(--display);font-size:1.6rem;text-align:center;padding:4px;border:2px solid var(--ink-soft);border-radius:6px;background:var(--card);color:var(--ink);font-variant-numeric:tabular-nums}
+.fraction .bar{width:64px;height:4px;border-radius:2px;background:var(--ink)}
+.wager-row{display:flex;align-items:center;gap:6px}
+.wager-row .cur{font-family:var(--display);font-size:1.6rem;color:var(--felt-deep)}
+.wager-row input{width:6ch;font-family:var(--display);font-size:1.6rem;padding:4px 8px;border:2px solid var(--ink-soft);border-radius:6px;background:var(--card);color:var(--ink);font-variant-numeric:tabular-nums}
+.quick{display:flex;gap:6px;flex-wrap:wrap}
+.chipbtn{font:inherit;font-weight:700;font-size:.85rem;padding:5px 11px;border-radius:999px;border:2px dashed var(--rail);background:var(--card);color:var(--rail);cursor:pointer}
+.chipbtn:disabled{opacity:.35;cursor:not-allowed}
+.msg{min-height:1.4em;font-weight:700;font-size:.95rem;margin:0}
+.msg.ok{color:var(--good-ink)}
+.msg.no{color:var(--red)}
+.msg.info{color:var(--ink-soft);font-weight:400}
+
+.result{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.result p{margin:0;font-weight:700;font-size:1.05rem}
+.result p.ok{color:var(--good)}
+.result p.no{color:var(--bad)}
+
+/* Tracker */
+details.tracker{background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 18px}
+details.tracker summary{cursor:pointer;font-weight:700;color:var(--muted)}
+.chips{display:grid;grid-template-columns:repeat(13,1fr);gap:4px;margin-top:12px}
+.chip{aspect-ratio:3/4;border-radius:4px;background:var(--card);color:var(--ink);display:grid;place-items:center;font-weight:700;font-size:clamp(.65rem,1.6vw,.9rem);position:relative}
+.chip.red{color:var(--red)}
+.chip.gone{opacity:.25}
+.chip.current{box-shadow:0 0 0 3px var(--gold);opacity:1}
+.chip.gone:not(.current)::after{content:"";position:absolute;inset:45% 8% auto;height:2px;background:var(--ink);transform:rotate(-20deg)}
+.rules{font-size:.9rem;color:var(--muted);margin:10px 0 0;max-width:70ch}
+
+.foot{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.ghost{font:inherit;font-weight:700;padding:10px 20px;border-radius:10px;border:2px solid var(--muted);background:transparent;color:var(--chalk);cursor:pointer}
+.ghost:hover{border-color:var(--gold);color:var(--gold)}
+
+@media (max-width:820px){ .steps{grid-template-columns:1fr} .step.idle{display:none} }
+@media (max-width:560px){
+  .board{grid-template-columns:1fr 1fr}
+  h1{grid-column:1/-1;order:-1}
+  .row{grid-template-columns:repeat(5,1fr);row-gap:22px}
+  .table{padding:12px 12px 22px;border-width:7px}
+  .tile{min-width:0;width:100%}
+}
+@media (prefers-reduced-motion:reduce){
+  .card .inner{transition:none}
+  .tile .val.flash-up,.tile .val.flash-down{animation:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="board">
+    <div class="tile"><div class="lbl">Play money</div><div class="val" id="money">$10</div></div>
+    <h1>Hi-Low <span>Predictions</span></h1>
+    <div class="tile right"><div class="lbl">Game</div><div class="val" id="gameNo">1</div></div>
+  </header>
+
+  <div class="suits" role="group" aria-label="Choose a suit">
+    <span class="lbl">Suit</span>
+    <button class="suit-btn" data-suit="S" id="suit-S"><span class="sym">♠</span>Spades</button>
+    <button class="suit-btn red" data-suit="H" id="suit-H"><span class="sym">♥</span>Hearts</button>
+    <button class="suit-btn red" data-suit="D" id="suit-D"><span class="sym">♦</span>Diamonds</button>
+    <button class="suit-btn" data-suit="C" id="suit-C"><span class="sym">♣</span>Clubs</button>
+    <button class="suit-btn random" data-suit="R" id="suit-R">Random each game</button>
+  </div>
+
+  <section class="table" aria-label="Cards">
+    <div class="row" id="row"></div>
+  </section>
+
+  <div class="steps">
+    <section class="step" id="step1">
+      <span class="step-no">Step 1 · Predict</span>
+      <h2 id="q1">Will the next card be higher or lower than the 9?</h2>
+      <div class="choices">
+        <button class="big hi" id="btnHigher">▲ Higher</button>
+        <button class="big lo" id="btnLower">▼ Lower</button>
+      </div>
+    </section>
+
+    <section class="step" id="step2">
+      <span class="step-no">Step 2 · Probability</span>
+      <h2 id="q2">What is the probability of the next card being lower?</h2>
+      <div class="fraction-row">
+        <div class="fraction">
+          <input id="num" type="number" inputmode="numeric" min="0" max="13" aria-label="Numerator">
+          <span class="bar" aria-hidden="true"></span>
+          <input id="den" type="number" inputmode="numeric" min="1" max="13" aria-label="Denominator">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="big go" id="btnCheck">Check</button>
+          <button class="chipbtn" id="btnShow" hidden>Show me</button>
+        </div>
+      </div>
+      <p class="msg" id="msg2" aria-live="polite"></p>
+    </section>
+
+    <section class="step" id="step3">
+      <span class="step-no">Step 3 · Wager</span>
+      <h2 id="q3">How much of your $10 would you like to wager?</h2>
+      <div class="wager-row">
+        <span class="cur">$</span>
+        <input id="wager" type="number" inputmode="numeric" min="0" step="1" aria-label="Wager in dollars">
+      </div>
+      <div class="quick">
+        <button class="chipbtn" data-w="1" id="w1">$1</button>
+        <button class="chipbtn" data-w="5" id="w5">$5</button>
+        <button class="chipbtn" data-w="half" id="wHalf">Half</button>
+        <button class="chipbtn" data-w="all" id="wAll">All in</button>
+      </div>
+      <button class="big go" id="btnPlay">Play</button>
+      <p class="msg" id="msg3" aria-live="polite"></p>
+    </section>
+  </div>
+
+  <div class="result" id="result" hidden aria-live="polite">
+    <p id="resultText"></p>
+    <button class="big go" id="btnContinue" style="flex:0 0 auto">Next card</button>
+  </div>
+
+  <details class="tracker" id="tracker">
+    <summary id="trackerTitle">Show the cards left in the suit</summary>
+    <div class="chips" id="chips"></div>
+    <p class="rules">Each game deals 9 cards from one suit of 13, so no two cards can be equal. Ace is low (1), then 2–10, Jack (11), Queen (12), King (13). A correct prediction wins the amount you wagered; a wrong one loses it.</p>
+  </details>
+
+  <div class="foot">
+    <button class="ghost" id="btnSession">Start a new session</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const SUITS = {S:{sym:"♠",name:"Spades",red:false},H:{sym:"♥",name:"Hearts",red:true},D:{sym:"♦",name:"Diamonds",red:true},C:{sym:"♣",name:"Clubs",red:false}};
+  const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+  const NAMES = ["Ace","2","3","4","5","6","7","8","9","10","Jack","Queen","King"];
+  const NCARDS = 9, START = 10;
+  const $ = id => document.getElementById(id);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let choice = "S", suit = "S";
+  let deck = [], pos = 0, money = START, gameNo = 1;
+  let phase = "predict";   // predict | prob | wager | result | over
+  let dir = null, tries = 0;
+
+  try { const s = localStorage.getItem("hilo-suit"); if (s && (SUITS[s] || s==="R")) choice = s; } catch(e){}
+
+  const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+  const fmt = n => "$"+n;
+  const cardName = v => (v===1||v>10) ? `the ${NAMES[v-1]}` : `the ${NAMES[v-1]}`;
+
+  function odds(){
+    const seen = new Set(deck.slice(0,pos+1)), cur = deck[pos];
+    const left = [];
+    for (let v=1; v<=13; v++) if (!seen.has(v)) left.push(v);
+    const hi = left.filter(v=>v>cur).length;
+    return {total:left.length, hi, lo:left.length-hi, seen, cur};
+  }
+
+  function newGame(){
+    suit = choice==="R" ? "SHDC"[Math.floor(Math.random()*4)] : choice;
+    deck = shuffle([...Array(13).keys()].map(i=>i+1)).slice(0,NCARDS);
+    pos = 0;
+    $("row").innerHTML = deck.map((v,i)=>`<div class="card" id="c${i}" aria-label="Card ${i+1}, face down"><div class="inner"><div class="back"></div>${faceHTML(v)}</div></div>`).join("");
+    startRound();
+    requestAnimationFrame(()=>flip(0));
+  }
+
+  function startRound(){
+    phase = money<=0 ? "over" : "predict";
+    dir = null; tries = 0;
+    $("num").value = ""; $("den").value = ""; $("wager").value = "";
+    $("msg2").textContent = ""; $("msg2").className = "msg";
+    $("msg3").textContent = ""; $("msg3").className = "msg";
+    $("btnShow").hidden = true;
+    $("result").hidden = true;
+    render();
+  }
+
+  function faceHTML(v){
+    const s = SUITS[suit], r = RANKS[v-1];
+    const centre = v>10 ? `<span class="court">${r}</span>` : `<span class="pip">${s.sym}</span>`;
+    return `<div class="face${s.red?" red":""}"><span class="corner">${r}<br>${s.sym}</span>${centre}<span class="corner br">${r}<br>${s.sym}</span></div>`;
+  }
+  function flip(i){
+    const c = $("c"+i); c.classList.add("up");
+    c.setAttribute("aria-label",`Card ${i+1}: ${NAMES[deck[i]-1]} of ${SUITS[suit].name}`);
+  }
+
+  function setStep(el, state){ el.classList.toggle("active", state==="active"); el.classList.toggle("idle", state==="idle"); }
+  function enable(ids, on){ ids.forEach(id=>$(id).disabled = !on); }
+
+  function render(){
+    const s = SUITS[suit], o = odds();
+    $("money").textContent = fmt(money);
+    $("gameNo").textContent = gameNo;
+    document.querySelectorAll(".suit-btn").forEach(b=>b.setAttribute("aria-pressed", b.dataset.suit===choice));
+    document.querySelectorAll(".card").forEach((c,i)=>c.classList.toggle("next", i===pos+1 && phase!=="result" && phase!=="over"));
+
+    const word = dir==="H" ? "higher" : "lower";
+    $("q1").textContent = phase==="over" ? "You're out of play money. Start a new session to play again."
+      : `Will the next card be higher or lower than ${cardName(o.cur)}?`;
+    $("q2").textContent = `What is the probability of the next card being ${dir ? word : "higher or lower"} than ${cardName(o.cur)}?`;
+    $("q3").textContent = `How much of your ${fmt(money)} would you like to wager that the next card will be ${dir ? word : "…"}?`;
+
+    setStep($("step1"), phase==="predict" ? "active" : (phase==="prob"||phase==="wager") ? "" : "idle");
+    setStep($("step2"), phase==="prob" ? "active" : phase==="wager" ? "" : "idle");
+    setStep($("step3"), phase==="wager" ? "active" : "idle");
+
+    enable(["btnHigher","btnLower"], phase==="predict");
+    $("btnHigher").classList.toggle("chosen", dir==="H");
+    $("btnLower").classList.toggle("chosen", dir==="L");
+    enable(["num","den","btnCheck","btnShow"], phase==="prob");
+    enable(["wager","btnPlay"], phase==="wager");
+    document.querySelectorAll("[data-w]").forEach(b=>{
+      const v = quickValue(b.dataset.w);
+      b.disabled = phase!=="wager" || v>money || v<1;
+    });
+    $("wager").max = money;
+
+    // tracker
+    $("chips").innerHTML = RANKS.map((r,i)=>{
+      const v=i+1, cls=["chip"];
+      if(s.red)cls.push("red"); if(o.seen.has(v))cls.push("gone"); if(v===o.cur)cls.push("current");
+      return `<div class="${cls.join(" ")}" title="${NAMES[i]} of ${s.name}">${r}</div>`;
+    }).join("");
+    $("trackerTitle").textContent = `Show the ${s.name.toLowerCase()} left in the deck`;
+  }
+  const quickValue = k => k==="all" ? money : k==="half" ? Math.floor(money/2) : +k;
+
+  // Step 1
+  function predict(d){
+    if (phase!=="predict") return;
+    dir = d; phase = "prob"; render();
+    setTimeout(()=>$("num").focus(), 50);
+  }
+  $("btnHigher").onclick = ()=>predict("H");
+  $("btnLower").onclick = ()=>predict("L");
+
+  // Step 2
+  function check(){
+    if (phase!=="prob") return;
+    const n = parseInt($("num").value,10), d = parseInt($("den").value,10);
+    const o = odds(), want = dir==="H" ? o.hi : o.lo;
+    const m = $("msg2");
+    if (isNaN(n) || isNaN(d) || d<=0){ m.textContent = "Fill in both the top and bottom numbers."; m.className="msg no"; return; }
+    if (n*o.total === want*d){
+      m.textContent = (n===want && d===o.total) ? "Correct!" : `Correct! That's the same as ${want}/${o.total}.`;
+      m.className = "msg ok";
+      phase = "wager"; render();
+      setTimeout(()=>$("wager").focus(), 50);
+      return;
+    }
+    tries++;
+    let hint = "Not quite. ";
+    if (d !== o.total && n*o.total !== want*d) hint += `How many cards are still face down in the deck? `;
+    else hint += `Count the cards left that are ${dir==="H"?"higher":"lower"} than ${cardName(o.cur)}. `;
+    hint += "Try again.";
+    m.textContent = hint; m.className = "msg no";
+    if (tries>=2) $("btnShow").hidden = false;
+  }
+  $("btnCheck").onclick = check;
+  [$("num"),$("den")].forEach(el=>el.addEventListener("keydown", e=>{ if(e.key==="Enter") check(); }));
+  $("btnShow").onclick = ()=>{
+    const o = odds(), want = dir==="H" ? o.hi : o.lo;
+    $("num").value = want; $("den").value = o.total;
+    $("msg2").textContent = `There are ${o.total} cards left and ${want} of them are ${dir==="H"?"higher":"lower"} than ${cardName(o.cur)}, so the probability is ${want}/${o.total}.`;
+    $("msg2").className = "msg info";
+    phase = "wager"; render();
+    setTimeout(()=>$("wager").focus(), 50);
+  };
+
+  // Step 3
+  document.querySelectorAll("[data-w]").forEach(b=>b.onclick = ()=>{ $("wager").value = quickValue(b.dataset.w); });
+  function play(){
+    if (phase!=="wager") return;
+    const raw = $("wager").value.trim(), w = Number(raw), m = $("msg3");
+    if (raw==="" || !Number.isInteger(w) || w<0){ m.textContent = "Enter a whole number of dollars (0 is allowed)."; m.className="msg no"; return; }
+    if (w>money){ m.textContent = `You only have ${fmt(money)} to wager.`; m.className="msg no"; return; }
+    m.textContent = ""; phase = "result"; render();
+
+    const cur = deck[pos], nxt = deck[pos+1];
+    const right = dir==="H" ? nxt>cur : nxt<cur;
+    pos++; flip(pos);
+    setTimeout(()=>{
+      money += right ? w : -w;
+      const mk = document.createElement("span");
+      mk.className = "mark "+(right?"ok":"no");
+      mk.textContent = w===0 ? (right?"✓":"✗") : (right?"+":"−")+"$"+w;
+      $("c"+pos).appendChild(mk);
+      const val = $("money"); val.classList.remove("flash-up","flash-down"); void val.offsetWidth;
+      if (w>0) val.classList.add(right?"flash-up":"flash-down");
+
+      const word = nxt>cur ? "higher" : "lower";
+      let text = right
+        ? `Correct! ${NAMES[nxt-1]} is ${word} than ${NAMES[cur-1]}. You win ${fmt(w)}.`
+        : `Unlucky. ${NAMES[nxt-1]} is ${word} than ${NAMES[cur-1]}. You lose ${fmt(w)}.`;
+      const gameOver = pos >= NCARDS-1, broke = money<=0;
+      if (broke) text += " You've run out of play money.";
+      else if (gameOver) text += ` That's the end of game ${gameNo}.`;
+      $("resultText").textContent = text;
+      $("resultText").className = right ? "ok" : "no";
+      $("btnContinue").textContent = broke ? "Start a new session" : gameOver ? "Next game" : "Next card";
+      $("result").hidden = false;
+      render();
+      $("btnContinue").focus();
+    }, reduce ? 0 : 450);
+  }
+  $("btnPlay").onclick = play;
+  $("wager").addEventListener("keydown", e=>{ if(e.key==="Enter") play(); });
+
+  $("btnContinue").onclick = ()=>{
+    if (money<=0){ money = START; gameNo = 1; newGame(); }
+    else if (pos >= NCARDS-1){ gameNo++; newGame(); }
+    else startRound();
+  };
+  $("btnSession").onclick = ()=>{ money = START; gameNo = 1; newGame(); };
+  document.querySelectorAll(".suit-btn").forEach(b=>b.onclick = ()=>{
+    choice = b.dataset.suit;
+    try{ localStorage.setItem("hilo-suit", choice); }catch(e){}
+    if (pos>0) gameNo++;
+    newGame();
+  });
+
+  newGame();
+})();
+</script>
+</body>
+</html>
