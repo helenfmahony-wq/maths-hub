@@ -125,11 +125,20 @@ with the teacher code to create student logins, print login cards, set
 quizzes and see results. Students sign in with their 8-character code to see
 their tasks and results.
 
-To make a quiz save to student dashboards, add it to
-`assets/js/portal/toolRegistry.js`, include `assets/js/portal/quizSignIn.js` at
-the end of the page, and call `PlatformSave({ toolId, score, total, topic })`
-when the student finishes. Full steps, and the one-off Firebase setup, are in
-[firebase/SETUP.md](firebase/SETUP.md).
+### Rule for every student quiz
+
+Every student quiz must save to the dashboards **and have a Submit button**
+so a student can hand in their progress early. That means every quiz:
+
+1. Has an entry in `assets/js/portal/toolRegistry.js`.
+2. Includes `assets/js/portal/quizSignIn.js` as the last line before `</body>`
+   (this adds the student sign-in and the **Submit my work** button).
+3. Calls `PlatformProgress({ toolId, score, answered, total, topic })` after
+   every answered question, and once with `answered: 0` when an attempt starts.
+4. Calls `PlatformSave({ toolId, score, total, topic })` when the student finishes.
+
+Copy `portal/quiz-template.html` to start a new quiz. Full steps, and the
+one-off Firebase setup, are in [firebase/SETUP.md](firebase/SETUP.md).
 
 The portal must be opened through a web address (the live site, or a local
 server), not by double-clicking the file.

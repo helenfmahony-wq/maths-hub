@@ -1636,6 +1636,16 @@ function solveBuild(q){
   if (found) Object.assign(plane, found);
   drawPlane();
   if (el('buildBox')) el('buildBox').textContent = 'One possible answer is shown on the plane.';
+  reportProgress();
+}
+
+// hook for the student portal's "Submit my work" button: score so far
+function reportProgress(){
+  if (!window.MMTProgress || !S.levelKey) return;
+  window.MMTProgress({
+    level:LEVELS[S.levelKey].name, score:S.score, total:QUIZ_LEN,
+    answered:S.items.filter(q => q.state !== 'open').length
+  });
 }
 
 function finishQuestion(q){
@@ -1646,6 +1656,7 @@ function finishQuestion(q){
   el('btnCheck').hidden = true;
   plane.onChange = null;
   paintProgress();
+  reportProgress();
   setTimeout(() => { const b = el('btnNext'); if (b && !b.hidden) b.focus(); }, 40);
 }
 
@@ -1824,11 +1835,23 @@ drawPlane();
 })();
 </script>
 
-<!-- Maths Hub portal: student sign-in, and saving each finished level to the
-     student's dashboard. The quiz already calls window.MMTSave(...) when a
-     level ends; this passes the score on. toolId matches
+<!-- Maths Hub portal: student sign-in, the "Submit my work" button, and saving
+     each finished level to the student's dashboard. The quiz calls
+     window.MMTProgress(...) after each answer and window.MMTSave(...) when a
+     level ends; these pass the scores on. toolId matches
      assets/js/portal/toolRegistry.js. -->
 <script>
+  window.MMTProgress = function (r) {
+    if (!window.PlatformProgress) return;
+    PlatformProgress({
+      toolId: "rise-and-run-quiz",
+      title: "Rise & Run: Gradient Quiz (" + r.level + ")",
+      topic: "Linear relationships",
+      score: r.score,
+      answered: r.answered,
+      total: r.total
+    });
+  };
   window.MMTSave = function (r) {
     if (!window.PlatformSave) return;
     PlatformSave({

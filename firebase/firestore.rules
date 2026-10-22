@@ -100,8 +100,10 @@ service cloud.firestore {
       allow list: if false;
     }
 
-    // Results ("achievements"): one document per finished quiz.
-    // Only a score is stored, never what the student typed.
+    // Results ("achievements"): one document per finished quiz, or per press
+    // of a quiz's "Submit my work" button (complete == false, with how many
+    // questions were answered). Only a score is stored, never what the
+    // student typed.
     match /achievements/{id} {
       allow read: if (hasSession() && resource.data.studentCode == myCode())
                   || (isTeacher() && resource.data.teacherCode == uid());
@@ -110,7 +112,7 @@ service cloud.firestore {
                     && request.resource.data.keys().hasOnly([
                          'studentCode', 'studentName', 'className', 'teacherCode',
                          'toolId', 'toolTitle', 'topic', 'score', 'total', 'percent',
-                         'createdAtClient', 'createdAt'])
+                         'answered', 'complete', 'createdAtClient', 'createdAt'])
                     && request.resource.data.studentCode == myCode()
                     && request.resource.data.teacherCode == me().teacherCode
                     && request.resource.data.className  == me().className
@@ -122,6 +124,11 @@ service cloud.firestore {
                     && request.resource.data.total <= 1000
                     && request.resource.data.score >= 0
                     && request.resource.data.score <= request.resource.data.total
+                    && (!('complete' in request.resource.data) || request.resource.data.complete is bool)
+                    && (!('answered' in request.resource.data)
+                        || (request.resource.data.answered is number
+                            && request.resource.data.answered >= 0
+                            && request.resource.data.answered <= request.resource.data.total))
                     && request.resource.data.createdAt == request.time
                     && optStr(request.resource.data, 'studentName', 130)
                     && optStr(request.resource.data, 'toolTitle', 160)

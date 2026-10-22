@@ -91,7 +91,7 @@
 import { PLATFORM_NAME, COLLECTIONS, isConfigured } from "../../assets/js/portal/config.js";
 import { initPortal, listWhere, loginStudent, logout, normaliseCode } from "../../assets/js/portal/authClient.js";
 import { getEnabledTools, siteUrl, toolTitle, getTool } from "../../assets/js/portal/toolRegistry.js";
-import { normaliseResult, summarise, band } from "../../assets/js/portal/resultUtils.js";
+import { normaliseResult, summarise, band, scoreLabel } from "../../assets/js/portal/resultUtils.js";
 import { icon } from "../../assets/js/portal/icons.js";
 import { isDemo, mountDemoBanner, DEMO_STUDENT_CODE } from "../../assets/js/portal/demo.js";
 
@@ -177,7 +177,7 @@ function show() {
     : `<div class="empty">Finish a quiz while signed in and your topics appear here.</div>`;
 
   $("resultsBody").innerHTML = results.length ? `<table><thead><tr><th>Activity</th><th>Topic</th><th>Score</th><th>%</th><th>Date</th></tr></thead><tbody>` +
-    results.map((r) => `<tr><td>${esc(r.tool)}</td><td>${esc(r.topic || "—")}</td><td>${r.score}/${r.total}</td><td><span class="pct ${band(r.percent)}">${r.percent}%</span></td><td>${esc(r.dateLabel)}</td></tr>`).join("") + `</tbody></table>`
+    results.map((r) => `<tr><td>${esc(r.tool)}</td><td>${esc(r.topic || "—")}</td><td>${esc(scoreLabel(r))}</td><td><span class="pct ${band(r.percent)}">${r.percent}%</span></td><td>${esc(r.dateLabel)}</td></tr>`).join("") + `</tbody></table>`
     : `<div class="empty"><div class="big">No results yet</div>They'll show up here after your first quiz.</div>`;
 
   $("toolLinks").innerHTML = getEnabledTools().map((t) => `<a class="btn" href="${esc(withCode(siteUrl(t.path)))}">${icon("play")}${esc(t.title)}</a>`).join("") || `<span class="muted">Nothing here yet.</span>`;

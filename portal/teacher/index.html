@@ -75,7 +75,7 @@
 import { PLATFORM_NAME, COLLECTIONS, isConfigured } from "../../assets/js/portal/config.js";
 import { initPortal, listWhere, loginTeacher, logout, normaliseCode, createStudent, updateStudent, createClass, setClassActive, createTask, updateTask, setTaskActive } from "../../assets/js/portal/authClient.js";
 import { getEnabledTools, siteUrl, toolTitle } from "../../assets/js/portal/toolRegistry.js";
-import { normaliseResult, summarise, toCSV, band } from "../../assets/js/portal/resultUtils.js";
+import { normaliseResult, summarise, toCSV, band, scoreLabel } from "../../assets/js/portal/resultUtils.js";
 import { icon } from "../../assets/js/portal/icons.js";
 import { isDemo, mountDemoBanner, DEMO_TEACHER_CODE } from "../../assets/js/portal/demo.js";
 
@@ -488,7 +488,7 @@ function resultsTable(rows, { student = true } = {}) {
   if (!rows.length) return `<div class="empty"><div class="big">No results yet</div>Results appear here when students finish a quiz while signed in.</div>`;
   return `<table><thead><tr>${student ? "<th>Student</th><th>Class</th>" : ""}<th>Activity</th><th>Topic</th><th>Score</th><th>%</th><th>Date</th></tr></thead><tbody>` +
     rows.map((r) => `<tr>${student ? `<td>${esc(r.studentName || r.studentCode)}</td><td>${esc(r.className || "—")}</td>` : ""}
-      <td>${esc(r.tool)}</td><td>${esc(r.topic || "—")}</td><td>${r.score}/${r.total}</td>
+      <td>${esc(r.tool)}</td><td>${esc(r.topic || "—")}</td><td>${esc(scoreLabel(r))}</td>
       <td><span class="pct ${band(r.percent)}">${r.percent}%</span></td><td>${esc(r.dateLabel)}</td></tr>`).join("") + `</tbody></table>`;
 }
 
@@ -624,7 +624,8 @@ function taskDoneBy(t) {
     if (r.toolId !== t.toolId || r.className !== t.className) return;
     if (t.assignedAt && r.time && r.time < t.assignedAt) return;
     const best = done.get(r.studentCode);
-    if (!best || r.percent > best.percent) done.set(r.studentCode, r);
+    // A finished attempt beats an early submission; then the higher score wins.
+    if (!best || (r.complete && !best.complete) || (r.complete === best.complete && r.percent > best.percent)) done.set(r.studentCode, r);
   });
   return done;
 }
@@ -677,7 +678,7 @@ function openTaskDetail(t) {
     <div class="tablewrap"><table><thead><tr><th>Student</th><th>Code</th><th>Status</th><th>Best score</th></tr></thead><tbody>` +
     roster.map((s) => { const r = done.get(s.studentCode);
       return `<tr><td>${esc(s.name)}</td><td><span class="codechip">${esc(s.studentCode)}</span></td>
-        <td>${r ? '<span class="badge ok">done</span>' : '<span class="badge off">not yet</span>'}</td>
+        <td>${r ? (r.complete ? '<span class="badge ok">done</span>' : '<span class="badge">submitted early</span>') : '<span class="badge off">not yet</span>'}</td>
         <td>${r ? `<span class="pct ${band(r.percent)}">${r.percent}%</span>` : "—"}</td></tr>`; }).join("") +
     `</tbody></table></div>${roster.length ? "" : '<p class="muted">No students in this class yet.</p>'}`,
     `<button class="btn" type="button" id="backTasks">← All tasks</button>`, true);

@@ -3,20 +3,31 @@
  *
  * Add ONE line as the last thing before </body>:
  *
- *   <script src="../shared/quizSignIn.js"></script>
+ *   <script src="../../../../assets/js/portal/quizSignIn.js"></script>
  *
- * (adjust the ../ to reach the shared folder from where the quiz lives).
+ * (adjust the ../ to reach assets/ from where the quiz lives).
  *
  * It shows a "Student code" box when the page opens, with a Skip button so a
- * quiz still works for a guest. When the student finishes, the quiz calls:
+ * quiz still works for a guest. Every quiz then makes TWO kinds of call:
  *
- *   PlatformSave({ toolId: "times-tables", score: 8, total: 10, topic: "Multiplication" });
+ * 1. After EVERY question is answered (and with answered: 0 when an attempt
+ *    starts or restarts), report progress so far:
+ *
+ *      PlatformProgress({ toolId: "times-tables", score: 3, answered: 4, total: 10, topic: "Multiplication" });
+ *
+ *    This powers the "Submit my work" button that sits next to the
+ *    "Signed in as …" chip. A student who has to stop early presses it, and
+ *    their score so far is saved, marked "submitted early".
+ *
+ * 2. When the student finishes:
+ *
+ *      PlatformSave({ toolId: "times-tables", score: 8, total: 10, topic: "Multiplication" });
  *
  * If they signed in, the result goes to their dashboard and their teacher's.
  * If they skipped, nothing is saved and a small note says so.
  *
- * Optional: put <span id="signInSlot"></span> where you want the
- * "Signed in as …" chip; otherwise it sits in the top-right corner.
+ * Optional: put <span id="signInSlot"></span> where you want the chip and
+ * Submit button; otherwise they sit in the top-right corner.
  */
 (function () {
   "use strict";
@@ -41,6 +52,7 @@
     ".ps-pill{border:1px solid #e7e5e4;background:#fafaf9;color:#57534e;border-radius:999px;padding:6px 12px}" +
     ".ps-pill.on{background:#ecfdf3;border-color:#bbe5c8;color:#25633a}" +
     ".ps-chip button{border:1px solid #0f766e;background:#0f766e;color:#fff;border-radius:999px;padding:6px 12px;font:inherit;cursor:pointer}" +
+    ".ps-chip button:disabled{opacity:.45;cursor:not-allowed}" +
     ".ps-toast{display:none;position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:2147483001;background:#0f766e;color:#fff;font:600 14px system-ui,sans-serif;padding:10px 18px;border-radius:999px}";
 
   var html =
@@ -65,6 +77,8 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var client = null, loading = null, mode = "pending", student = null;
+  var progress = null;       // latest PlatformProgress(...) from the quiz
+  var submittedAnswered = 0; // how many questions were done at the last early submit
 
   // One shared promise, so a click that lands while the client is still
   // downloading waits for it instead of seeing "not available".
@@ -90,9 +104,36 @@
       (slot || document.body).appendChild(chip);
     }
     if (mode === "pending") { chip.innerHTML = ""; return; }
-    if (mode === "signed-in") { chip.innerHTML = '<span class="ps-pill on">● Signed in as ' + esc(name()) + "</span>"; return; }
+    var canSubmit = !!(progress && progress.answered > submittedAnswered);
+    var submitBtn = '<button type="button" id="psSubmit"' + (canSubmit ? "" : " disabled") +
+      ' title="' + (canSubmit ? "Save your work so far for your teacher" : "Answer a question first") + '">Submit my work</button>';
+    if (mode === "signed-in") {
+      chip.innerHTML = '<span class="ps-pill on">● Signed in as ' + esc(name()) + "</span>" + submitBtn;
+      $("psSubmit").addEventListener("click", submitEarly);
+      return;
+    }
     chip.innerHTML = '<span class="ps-pill">○ Guest</span><button type="button" id="psChipBtn">Sign in</button>';
     $("psChipBtn").addEventListener("click", open);
+  }
+
+  // "Submit my work": save the score so far, marked as submitted early.
+  function submitEarly() {
+    if (!progress || progress.answered <= submittedAnswered) return;
+    var p = progress;
+    if (!window.confirm("Submit your work so far?\n\nYou've answered " + p.answered + " of " + p.total +
+      " questions. Your teacher will see this score. You can keep going afterwards.")) return;
+    submittedAnswered = p.answered;
+    paintChip();
+    save({ toolId: p.toolId, title: p.title, topic: p.topic, score: p.score, total: p.total, answered: p.answered, complete: false },
+      "Submitted ✓ — your teacher can see your work so far");
+  }
+
+  function save(payload, okText) {
+    toast("Saving…");
+    return load()
+      .then(function (c) { return c.saveResult(payload || {}); })
+      .then(function (r) { toast(r && r.saved ? okText : "Not saved"); return r; })
+      .catch(function (e) { console.error(e); toast("Couldn't save — tell your teacher your score"); return { saved: false, error: true }; });
   }
 
   function go() {
@@ -130,14 +171,23 @@
     }
   } catch (e) { /* ignore */ }
 
+  /**
+   * Call after every answered question (and with answered: 0 when an attempt
+   * starts). { toolId, score, answered, total, topic?, title? }
+   */
+  window.PlatformProgress = function (p) {
+    p = p || {};
+    var answered = Math.max(0, Number(p.answered) || 0);
+    if (!progress || answered < progress.answered || p.toolId !== progress.toolId || p.title !== progress.title) submittedAnswered = 0; // a new attempt
+    progress = { toolId: p.toolId, title: p.title, topic: p.topic, score: Number(p.score) || 0, answered: answered, total: Number(p.total) || 0 };
+    paintChip();
+  };
+
   /** Call when the student finishes. Returns a promise of { saved: true|false }. */
   window.PlatformSave = function (payload) {
+    progress = null; submittedAnswered = 0; paintChip();
     if (mode !== "signed-in") { toast("Not saved — you're in guest mode"); return Promise.resolve({ saved: false }); }
-    toast("Saving…");
-    return load()
-      .then(function (c) { return c.saveResult(payload || {}); })
-      .then(function (r) { toast(r && r.saved ? "Saved ✓ — your teacher can see this" : "Not saved"); return r; })
-      .catch(function (e) { console.error(e); toast("Couldn't save — tell your teacher your score"); return { saved: false, error: true }; });
+    return save(Object.assign({}, payload || {}, { complete: true }), "Saved ✓ — your teacher can see this");
   };
   window.PlatformAuth = {
     mode: function () { return mode; },

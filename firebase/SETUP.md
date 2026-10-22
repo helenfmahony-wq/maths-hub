@@ -181,7 +181,8 @@ The blue bar at the top has **Reset demo data** and **Leave demo**.
 ## Connecting a new quiz
 
 Any quiz page can save results. `portal/quiz-template.html` is a complete
-working example to copy. A quiz needs three things:
+working example to copy. **Every student quiz must do all four of these**, so
+that it saves to the dashboards and has a working **Submit my work** button:
 
 1. **An entry in `assets/js/portal/toolRegistry.js`:**
 
@@ -205,16 +206,29 @@ working example to copy. A quiz needs three things:
 
    It shows a "Student code" box with a **Skip** button, so the quiz still
    works for guests. When a student opens a quiz from their dashboard they're
-   signed in automatically.
+   signed in automatically. It also adds the **Submit my work** button next to
+   the "Signed in as…" chip.
 
-3. **One call when the student finishes:**
+3. **Report progress after every answered question** (and once with
+   `answered: 0` when an attempt starts or restarts):
+
+   ```js
+   PlatformProgress({ toolId: "fractions-basics", score: 3, answered: 4, total: 10, topic: "Fractions, decimals and percentages" });
+   ```
+
+   The Submit button stays greyed out until the first answer. When a student
+   presses it, their score so far is saved and shows on both dashboards as
+   "submitted early (4 of 10 answered)". They can keep going afterwards.
+
+4. **One call when the student finishes:**
 
    ```js
    PlatformSave({ toolId: "fractions-basics", score: 7, total: 10, topic: "Fractions, decimals and percentages" });
    ```
 
 Optional: put `<span id="signInSlot"></span>` in the quiz's header to place
-the "Signed in as…" chip there. See the Rise & Run quiz for a real example.
+the chip and Submit button there (otherwise they float top-right). See the
+Rise & Run quiz for a real example.
 
 ---
 

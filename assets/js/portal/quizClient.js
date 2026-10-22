@@ -53,7 +53,10 @@ export async function signIn(code) {
 
 /**
  * Save one result as the signed-in student.
- *   payload: { toolId (required), score, total, topic?, title? }
+ *   payload: { toolId (required), score, total, topic?, title?,
+ *              answered?, complete? }
+ *   complete: false marks an early submission (the Submit button); answered is
+ *   how many questions were done by then.
  */
 export async function saveResult(payload = {}) {
   if (!_student) return { saved: false, reason: "not-signed-in" };
@@ -61,6 +64,8 @@ export async function saveResult(payload = {}) {
   // Kept within what firestore.rules accept: 0 ≤ score ≤ total ≤ 1000, short text.
   const total = Math.min(1000, Math.max(0, Number(payload.total) || 0));
   const score = Math.min(total, Math.max(0, Number(payload.score) || 0));
+  const complete = payload.complete !== false;
+  const answered = complete ? total : Math.min(total, Math.max(0, Math.round(Number(payload.answered) || 0)));
   const record = {
     studentCode: _student.studentCode,
     studentName: String(_student.name || "").slice(0, 130),
@@ -71,6 +76,7 @@ export async function saveResult(payload = {}) {
     topic: String(payload.topic || "").slice(0, 80),
     score, total,
     percent: total ? Math.round((score / total) * 100) : 0,
+    answered, complete,
     createdAtClient: new Date().toISOString(),
   };
   if (isDemo()) { demoAddResult(record); return { saved: true, demo: true }; }

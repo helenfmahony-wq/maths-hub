@@ -9,13 +9,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/css/portal.css"/>
 <!--
-  SAMPLE QUIZ — a template showing the only three things a quiz needs to report
-  a result to the dashboards:
+  SAMPLE QUIZ — a template showing the four things EVERY student quiz needs:
 
     1. An entry for it in assets/js/portal/toolRegistry.js (this one is "times-tables").
     2. The sign-in script as the last line before </body>:
          <script src="../assets/js/portal/quizSignIn.js"></script>
-    3. When the student finishes, one call:
+    3. After every answered question (and once with answered: 0 at the start),
+       report progress. This powers the "Submit my work" button, which lets a
+       student hand in what they've done so far:
+         PlatformProgress({ toolId: "times-tables", score, answered, total, topic: "Number" });
+    4. When the student finishes, one call:
          PlatformSave({ toolId: "times-tables", score, total, topic: "Number" });
 
   Everything else on this page is just the quiz itself — replace it with yours.
@@ -76,6 +79,9 @@
     locked = true;
     var right = Number(v) === questions[i].answer;
     if (right) score++;
+
+    // ---- Progress so far, for the "Submit my work" button ----
+    PlatformProgress({ toolId: "times-tables", score: score, answered: i + 1, total: TOTAL, topic: "Number" });
     $("feedback").style.color = right ? "var(--ok)" : "var(--bad)";
     $("feedback").textContent = right ? "Correct" : "Not quite — it's " + questions[i].answer;
     setTimeout(function () { i++; i < TOTAL ? show() : finish(); }, right ? 600 : 1400);
@@ -96,6 +102,10 @@
   $("checkBtn").addEventListener("click", check);
   $("answer").addEventListener("keydown", function (e) { if (e.key === "Enter") check(); });
   show();
+  // Called once the sign-in script below has loaded: no questions answered yet.
+  window.addEventListener("load", function () {
+    PlatformProgress({ toolId: "times-tables", score: 0, answered: 0, total: TOTAL, topic: "Number" });
+  });
 </script>
 
 <!-- Student sign-in + PlatformSave(). Keep this as the last thing before </body>. -->

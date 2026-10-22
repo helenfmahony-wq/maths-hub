@@ -36,6 +36,10 @@ export function normaliseResult(r = {}) {
     tool: tool ? tool.title : (r.toolTitle || r.toolId || "Activity"),
     topic: r.topic || (tool && tool.topic) || "",
     score, total, percent,
+    // Submitted early with the quiz's Submit button: complete is false and
+    // answered says how many questions they had done. Older results are complete.
+    complete: r.complete !== false,
+    answered: r.answered != null ? num(r.answered) : total,
     time,
     dateLabel: formatDate(time),
   };
@@ -52,12 +56,19 @@ export function summarise(records = []) {
 const CSV_COLS = [
   ["studentName", "Student"], ["studentCode", "Code"], ["className", "Class"],
   ["tool", "Activity"], ["topic", "Topic"], ["score", "Score"], ["total", "Out of"],
-  ["percent", "Percent"], ["dateLabel", "Date"],
+  ["percent", "Percent"], ["answered", "Answered"], ["completeLabel", "Finished?"], ["dateLabel", "Date"],
 ];
+
+/** "7/10", or "3/10 · submitted early (4 of 10 answered)" for an early submission. */
+export function scoreLabel(r) {
+  return r.complete === false
+    ? `${r.score}/${r.total} · submitted early (${r.answered} of ${r.total} answered)`
+    : `${r.score}/${r.total}`;
+}
 
 export function toCSV(records = []) {
   const esc = (v) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-  return [CSV_COLS.map((c) => c[1]).join(","), ...records.map((r) => CSV_COLS.map((c) => esc(r[c[0]])).join(","))].join("\n");
+  return [CSV_COLS.map((c) => c[1]).join(","), ...records.map((r) => ({ ...r, completeLabel: r.complete === false ? "Submitted early" : "Yes" })).map((r) => CSV_COLS.map((c) => esc(r[c[0]])).join(","))].join("\n");
 }
 
 /** A colour band for a percentage: hi ≥ 70, mid ≥ 50, lo below. */
