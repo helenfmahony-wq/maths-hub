@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Teacher Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/css/portal.css"/>
+<!-- Chart.js draws the activity chart. If it can't load, the chart is skipped and everything else works. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="setup-banner hidden" id="setupBanner"></div>
+
+<header class="topbar">
+  <a class="brand" href="../../index.html" title="Back to the home page" data-platform-name>Teacher Platform</a>
+  <div class="sub">Teacher dashboard</div>
+  <div class="spacer"></div>
+  <div class="who hidden" id="whoChip"></div>
+  <button class="btn sm hidden" id="refreshBtn" type="button" title="Reload results and tasks"></button>
+  <button class="btn sm hidden" id="signoutBtn" type="button"></button>
+</header>
+
+<!-- ============================== SIGN IN ============================== -->
+<main id="loginView" class="wrap">
+  <section class="card login">
+    <h1>Teacher sign in</h1>
+    <p class="lead">Enter your teacher code to see your classes and results.</p>
+    <div class="secure" id="secureNote"><span><strong>Teachers only.</strong> Keep this code private.</span></div>
+    <div class="field"><label for="codeInput">Teacher code</label>
+      <div class="code-wrap">
+        <input id="codeInput" type="password" autocomplete="off" autocapitalize="characters" spellcheck="false"/>
+        <button type="button" id="codeToggle" class="code-toggle">Show</button>
+      </div>
+    </div>
+    <button class="btn primary" id="loginBtn" type="button" style="width:100%" disabled><span class="btn-spin"></span>Connecting…</button>
+    <div class="msg" id="loginMsg"></div>
+    <script>
+      // If the page's code never loads (blocked network, very slow connection),
+      // re-enable the button after 12 s so nobody is locked out.
+      window.__loginSafety = setTimeout(function(){ var b=document.getElementById('loginBtn'); if(b && b.disabled){ b.disabled=false; b.textContent='Sign in'; } }, 12000);
+    </script>
+  </section>
+</main>
+
+<!-- ============================== DASHBOARD ============================== -->
+<main id="dashView" class="wrap hidden">
+  <section class="card profile">
+    <div class="avatar" id="avatar">T</div>
+    <div><div class="name" id="profileName">Teacher</div><div class="meta" id="profileMeta">—</div></div>
+  </section>
+
+  <div class="cards">
+    <div class="card stat"><div class="label">Classes</div><div class="value" id="statClasses">0</div></div>
+    <div class="card stat"><div class="label">Students</div><div class="value" id="statStudents">0</div></div>
+    <div class="card stat"><div class="label">Results</div><div class="value" id="statAttempts">0</div></div>
+    <div class="card stat"><div class="label">Average</div><div class="value" id="statAvg">0%</div></div>
+    <div class="card stat"><div class="label">Need support</div><div class="value" id="statSupport">0</div></div>
+  </div>
+
+  <div class="sectionlabel">Set things up</div>
+  <div class="tiles" id="setupTiles"></div>
+
+  <div class="sectionlabel">See how they're going</div>
+  <div class="tiles" id="dataTiles"></div>
+</main>
+
+<div class="modal-back" id="modalBack"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<!-- Filled by "Print login cards"; the only thing the printer sees while printing. -->
+<div id="printSheet" aria-hidden="true"></div>
+
+<script type="module">
+import { PLATFORM_NAME, COLLECTIONS, isConfigured } from "../../assets/js/portal/config.js";
+import { initPortal, listWhere, loginTeacher, logout, normaliseCode, createStudent, updateStudent, createClass, setClassActive, createTask, updateTask, setTaskActive } from "../../assets/js/portal/authClient.js";
+import { getEnabledTools, siteUrl, toolTitle } from "../../assets/js/portal/toolRegistry.js";
+import { normaliseResult, summarise, toCSV, band } from "../../assets/js/portal/resultUtils.js";
+import { icon } from "../../assets/js/portal/icons.js";
+import { isDemo, mountDemoBanner, DEMO_TEACHER_CODE } from "../../assets/js/portal/demo.js";
+
+const $ = (id) => document.getElementById(id);
+const DAY = 86400000;
+
+// ---- State ------------------------------------------------------------------
+let teacher = null;   // { teacherCode, teacherName, school }
+let students = [];    // student records for this teacher
+let results = [];     // normalised results, newest first
+let classes = [];     // [{ name, classId|null }] — saved classes + any class a student is in
+let tasks = [];       // active tasks
+const charts = {};
+
+// ---- Page chrome ------------------------------------------------------------
+document.title = `Teacher Dashboard · ${PLATFORM_NAME}`;
+document.querySelectorAll("[data-platform-name]").forEach((el) => (el.textContent = PLATFORM_NAME));
+$("secureNote").insertAdjacentHTML("afterbegin", icon("lock"));
+$("refreshBtn").innerHTML = icon("refresh") + "Refresh";
+$("signoutBtn").innerHTML = icon("logout") + "Sign out";
+if (isDemo()) {
+  mountDemoBanner(`Teacher code <strong>${DEMO_TEACHER_CODE}</strong>.`);
+  $("codeInput").value = DEMO_TEACHER_CODE; $("codeInput").type = "text"; $("codeToggle").textContent = "Hide";
+} else if (!isConfigured()) {
+  $("setupBanner").classList.remove("hidden");
+  $("setupBanner").innerHTML = "<strong>Not connected to Firebase yet.</strong> Paste your project's details into <code>assets/js/portal/config.js</code> (see firebase/SETUP.md) — or <a href=\"?demo\">look around in demo mode</a>.";
+}
+
+const TILES_SETUP = [
+  ["tAddStudent", "userPlus", "Add students", "One at a time, or paste a whole class list.", openAddStudent],
+  ["tAddClass", "folder", "Add a class", "Create a class to sort students into.", openAddClass],
+  ["tSetTask", "clipboard", "Set a task", "Assign quizzes to a class with a due date.", openSetTask],
+  ["tPrint", "printer", "Print login cards", "A4 sheets of student codes to cut up.", openPrintCards],
+];
+const TILES_DATA = [
+  ["tStudents", "users", "Students & classes", "Roster, login codes and each student's results.", openStudents, "bcStudents"],
+  ["tResults", "chart", "Results & analytics", "Every result, with charts and filters.", openResults],
+  ["tTasks", "check", "Manage tasks", "See who's finished, change due dates, remove.", openTasks, "bcTasks"],
+];
+function tileHTML([id, ic, title, blurb, , badge]) {
+  return `<div class="tilewrap"><button class="tile" type="button" id="${id}"><div class="ic">${icon(ic)}</div><h3>${title}</h3><p>${blurb}</p></button>${badge ? `<span class="badgecount" id="${badge}">0</span>` : ""}</div>`;
+}
+$("setupTiles").innerHTML = TILES_SETUP.map(tileHTML).join("");
+$("dataTiles").innerHTML = TILES_DATA.map(tileHTML).join("");
+[...TILES_SETUP, ...TILES_DATA].forEach(([id, , , , fn]) => $(id).addEventListener("click", () => fn()));
+
+// ---- Small helpers ----------------------------------------------------------
+function esc(s) { return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function say(id, text, type = "info") { const m = $(id); if (!m) return; m.className = `msg show ${type}`; m.innerHTML = text; }
+function className(s) { return (s && s.className) || ""; }
+function classNames() { return classes.map((c) => c.name); }
+function classOptions(selected, { all = false } = {}) {
+  const first = all ? `<option value="">All classes</option>` : (classes.length ? "" : `<option value="">Add a class first</option>`);
+  return first + classNames().map((c) => `<option ${c === selected ? "selected" : ""}>${esc(c)}</option>`).join("");
+}
+function studentsIn(cls) { return students.filter((s) => className(s) === cls); }
+function dueLabel(t) { return t ? new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—"; }
+function dateInputValue(t) { if (!t) return ""; const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+function endOfDay(v) { return v ? new Date(v + "T23:59:59").getTime() : null; }
+
+// ---- Modal ------------------------------------------------------------------
+const back = $("modalBack"), modal = $("modal");
+let refreshOpenView = null; // re-renders the open pop-up after a Refresh
+function openModal(iconName, title, body, footRight = "", wide = false) {
+  modal.className = "modal" + (wide ? " wide" : "");
+  modal.innerHTML = `<div class="modal-head"><h2>${icon(iconName)}${title}</h2><button class="x" type="button" data-close aria-label="Close">✕</button></div>
+    <div class="modal-body">${body}</div>
+    <div class="modal-foot"><button class="btn" type="button" data-close>Close</button>${footRight}</div>`;
+  back.classList.add("show");
+}
+function closeModal() {
+  back.classList.remove("show"); refreshOpenView = null; $("printSheet").innerHTML = "";
+  for (const k in charts) { try { charts[k].destroy(); } catch {} delete charts[k]; }
+}
+back.addEventListener("click", (e) => { if (e.target === back) closeModal(); });
+modal.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) closeModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && back.classList.contains("show")) closeModal(); });
+
+// ---- Sign in ----------------------------------------------------------------
+initPortal();
+$("codeInput").addEventListener("input", (e) => (e.target.value = normaliseCode(e.target.value)));
+$("codeInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("loginBtn").click(); });
+$("codeToggle").addEventListener("click", () => { const i = $("codeInput"); const show = i.type === "password"; i.type = show ? "text" : "password"; $("codeToggle").textContent = show ? "Hide" : "Show"; i.focus(); });
+$("loginBtn").addEventListener("click", doLogin);
+$("signoutBtn").addEventListener("click", async () => { await logout(); location.reload(); });
+$("refreshBtn").addEventListener("click", refresh);
+// The page's code has loaded, so the button is now safe to use (Firebase itself loads on first use).
+clearTimeout(window.__loginSafety);
+$("loginBtn").disabled = false; $("loginBtn").textContent = "Sign in";
+
+async function doLogin() {
+  const code = normaliseCode($("codeInput").value);
+  if (!code) { say("loginMsg", "Enter your teacher code first.", "bad"); return; }
+  const btn = $("loginBtn");
+  btn.disabled = true; btn.innerHTML = '<span class="btn-spin"></span>Signing in…';
+  $("loginMsg").className = "msg";
+  const res = await loginTeacher(code);
+  if (!res.ok) { btn.disabled = false; btn.textContent = "Sign in"; say("loginMsg", esc(res.error), "bad"); return; }
+  btn.innerHTML = '<span class="btn-spin"></span>Loading your dashboard…';
+  teacher = res.profile;
+  try { await loadData(); }
+  catch (e) { console.error(e); btn.disabled = false; btn.textContent = "Sign in"; say("loginMsg", "Signed in, but couldn't load your data. Are the Firestore rules published? (firebase/SETUP.md, step 5)", "bad"); return; }
+  showDashboard();
+}
+
+// Every query filters by teacherCode — the rules refuse any query that doesn't.
+function mine(collectionName) {
+  return listWhere(collectionName, [["teacherCode", teacher.teacherCode]]);
+}
+
+async function loadData() {
+  const [s, r, c, t] = await Promise.all([
+    mine(COLLECTIONS.students),
+    mine(COLLECTIONS.achievements),
+    mine(COLLECTIONS.classes),
+    mine(COLLECTIONS.tasks),
+  ]);
+  students = s.map((x) => ({ ...x, studentCode: x.studentCode || x.id }));
+  results = r.map(normaliseResult).sort((a, b) => b.time - a.time);
+  tasks = t.filter((x) => x.active !== false).sort((a, b) => (b.assignedAt || 0) - (a.assignedAt || 0));
+  const byName = new Map();
+  c.filter((x) => x.active !== false && x.name).forEach((x) => byName.set(x.name, { name: x.name, classId: x.id }));
+  students.forEach((x) => { if (x.className && !byName.has(x.className)) byName.set(x.className, { name: x.className, classId: null }); });
+  classes = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+}
+
+function addClassLocally(name) {
+  if (name && !classes.some((c) => c.name === name)) {
+    classes.push({ name, classId: null });
+    classes.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  }
+}
+
+async function refresh() {
+  const b = $("refreshBtn"); b.disabled = true;
+  try { await loadData(); refreshStats(); if (refreshOpenView) refreshOpenView(); b.innerHTML = icon("refresh") + "Updated"; }
+  catch { b.innerHTML = icon("refresh") + "Couldn't refresh"; }
+  setTimeout(() => { b.disabled = false; b.innerHTML = icon("refresh") + "Refresh"; }, 1400);
+}
+
+function showDashboard() {
+  $("loginView").classList.add("hidden"); $("dashView").classList.remove("hidden");
+  ["whoChip", "signoutBtn", "refreshBtn"].forEach((id) => $(id).classList.remove("hidden"));
+  const name = teacher.teacherName || teacher.teacherCode;
+  $("whoChip").textContent = [name, teacher.school].filter(Boolean).join(" · ");
+  $("avatar").textContent = name.split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+  $("profileName").textContent = name;
+  $("profileMeta").innerHTML = esc(teacher.school || "");
+  refreshStats();
+}
+
+function refreshStats() {
+  const s = summarise(results);
+  const roster = buildRoster();
+  $("statClasses").textContent = classes.length;
+  $("statStudents").textContent = students.length;
+  $("statAttempts").textContent = s.attempts;
+  $("statAvg").textContent = s.averagePercent + "%";
+  $("statSupport").textContent = roster.filter((r) => r.needsSupport).length;
+  $("bcStudents").textContent = students.length;
+  $("bcTasks").textContent = tasks.length;
+}
+
+// ============================== ADD STUDENTS ==============================
+function openAddStudent(presetClass) {
+  openModal("userPlus", "Add students", `
+    <div class="tabs"><button type="button" class="on" data-tab="one">One student</button><button type="button" data-tab="many">Paste a list</button></div>
+    <div id="paneOne">
+      <div class="grid2">
+        <div class="field"><label for="asFirst">First name</label><input id="asFirst" autocomplete="off"/></div>
+        <div class="field"><label for="asLast">Surname</label><input id="asLast" autocomplete="off"/></div>
+      </div>
+    </div>
+    <div id="paneMany" class="hidden">
+      <div class="field"><label for="asList">One student per line — first name, then surname</label>
+        <textarea id="asList" placeholder="Ava Nguyen&#10;Liam Brown&#10;Mia Patel"></textarea></div>
+    </div>
+    <div class="field"><label for="asClass">Class</label><select id="asClass">${classOptions(presetClass)}</select></div>
+    <p class="hint">Each student gets their own 8-character login code. You can print them all later from <em>Print login cards</em>.</p>
+    <div class="msg" id="asMsg"></div>`,
+    `<button class="btn primary" id="asBtn" type="button">Add student</button>`);
+  modal.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
+    const one = b.dataset.tab === "one";
+    modal.querySelectorAll("[data-tab]").forEach((x) => x.classList.toggle("on", x === b));
+    $("paneOne").classList.toggle("hidden", !one); $("paneMany").classList.toggle("hidden", one);
+    $("asBtn").textContent = one ? "Add student" : "Add all";
+  }));
+  $("asBtn").addEventListener("click", doAddStudents);
+  $("asFirst").focus();
+}
+
+async function doAddStudents() {
+  const many = !$("paneMany").classList.contains("hidden");
+  const cls = $("asClass").value, btn = $("asBtn");
+  if (!cls) { say("asMsg", "Add a class first (Add a class tile), then choose it here.", "bad"); return; }
+  const people = many
+    ? $("asList").value.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => { const p = l.split(/\s+/); return { firstName: p.shift(), surname: p.join(" ") }; })
+    : [{ firstName: $("asFirst").value.trim(), surname: $("asLast").value.trim() }].filter((p) => p.firstName || p.surname);
+  if (!people.length) { say("asMsg", many ? "Paste at least one name." : "Enter the student's name.", "bad"); return; }
+
+  btn.disabled = true;
+  const added = [], failed = [];
+  for (let i = 0; i < people.length; i++) {
+    btn.textContent = people.length > 1 ? `Adding ${i + 1} of ${people.length}…` : "Adding…";
+    try { const s = await createStudent({ ...people[i], className: cls }); added.push(s); students.push(s); }
+    catch (e) { failed.push(`${people[i].firstName} ${people[i].surname} — ${e.message}`); }
+  }
+  addClassLocally(cls); refreshStats();
+  say("asMsg",
+    `Added <strong>${added.length}</strong> to <strong>${esc(cls)}</strong>.` +
+    (added.length ? "<br>" + added.map((s) => `${esc(s.name)} — <span class="codechip">${esc(s.studentCode)}</span>`).join("<br>") : "") +
+    (failed.length ? `<br><span style="color:var(--bad)">Not added:</span> ${failed.map(esc).join("; ")}` : ""),
+    failed.length ? "info" : "ok");
+  btn.disabled = false; btn.textContent = many ? "Add all" : "Add student";
+  if (many) $("asList").value = ""; else { $("asFirst").value = ""; $("asLast").value = ""; $("asFirst").focus(); }
+}
+
+// ============================== ADD A CLASS ==============================
+function openAddClass() {
+  openModal("folder", "Add a class", `
+    <p class="hint">Classes fill the drop-downs when you add students and set tasks. A class is saved even before it has students.</p>
+    <div class="field"><label for="acName">Class name</label><input id="acName" placeholder="e.g. 7A or 8MAT2" style="text-transform:uppercase"/></div>
+    <div class="msg" id="acMsg"></div>
+    <div class="sectionlabel">Your classes</div>
+    <div id="acList"></div>`,
+    `<button class="btn primary" id="acBtn" type="button">Add class</button>`);
+  $("acBtn").addEventListener("click", doAddClass);
+  $("acName").addEventListener("keydown", (e) => { if (e.key === "Enter") doAddClass(); });
+  $("acName").focus();
+  renderClassList();
+}
+function renderClassList() {
+  const box = $("acList"); if (!box) return;
+  box.innerHTML = classes.length ? classes.map((c) => {
+    const n = studentsIn(c.name).length;
+    return `<div class="rowitem"><div><strong>${esc(c.name)}</strong> <span class="meta">· ${n} student${n === 1 ? "" : "s"}</span></div>
+      ${c.classId && n === 0 ? `<button class="btn sm danger" type="button" data-rm="${esc(c.classId)}">Remove</button>` : ""}</div>`;
+  }).join("") : `<p class="muted">No classes yet.</p>`;
+  box.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", async () => {
+    const c = classes.find((x) => x.classId === b.dataset.rm);
+    if (!c || !confirm(`Remove ${c.name}? It has no students, so this just takes it off your lists.`)) return;
+    try { await setClassActive(c.classId, false); classes = classes.filter((x) => x !== c); renderClassList(); refreshStats(); }
+    catch (e) { say("acMsg", esc(e.message), "bad"); }
+  }));
+}
+async function doAddClass() {
+  const name = $("acName").value.trim().toUpperCase(), btn = $("acBtn");
+  if (!name) { say("acMsg", "Enter a class name.", "bad"); return; }
+  btn.disabled = true; btn.textContent = "Adding…";
+  try {
+    const r = await createClass(name);
+    const existing = classes.find((c) => c.name === r.name);
+    if (existing) existing.classId = r.classId; else { classes.push({ name: r.name, classId: r.classId }); classes.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })); }
+    say("acMsg", `Saved <strong>${esc(r.name)}</strong>.`, "ok");
+    $("acName").value = ""; renderClassList(); refreshStats();
+  } catch (e) { say("acMsg", esc(e.message), "bad"); }
+  btn.disabled = false; btn.textContent = "Add class";
+}
+
+// ============================== SET A TASK ==============================
+function openSetTask() {
+  const tools = getEnabledTools();
+  const groups = {};
+  tools.forEach((t) => (groups[t.topic || "Other"] = groups[t.topic || "Other"] || []).push(t));
+  const list = Object.keys(groups).sort().map((g) =>
+    `<div class="grouphd">${esc(g)}</div>` + groups[g].map((t) =>
+      `<label class="check"><input type="checkbox" value="${esc(t.toolId)}"/><span><div class="t">${esc(t.title)}</div>${t.stage ? `<div class="s">${esc(t.stage)}</div>` : ""}</span></label>`).join("")).join("");
+  openModal("clipboard", "Set a task", `
+    <p class="hint">Choose a class and one or more quizzes. Students see them on their dashboard the next time they sign in, with the due date.</p>
+    <div class="grid2">
+      <div class="field"><label for="stClass">Class</label><select id="stClass">${classOptions()}</select></div>
+      <div class="field"><label for="stDue">Due date (optional)</label><input id="stDue" type="date"/></div>
+    </div>
+    <div class="field"><label>Quizzes</label>
+      <div class="checklist">${list || `<div class="empty">No quizzes yet — add them in <code>assets/js/portal/toolRegistry.js</code>.</div>`}</div></div>
+    <div class="msg" id="stMsg"></div>`,
+    `<button class="btn primary" id="stBtn" type="button">Set task</button>`, true);
+  $("stBtn").addEventListener("click", async () => {
+    const cls = $("stClass").value;
+    const picked = [...modal.querySelectorAll(".checklist input:checked")].map((i) => tools.find((t) => t.toolId === i.value));
+    if (!cls) { say("stMsg", "Choose a class.", "bad"); return; }
+    if (!picked.length) { say("stMsg", "Tick at least one quiz.", "bad"); return; }
+    const btn = $("stBtn"); btn.disabled = true; btn.textContent = "Setting…";
+    try {
+      const r = await createTask({ className: cls, dueAt: endOfDay($("stDue").value), items: picked.map((t) => ({ toolId: t.toolId, title: t.title, launchUrl: t.path })) });
+      tasks = [...(r.created || []), ...tasks]; refreshStats();
+      say("stMsg", `Set <strong>${r.created.length}</strong> task${r.created.length === 1 ? "" : "s"} for <strong>${esc(cls)}</strong>.`, "ok");
+      modal.querySelectorAll(".checklist input:checked").forEach((i) => (i.checked = false));
+    } catch (e) { say("stMsg", esc(e.message), "bad"); }
+    btn.disabled = false; btn.textContent = "Set task";
+  });
+}
+
+// ============================== PRINT LOGIN CARDS ==============================
+const PER_PAGE = 8;
+function openPrintCards() {
+  openModal("printer", "Print login cards", `
+    <p class="hint">Prints each student's name and login code, <strong>8 to an A4 page</strong>, ready to cut up. In the print dialog choose A4 and 100% scale.</p>
+    <div class="field" style="max-width:300px"><label for="pcClass">Class</label><select id="pcClass">${classOptions("", { all: true })}</select></div>
+    <p class="muted" id="pcCount"></p>
+    <div class="pc-prev" id="pcPrev"></div>`,
+    `<button class="btn primary" id="pcPrint" type="button">${icon("printer")}Print</button>`, true);
+  const draw = () => {
+    const cls = $("pcClass").value;
+    const list = students.filter((s) => s.active !== false && (!cls || s.className === cls))
+      .sort((a, b) => className(a).localeCompare(className(b)) || (a.name || "").localeCompare(b.name || ""));
+    let html = "";
+    for (let i = 0; i < list.length; i += PER_PAGE) {
+      html += `<div class="pc-page">` + list.slice(i, i + PER_PAGE).map((s) => `<div class="pc-card">
+        <div class="pc-site">${esc(PLATFORM_NAME)}</div><div class="pc-name">${esc(s.name)}</div>
+        <div class="pc-cls">${esc(s.className)}</div><div class="pc-code">${esc(s.studentCode)}</div></div>`).join("") + `</div>`;
+    }
+    html = `<div class="pc-sheet">${html}</div>`;
+    $("pcCount").innerHTML = list.length ? `<strong>${list.length}</strong> card${list.length === 1 ? "" : "s"} on <strong>${Math.ceil(list.length / PER_PAGE)}</strong> page${list.length > PER_PAGE ? "s" : ""}.` : "";
+    $("pcPrev").innerHTML = list.length ? html : `<div class="empty"><div class="big">No students to print</div>Add students to this class first.</div>`;
+    $("printSheet").innerHTML = list.length ? html : "";
+    $("pcPrint").disabled = !list.length;
+  };
+  $("pcClass").addEventListener("change", draw);
+  $("pcPrint").addEventListener("click", () => {
+    document.body.classList.add("printing");
+    window.addEventListener("afterprint", () => document.body.classList.remove("printing"), { once: true });
+    window.print();
+  });
+  draw();
+}
+
+// ============================== STUDENTS & CLASSES ==============================
+function buildRoster(cls = "", search = "") {
+  return students
+    .filter((s) => (!cls || s.className === cls) && (!search || s.studentCode.includes(search) || (s.name || "").toUpperCase().includes(search)))
+    .map((s) => {
+      const mine = results.filter((r) => r.studentCode === s.studentCode);
+      const sum = summarise(mine);
+      return { ...s, attempts: sum.attempts, average: sum.averagePercent, best: sum.bestPercent,
+        lastActive: mine[0] ? mine[0].dateLabel : "—", needsSupport: s.active !== false && sum.attempts > 0 && sum.averagePercent < 50 };
+    })
+    .sort((a, b) => className(a).localeCompare(className(b)) || (a.name || "").localeCompare(b.name || ""));
+}
+function openStudents(presetClass = "") {
+  openModal("users", "Students &amp; classes", `
+    <div class="filters">
+      <select id="ssClass">${classOptions(presetClass, { all: true })}</select>
+      <input id="ssSearch" placeholder="Search name or code"/>
+      <span class="spacer"></span>
+      <button class="btn sm" type="button" id="ssAdd">${icon("userPlus")}Add students</button>
+    </div>
+    <div id="ssBody" class="tablewrap"></div>`, "", true);
+  const draw = () => {
+    const roster = buildRoster($("ssClass").value, normaliseCode($("ssSearch").value));
+    $("ssBody").innerHTML = roster.length ? `<table><thead><tr><th>Student</th><th>Code</th><th>Class</th><th>Results</th><th>Average</th><th>Best</th><th>Last active</th></tr></thead><tbody>` +
+      roster.map((r) => `<tr class="click" data-code="${esc(r.studentCode)}">
+        <td>${esc(r.name)} ${r.active === false ? '<span class="badge off">switched off</span>' : r.needsSupport ? '<span class="badge bad">needs support</span>' : ""}</td>
+        <td><span class="codechip">${esc(r.studentCode)}</span></td><td>${esc(r.className || "—")}</td><td>${r.attempts}</td>
+        <td>${r.attempts ? `<span class="pct ${band(r.average)}">${r.average}%</span>` : "—"}</td>
+        <td>${r.attempts ? `<span class="pct ${band(r.best)}">${r.best}%</span>` : "—"}</td><td>${esc(r.lastActive)}</td></tr>`).join("") + `</tbody></table>`
+      : `<div class="empty"><div class="big">No students here yet</div>Use <em>Add students</em> to create some.</div>`;
+    $("ssBody").querySelectorAll("[data-code]").forEach((tr) => tr.addEventListener("click", () => openStudent(tr.dataset.code)));
+  };
+  $("ssClass").addEventListener("change", draw);
+  $("ssSearch").addEventListener("input", draw);
+  $("ssAdd").addEventListener("click", () => openAddStudent($("ssClass").value));
+  refreshOpenView = draw;
+  draw();
+}
+
+function openStudent(code) {
+  const s = students.find((x) => x.studentCode === code); if (!s) return;
+  const mine = results.filter((r) => r.studentCode === code);
+  const sum = summarise(mine);
+  const on = s.active !== false;
+  openModal("users", esc(s.name), `
+    <div class="muted" style="margin:-4px 0 14px"><span class="codechip">${esc(code)}</span> · ${esc(s.className || "no class")}${on ? "" : ' · <span class="badge off">switched off</span>'}</div>
+    <div class="cards" style="margin-top:0">
+      <div class="card stat"><div class="label">Results</div><div class="value">${sum.attempts}</div></div>
+      <div class="card stat"><div class="label">Average</div><div class="value">${sum.averagePercent}%</div></div>
+      <div class="card stat"><div class="label">Best</div><div class="value">${sum.bestPercent}%</div></div>
+    </div>
+    <details class="card" style="padding:14px 16px;margin-bottom:16px"><summary style="cursor:pointer;font-weight:600">${icon("edit").replace("<svg", '<svg style="width:15px;height:15px;vertical-align:-2px;margin-right:6px"')}Edit student</summary>
+      <div class="grid2" style="margin-top:12px">
+        <div class="field"><label for="edFirst">First name</label><input id="edFirst" value="${esc(s.firstName || "")}"/></div>
+        <div class="field"><label for="edLast">Surname</label><input id="edLast" value="${esc(s.surname || "")}"/></div>
+      </div>
+      <div class="field"><label for="edClass">Class</label><select id="edClass">${classOptions(s.className)}</select></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary sm" type="button" id="edSave">Save changes</button>
+        <button class="btn sm ${on ? "danger" : ""}" type="button" id="edActive">${on ? "Switch off login code" : "Switch login code back on"}</button>
+      </div>
+      <p class="hint" style="margin:10px 0 0">Switching a code off stops that student signing in; their results stay. A moved student sees their new class next time they sign in.</p>
+      <div class="msg" id="edMsg"></div>
+    </details>
+    <div class="tablewrap">${resultsTable(mine, { student: false })}</div>`,
+    `<button class="btn" type="button" id="backBtn">← All students</button>`, true);
+  $("backBtn").addEventListener("click", () => openStudents());
+  const apply = (updated) => { Object.assign(s, updated); refreshStats(); };
+  $("edSave").addEventListener("click", async () => {
+    try {
+      const u = await updateStudent({ studentCode: code, firstName: $("edFirst").value, surname: $("edLast").value, className: $("edClass").value });
+      apply(u); addClassLocally(u.className); say("edMsg", "Saved.", "ok");
+    } catch (e) { say("edMsg", esc(e.message), "bad"); }
+  });
+  $("edActive").addEventListener("click", async () => {
+    if (on && !confirm(`Switch off ${s.name}'s login code? They won't be able to sign in until you switch it back on.`)) return;
+    try { apply(await updateStudent({ studentCode: code, active: !on })); openStudent(code); }
+    catch (e) { say("edMsg", esc(e.message), "bad"); }
+  });
+}
+
+function resultsTable(rows, { student = true } = {}) {
+  if (!rows.length) return `<div class="empty"><div class="big">No results yet</div>Results appear here when students finish a quiz while signed in.</div>`;
+  return `<table><thead><tr>${student ? "<th>Student</th><th>Class</th>" : ""}<th>Activity</th><th>Topic</th><th>Score</th><th>%</th><th>Date</th></tr></thead><tbody>` +
+    rows.map((r) => `<tr>${student ? `<td>${esc(r.studentName || r.studentCode)}</td><td>${esc(r.className || "—")}</td>` : ""}
+      <td>${esc(r.tool)}</td><td>${esc(r.topic || "—")}</td><td>${r.score}/${r.total}</td>
+      <td><span class="pct ${band(r.percent)}">${r.percent}%</span></td><td>${esc(r.dateLabel)}</td></tr>`).join("") + `</tbody></table>`;
+}
+
+// ============================== RESULTS & ANALYTICS ==============================
+let anClass = "", anDays = 28;
+function openResults() {
+  const windowOpts = `<option value="7">Last 7 days</option><option value="28" selected>Last 28 days</option><option value="90">Last 90 days</option><option value="0">All time</option>`;
+  openModal("chart", "Results &amp; analytics", `
+    <div class="tabs" id="raTabs"><button type="button" class="on" data-v="dash">Overview</button><button type="button" data-v="table">All results</button></div>
+    <div id="raDash">
+      <div class="filters"><select id="anClass">${classOptions("", { all: true })}</select><select id="anDays">${windowOpts}</select></div>
+      <div class="cards" id="anKpis" style="margin-top:0"></div>
+      <div class="card section"><h2>Activity</h2><p class="hint" id="anHint"></p><div class="chart-box"><canvas id="anChart"></canvas></div></div>
+      <div class="an-grid">
+        <div class="card section"><h2>Most active students</h2><div class="rank" id="anTop"></div></div>
+        <div class="card section"><h2>Weakest topics</h2><p class="hint" style="margin:0">Average score, lowest first (3+ results each).</p><div class="rank" id="anTopics"></div></div>
+      </div>
+      <div class="card section"><h2>Needs attention</h2><p class="hint">Averaging under 50%, or no results in this period.</p><div id="anWatch" class="tablewrap"></div></div>
+      <div class="card section"><h2>Classes side by side</h2><div id="anClasses" class="tablewrap"></div></div>
+    </div>
+    <div id="raTable" class="hidden">
+      <div class="filters">
+        <select id="rClass">${classOptions("", { all: true })}</select>
+        <select id="rTool"><option value="">All activities</option>${[...new Map(results.map((r) => [r.toolId, r.tool])).entries()].map(([id, t]) => `<option value="${esc(id)}">${esc(t)}</option>`).join("")}</select>
+        <select id="rDays"><option value="0">Any time</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select>
+        <input id="rSearch" placeholder="Search name or code"/>
+        <span class="spacer"></span>
+        <button class="btn sm" type="button" id="rCsv">Download CSV</button>
+      </div>
+      <div id="rBody" class="tablewrap"></div>
+    </div>`, "", true);
+
+  const filtered = () => {
+    const cls = $("rClass").value, tool = $("rTool").value, days = Number($("rDays").value), q = normaliseCode($("rSearch").value);
+    const cut = days ? Date.now() - days * DAY : 0;
+    return results.filter((r) => (!cls || r.className === cls) && (!tool || r.toolId === tool) && (!cut || r.time >= cut) &&
+      (!q || r.studentCode.includes(q) || r.studentName.toUpperCase().includes(q)));
+  };
+  const drawTable = () => ($("rBody").innerHTML = resultsTable(filtered()));
+  ["rClass", "rTool", "rDays"].forEach((id) => $(id).addEventListener("change", drawTable));
+  $("rSearch").addEventListener("input", drawTable);
+  $("rCsv").addEventListener("click", () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([toCSV(filtered())], { type: "text/csv" }));
+    a.download = `results-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click(); URL.revokeObjectURL(a.href);
+  });
+  $("anClass").addEventListener("change", () => { anClass = $("anClass").value; drawOverview(); });
+  $("anDays").addEventListener("change", () => { anDays = Number($("anDays").value); drawOverview(); });
+  $("raTabs").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-v]"); if (!b) return;
+    $("raTabs").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+    $("raDash").classList.toggle("hidden", b.dataset.v !== "dash"); $("raTable").classList.toggle("hidden", b.dataset.v === "dash");
+  });
+  anClass = ""; anDays = 28;
+  refreshOpenView = () => { drawOverview(); drawTable(); };
+  drawOverview(); drawTable();
+}
+
+function rankRows(id, items, empty) {
+  const el = $(id);
+  if (!items.length) { el.innerHTML = `<div class="an-empty">${esc(empty)}</div>`; return; }
+  const max = Math.max(...items.map((i) => i.bar)) || 1;
+  el.innerHTML = items.map((i) => `<div class="rank-row"><span class="lbl" title="${esc(i.label)}">${esc(i.label)}</span>
+    <span class="track"><i class="${i.cls || ""}" style="width:${Math.max(4, Math.round((i.bar / max) * 100))}%"></i></span><span class="val">${esc(i.val)}</span></div>`).join("");
+}
+
+function drawOverview() {
+  const cut = anDays ? Date.now() - anDays * DAY : 0;
+  const inWindow = (r) => !cut || r.time >= cut;
+  const recs = results.filter((r) => inWindow(r) && (!anClass || r.className === anClass));
+  const scope = students.filter((s) => s.active !== false && (!anClass || s.className === anClass));
+  const sum = summarise(recs);
+  const per = scope.map((s) => { const m = recs.filter((r) => r.studentCode === s.studentCode); return { s, n: m.length, avg: summarise(m).averagePercent }; });
+  const struggling = per.filter((p) => p.n && p.avg < 50), quiet = per.filter((p) => !p.n);
+
+  $("anKpis").innerHTML = `
+    <div class="card stat"><div class="label">Results</div><div class="value">${sum.attempts}</div></div>
+    <div class="card stat"><div class="label">Active students</div><div class="value">${per.filter((p) => p.n).length}<span class="muted" style="font-size:.9rem;font-weight:600"> / ${scope.length}</span></div></div>
+    <div class="card stat"><div class="label">Average</div><div class="value"><span class="pct ${band(sum.averagePercent)}">${sum.averagePercent}%</span></div></div>
+    <div class="card stat"><div class="label">Need support</div><div class="value">${struggling.length}</div></div>`;
+
+  // Activity chart: by day for short windows, by week for longer ones.
+  const daily = anDays && anDays <= 31, step = daily ? DAY : 7 * DAY;
+  const earliest = anDays ? Date.now() - anDays * DAY : (recs.length ? Math.min(...recs.map((r) => r.time)) : Date.now() - 28 * DAY);
+  const n = Math.max(1, Math.min(60, Math.ceil((Date.now() - earliest) / step)));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const start = today.getTime() - (n - 1) * step;
+  const labels = [], counts = [];
+  for (let i = 0; i < n; i++) { const a = start + i * step; labels.push(new Date(a).toLocaleDateString(undefined, { day: "numeric", month: "short" })); counts.push(recs.filter((r) => r.time >= a && r.time < a + step).length); }
+  $("anHint").textContent = `Results ${anDays ? `in the last ${anDays} days` : "all time"}, by ${daily ? "day" : "week"}.`;
+  if (charts.an) { charts.an.destroy(); delete charts.an; }
+  if (typeof Chart !== "undefined") {
+    const css = getComputedStyle(document.documentElement);
+    const ink = css.getPropertyValue("--ink-2").trim() || "#44403c", grid = css.getPropertyValue("--line").trim() || "#e7e5e4", muted = css.getPropertyValue("--muted").trim() || "#78716c";
+    charts.an = new Chart($("anChart"), {
+      type: "bar",
+      data: { labels, datasets: [{ data: counts, backgroundColor: ink, borderRadius: 3, maxBarThickness: 26 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+        scales: { x: { grid: { display: false }, ticks: { color: muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+                  y: { beginAtZero: true, grid: { color: grid }, border: { display: false }, ticks: { color: muted, precision: 0 } } } },
+    });
+  }
+
+  rankRows("anTop", per.filter((p) => p.n).sort((a, b) => b.n - a.n).slice(0, 7)
+    .map((p) => ({ label: `${p.s.name} · ${p.s.className}`, bar: p.n, val: p.n })), "No results in this period.");
+
+  const byTopic = new Map();
+  recs.forEach((r) => { const k = r.topic || r.tool; const e = byTopic.get(k) || { sum: 0, n: 0 }; e.sum += r.percent; e.n++; byTopic.set(k, e); });
+  rankRows("anTopics", [...byTopic.entries()].filter(([, e]) => e.n >= 3).map(([k, e]) => ({ k, avg: Math.round(e.sum / e.n), n: e.n }))
+    .sort((a, b) => a.avg - b.avg).slice(0, 7).map((x) => ({ label: `${x.k} (${x.n})`, bar: x.avg, val: x.avg + "%", cls: band(x.avg) })),
+    "Not enough results per topic yet.");
+
+  const watch = [...struggling.map((p) => ({ ...p, flag: "bad" })), ...quiet.map((p) => ({ ...p, flag: "off" }))];
+  $("anWatch").innerHTML = watch.length ? `<table><thead><tr><th>Student</th><th>Class</th><th>Results</th><th>Average</th><th></th></tr></thead><tbody>` +
+    watch.slice(0, 50).map((p) => `<tr><td>${esc(p.s.name)}</td><td>${esc(p.s.className)}</td><td>${p.n}</td><td>${p.n ? `<span class="pct ${band(p.avg)}">${p.avg}%</span>` : "—"}</td>
+      <td>${p.flag === "bad" ? '<span class="badge bad">under 50%</span>' : '<span class="badge off">no results</span>'}</td></tr>`).join("") + `</tbody></table>`
+    : `<div class="an-empty">Nobody flagged — everyone is active and averaging 50% or more.</div>`;
+
+  const crecs = results.filter(inWindow);
+  $("anClasses").innerHTML = classes.length ? `<table><thead><tr><th>Class</th><th>Students</th><th>Active</th><th>Results</th><th>Average</th></tr></thead><tbody>` +
+    classes.map((c) => { const roster = studentsIn(c.name).filter((s) => s.active !== false); const cr = crecs.filter((r) => r.className === c.name); const active = new Set(cr.map((r) => r.studentCode)).size; const avg = summarise(cr).averagePercent;
+      return `<tr><td><strong>${esc(c.name)}</strong></td><td>${roster.length}</td><td>${active}</td><td>${cr.length}</td><td>${cr.length ? `<span class="pct ${band(avg)}">${avg}%</span>` : "—"}</td></tr>`; }).join("") + `</tbody></table>`
+    : `<div class="an-empty">No classes yet.</div>`;
+}
+
+// ============================== MANAGE TASKS ==============================
+// A student has done a task if they have a result for that quiz, in that class,
+// saved after the task was set.
+function taskDoneBy(t) {
+  const done = new Map();
+  results.forEach((r) => {
+    if (r.toolId !== t.toolId || r.className !== t.className) return;
+    if (t.assignedAt && r.time && r.time < t.assignedAt) return;
+    const best = done.get(r.studentCode);
+    if (!best || r.percent > best.percent) done.set(r.studentCode, r);
+  });
+  return done;
+}
+
+function openTasks() {
+  openModal("check", "Manage tasks", `
+    <div class="filters"><select id="mtClass">${classOptions("", { all: true })}</select><span class="spacer"></span>
+      <button class="btn sm" type="button" id="mtNew">${icon("clipboard")}Set a task</button></div>
+    <div id="mtBody" class="tablewrap"></div><div class="msg" id="mtMsg"></div>`, "", true);
+  const draw = () => {
+    const cls = $("mtClass").value;
+    const rows = tasks.filter((t) => !cls || t.className === cls);
+    $("mtBody").innerHTML = rows.length ? `<table><thead><tr><th>Class</th><th>Quiz</th><th>Due</th><th>Done</th><th></th></tr></thead><tbody>` +
+      rows.map((t) => {
+        const size = studentsIn(t.className).filter((s) => s.active !== false).length, done = taskDoneBy(t).size;
+        const overdue = t.dueAt && t.dueAt < Date.now() && done < size;
+        return `<tr><td>${esc(t.className)}</td><td>${esc(t.title || toolTitle(t.toolId))}</td>
+          <td><input type="date" data-due="${esc(t.taskId || t.id)}" value="${dateInputValue(t.dueAt)}" style="padding:4px 6px;border:1px solid var(--line-2);border-radius:7px;font:inherit;font-size:.84rem"/>${overdue ? ' <span class="badge mid">overdue</span>' : ""}</td>
+          <td><span class="pct ${size && done >= size ? "hi" : done ? "mid" : "lo"}">${done}/${size || "—"}</span></td>
+          <td style="white-space:nowrap;text-align:right"><button class="btn sm" type="button" data-view="${esc(t.taskId || t.id)}">Who's done</button>
+            <button class="btn sm danger" type="button" data-rm="${esc(t.taskId || t.id)}">Remove</button></td></tr>`;
+      }).join("") + `</tbody></table>`
+      : `<div class="empty"><div class="big">No tasks set${cls ? ` for ${esc(cls)}` : ""}</div>Use <em>Set a task</em> to give a class a quiz.</div>`;
+    const find = (id) => tasks.find((t) => (t.taskId || t.id) === id);
+    $("mtBody").querySelectorAll("[data-due]").forEach((inp) => inp.addEventListener("change", async () => {
+      const t = find(inp.dataset.due);
+      try { const r = await updateTask(inp.dataset.due, endOfDay(inp.value)); t.dueAt = r.dueAt; say("mtMsg", `Due date updated for ${esc(t.title)} (${esc(t.className)}).`, "ok"); draw(); }
+      catch (e) { say("mtMsg", esc(e.message), "bad"); }
+    }));
+    $("mtBody").querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", async () => {
+      const t = find(b.dataset.rm);
+      if (!confirm(`Remove "${t.title}" for ${t.className}? Students will stop seeing it. Their results stay.`)) return;
+      try { await setTaskActive(b.dataset.rm, false); tasks = tasks.filter((x) => x !== t); refreshStats(); draw(); }
+      catch (e) { say("mtMsg", esc(e.message), "bad"); }
+    }));
+    $("mtBody").querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => openTaskDetail(find(b.dataset.view))));
+  };
+  $("mtClass").addEventListener("change", draw);
+  $("mtNew").addEventListener("click", openSetTask);
+  refreshOpenView = draw;
+  draw();
+}
+
+function openTaskDetail(t) {
+  const done = taskDoneBy(t);
+  const roster = studentsIn(t.className).filter((s) => s.active !== false)
+    .sort((a, b) => (done.has(b.studentCode) - done.has(a.studentCode)) || (a.name || "").localeCompare(b.name || ""));
+  openModal("check", esc(t.title || toolTitle(t.toolId)), `
+    <p class="muted" style="margin-top:-4px">${esc(t.className)} · due ${dueLabel(t.dueAt)} · <strong>${done.size}</strong> of ${roster.length} done</p>
+    <div class="tablewrap"><table><thead><tr><th>Student</th><th>Code</th><th>Status</th><th>Best score</th></tr></thead><tbody>` +
+    roster.map((s) => { const r = done.get(s.studentCode);
+      return `<tr><td>${esc(s.name)}</td><td><span class="codechip">${esc(s.studentCode)}</span></td>
+        <td>${r ? '<span class="badge ok">done</span>' : '<span class="badge off">not yet</span>'}</td>
+        <td>${r ? `<span class="pct ${band(r.percent)}">${r.percent}%</span>` : "—"}</td></tr>`; }).join("") +
+    `</tbody></table></div>${roster.length ? "" : '<p class="muted">No students in this class yet.</p>'}`,
+    `<button class="btn" type="button" id="backTasks">← All tasks</button>`, true);
+  $("backTasks").addEventListener("click", openTasks);
+}
+</script>
+</body>
+</html>

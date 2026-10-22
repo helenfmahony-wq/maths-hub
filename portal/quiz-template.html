@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Times Tables Check-in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/portal.css"/>
+<!--
+  SAMPLE QUIZ — a template showing the only three things a quiz needs to report
+  a result to the dashboards:
+
+    1. An entry for it in assets/js/portal/toolRegistry.js (this one is "times-tables").
+    2. The sign-in script as the last line before </body>:
+         <script src="../assets/js/portal/quizSignIn.js"></script>
+    3. When the student finishes, one call:
+         PlatformSave({ toolId: "times-tables", score, total, topic: "Number" });
+
+  Everything else on this page is just the quiz itself — replace it with yours.
+-->
+<style>
+  .quiz{max-width:520px;margin:6vh auto;padding:28px;text-align:center}
+  .q{font-size:2.4rem;font-weight:700;margin:18px 0}
+  .ans{width:160px;text-align:center;font-size:1.6rem;font-weight:700;padding:10px;border:1px solid var(--line-2);border-radius:10px}
+  .ans:focus{outline:none;border-color:var(--ink-2);box-shadow:0 0 0 3px rgba(68,64,60,.12)}
+  .bar{height:6px;background:var(--soft);border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-top:6px}
+  .bar>i{display:block;height:100%;background:var(--accent);transition:width .25s}
+  .fb{min-height:24px;margin-top:12px;font-weight:600}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Times Tables Check-in</div>
+  <div class="spacer"></div>
+  <span id="signInSlot"></span>
+</header>
+
+<main class="card quiz" id="quiz">
+  <div class="muted" id="progress">Question 1 of 10</div>
+  <div class="bar"><i id="barFill" style="width:0%"></i></div>
+  <div class="q" id="question">—</div>
+  <input class="ans" id="answer" inputmode="numeric" autocomplete="off" aria-label="Your answer"/>
+  <div style="margin-top:14px"><button class="btn primary" id="checkBtn" type="button">Check</button></div>
+  <div class="fb" id="feedback"></div>
+</main>
+
+<main class="card quiz hidden" id="done">
+  <h1 style="margin:0 0 6px">Finished!</h1>
+  <div class="q" id="finalScore">0 / 10</div>
+  <p class="muted" id="saveNote">Saving your result…</p>
+  <button class="btn" type="button" onclick="location.reload()">Try again</button>
+</main>
+
+<script>
+  var TOTAL = 10;
+  var questions = [], i = 0, score = 0, locked = false;
+  for (var n = 0; n < TOTAL; n++) {
+    var a = 2 + Math.floor(Math.random() * 11), b = 2 + Math.floor(Math.random() * 11);
+    questions.push({ text: a + " × " + b, answer: a * b });
+  }
+  var $ = function (id) { return document.getElementById(id); };
+
+  function show() {
+    $("progress").textContent = "Question " + (i + 1) + " of " + TOTAL;
+    $("barFill").style.width = (i / TOTAL * 100) + "%";
+    $("question").textContent = questions[i].text + " = ?";
+    $("answer").value = ""; $("feedback").textContent = ""; locked = false;
+    $("answer").focus();
+  }
+  function check() {
+    if (locked) return;
+    var v = $("answer").value.trim();
+    if (v === "") return;
+    locked = true;
+    var right = Number(v) === questions[i].answer;
+    if (right) score++;
+    $("feedback").style.color = right ? "var(--ok)" : "var(--bad)";
+    $("feedback").textContent = right ? "Correct" : "Not quite — it's " + questions[i].answer;
+    setTimeout(function () { i++; i < TOTAL ? show() : finish(); }, right ? 600 : 1400);
+  }
+  function finish() {
+    $("quiz").classList.add("hidden"); $("done").classList.remove("hidden");
+    $("finalScore").textContent = score + " / " + TOTAL;
+
+    // ---- The one line that reports to the dashboards ----
+    PlatformSave({ toolId: "times-tables", score: score, total: TOTAL, topic: "Number" })
+      .then(function (r) {
+        $("saveNote").textContent = r && r.saved
+          ? "Saved — your teacher can see this result."
+          : "Not saved (you're in guest mode). Tell your teacher your score.";
+      });
+  }
+
+  $("checkBtn").addEventListener("click", check);
+  $("answer").addEventListener("keydown", function (e) { if (e.key === "Enter") check(); });
+  show();
+</script>
+
+<!-- Student sign-in + PlatformSave(). Keep this as the last thing before </body>. -->
+<script src="../assets/js/portal/quizSignIn.js"></script>
+</body>
+</html>

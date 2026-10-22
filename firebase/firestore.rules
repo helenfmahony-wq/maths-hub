@@ -1,0 +1,181 @@
+rules_version = '2';
+
+// Maths Hub portal — Firestore security rules (free Spark plan, no Cloud Functions).
+//
+// HOW SIGN-IN WORKS
+//   * Teachers sign in with email + password. An account is only a teacher if
+//     a teachers/<uid> document exists with active == true. Only you can add
+//     those, in the Firebase Console (see firebase/SETUP.md).
+//   * Students sign in anonymously, then type their code. The browser reads
+//     students/<CODE> (allowed only by exact code, never by listing) and writes
+//     sessions/<its uid> = { studentCode }. The rules below use that session
+//     to decide what the student can see and save.
+//
+// WHAT EACH PERSON CAN DO
+//   * A teacher reads and writes only their own students, classes and tasks,
+//     and reads only their own students' results. Every record is stamped with
+//     the teacher's uid in the field `teacherCode`, and the rules check it.
+//   * A student reads only their own results and the active tasks for their
+//     own class, and can save a result only for themself.
+//   * Results are create-only: never edited or deleted from the browser.
+//   * Nothing can be deleted from the browser. Switching off is `active: false`.
+//   * Everything else is denied.
+//
+// IMPORTANT FOR QUERIES: rules are not filters. A teacher's query MUST include
+// where("teacherCode", "==", <their uid>), a student's results query must
+// filter studentCode, and a student's task query must filter teacherCode +
+// className + active == true. The dashboards already do this.
+//
+// DEPLOY: paste this whole file into Firebase Console → Firestore Database →
+// Rules → Publish (or `firebase deploy --only firestore:rules`).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function path(coll, id) { return /databases/$(database)/documents/$(coll)/$(id); }
+    function authed()  { return request.auth != null; }
+    function uid()     { return request.auth.uid; }
+
+    // ---- Teachers ----
+    function isTeacher() {
+      return authed()
+        && exists(path('teachers', uid()))
+        && get(path('teachers', uid())).data.active == true;
+    }
+
+    // ---- Students (via their session) ----
+    function hasSession()  { return authed() && exists(path('sessions', uid())); }
+    function myCode()      { return get(path('sessions', uid())).data.studentCode; }
+    function me()          { return get(path('students', myCode())).data; }
+
+    // ---- Field checks ----
+    function str(d, k, max)      { return d[k] is string && d[k].size() <= max; }
+    function optStr(d, k, max)   { return !(k in d) || str(d, k, max); }
+    function className(d)        { return str(d, 'className', 40) && d.className.size() > 0; }
+
+    // Teachers: a teacher reads their own record. Added by hand in the
+    // Firebase Console, which ignores these rules.
+    match /teachers/{teacherId} {
+      allow get: if authed() && uid() == teacherId;
+      allow list, write: if false;
+    }
+
+    // Students: the document id IS the login code.
+    //   get  — anyone signed in who knows the exact code (that's how a student
+    //          signs in). Nobody can list students except their own teacher.
+    //   write — only the student's own teacher.
+    match /students/{code} {
+      function validStudent(d) {
+        return d.keys().hasOnly(['studentCode', 'firstName', 'surname', 'name', 'className',
+                                 'teacherCode', 'teacherName', 'school', 'active',
+                                 'createdAt', 'updatedAt'])
+          && d.studentCode == code
+          && d.teacherCode == uid()
+          && d.active is bool
+          && str(d, 'name', 130) && d.name.size() > 0
+          && optStr(d, 'firstName', 60) && optStr(d, 'surname', 60)
+          && optStr(d, 'teacherName', 100) && optStr(d, 'school', 120)
+          && className(d);
+      }
+      allow get: if authed();
+      allow list: if isTeacher() && resource.data.teacherCode == uid();
+      allow create: if isTeacher()
+                    && code.matches('^[A-Z0-9]{8}$')
+                    && validStudent(request.resource.data);
+      allow update: if isTeacher()
+                    && resource.data.teacherCode == uid()
+                    && validStudent(request.resource.data);
+      allow delete: if false;
+    }
+
+    // Sessions: which student code this signed-in browser is using.
+    match /sessions/{sessionId} {
+      allow get: if authed() && uid() == sessionId;
+      allow create, update: if authed() && uid() == sessionId
+                    && request.resource.data.keys().hasOnly(['studentCode', 'createdAt'])
+                    && request.resource.data.studentCode is string
+                    && exists(path('students', request.resource.data.studentCode))
+                    && get(path('students', request.resource.data.studentCode)).data.active == true;
+      allow delete: if authed() && uid() == sessionId;
+      allow list: if false;
+    }
+
+    // Results ("achievements"): one document per finished quiz.
+    // Only a score is stored, never what the student typed.
+    match /achievements/{id} {
+      allow read: if (hasSession() && resource.data.studentCode == myCode())
+                  || (isTeacher() && resource.data.teacherCode == uid());
+      allow create: if hasSession()
+                    && me().active == true
+                    && request.resource.data.keys().hasOnly([
+                         'studentCode', 'studentName', 'className', 'teacherCode',
+                         'toolId', 'toolTitle', 'topic', 'score', 'total', 'percent',
+                         'createdAtClient', 'createdAt'])
+                    && request.resource.data.studentCode == myCode()
+                    && request.resource.data.teacherCode == me().teacherCode
+                    && request.resource.data.className  == me().className
+                    && str(request.resource.data, 'toolId', 80)
+                    && request.resource.data.toolId.size() > 0
+                    && request.resource.data.score is number
+                    && request.resource.data.total is number
+                    && request.resource.data.total >= 0
+                    && request.resource.data.total <= 1000
+                    && request.resource.data.score >= 0
+                    && request.resource.data.score <= request.resource.data.total
+                    && request.resource.data.createdAt == request.time
+                    && optStr(request.resource.data, 'studentName', 130)
+                    && optStr(request.resource.data, 'toolTitle', 160)
+                    && optStr(request.resource.data, 'topic', 80)
+                    && optStr(request.resource.data, 'createdAtClient', 40);
+      allow update, delete: if false;
+    }
+
+    // Classes: a teacher reads and writes their own. Id = <teacher uid>__<NAME>.
+    match /classes/{classId} {
+      function validClass(d) {
+        return d.keys().hasOnly(['classId', 'name', 'teacherCode', 'active', 'createdAt', 'updatedAt'])
+          && d.teacherCode == uid()
+          && d.classId == classId
+          && str(d, 'name', 40) && d.name.size() > 0
+          && classId == uid() + '__' + d.name
+          && d.active is bool;
+      }
+      allow read: if isTeacher() && resource.data.teacherCode == uid();
+      allow create: if isTeacher() && validClass(request.resource.data);
+      allow update: if isTeacher() && resource.data.teacherCode == uid()
+                    && validClass(request.resource.data);
+      allow delete: if false;
+    }
+
+    // Tasks set by a teacher: the teacher reads and writes their own; a student
+    // reads the ACTIVE tasks for their own class.
+    match /tasks/{taskId} {
+      function validTask(d) {
+        return d.keys().hasOnly(['taskId', 'teacherCode', 'className', 'toolId', 'title',
+                                 'launchUrl', 'dueAt', 'assignedAt', 'active',
+                                 'createdAt', 'updatedAt'])
+          && d.teacherCode == uid()
+          && d.taskId == taskId
+          && className(d)
+          && str(d, 'toolId', 80)
+          && optStr(d, 'title', 160) && optStr(d, 'launchUrl', 300)
+          && (d.dueAt == null || d.dueAt is number)
+          && d.active is bool;
+      }
+      allow read: if (isTeacher() && resource.data.teacherCode == uid())
+                  || (hasSession()
+                      && resource.data.teacherCode == me().teacherCode
+                      && resource.data.className  == me().className
+                      && resource.data.active == true);
+      allow create: if isTeacher() && validTask(request.resource.data);
+      allow update: if isTeacher() && resource.data.teacherCode == uid()
+                    && validTask(request.resource.data);
+      allow delete: if false;
+    }
+
+    // Everything else is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

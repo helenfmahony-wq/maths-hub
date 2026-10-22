@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Student Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/css/portal.css"/>
+<style>
+  .tasklist{list-style:none;margin:8px 0 0;padding:0}
+  .tasklist li{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line)}
+  .tasklist li:last-child{border-bottom:0}
+  .tasklist .tick{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line-2);display:grid;place-items:center;flex:0 0 auto;color:var(--ok);font-weight:700}
+  .tasklist .tick.done{background:var(--ok-soft);border-color:#bbe5c8}
+  .tasklist .body{flex:1;min-width:0}
+  .tasklist .ttl{font-weight:600}
+  .tasklist .sub{font-size:.82rem;color:var(--muted)}
+  .due{font-size:.76rem;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--soft);border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
+  .due.soon{background:var(--mid-soft);border-color:#ecd9b4;color:var(--mid)}
+  .due.late{background:var(--bad-soft);border-color:#f1c8c2;color:var(--bad)}
+  .topic-row{display:grid;grid-template-columns:minmax(100px,180px) 1fr 52px;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+  .topic-row:last-child{border-bottom:0}
+  .topic-row .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topic-row .track{height:10px;background:var(--soft);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .topic-row .track>i{display:block;height:100%}
+  .topic-row .v{text-align:right;font-weight:700;font-size:.86rem}
+</style>
+</head>
+<body>
+<div class="setup-banner hidden" id="setupBanner"></div>
+
+<header class="topbar">
+  <a class="brand" href="../../index.html" title="Back to the home page" data-platform-name>Teacher Platform</a>
+  <div class="sub">Student dashboard</div>
+  <div class="spacer"></div>
+  <div class="who hidden" id="whoChip"></div>
+  <button class="btn sm hidden" id="signoutBtn" type="button">Sign out</button>
+</header>
+
+<!-- ============================== SIGN IN ============================== -->
+<main id="loginView" class="wrap">
+  <section class="card login">
+    <h1>Student sign in</h1>
+    <p class="lead">Enter the code your teacher gave you.</p>
+    <div class="field"><label for="codeInput">Student code</label><input id="codeInput" autocomplete="off" autocapitalize="characters" spellcheck="false"/></div>
+    <div class="field hidden" id="pinField"><label for="pinInput">PIN</label><input id="pinInput" autocomplete="off" inputmode="numeric"/></div>
+    <button class="btn primary" id="loginBtn" type="button" style="width:100%" disabled><span class="btn-spin"></span>Connecting…</button>
+    <div class="msg" id="loginMsg"></div>
+    <script>
+      window.__loginSafety = setTimeout(function(){ var b=document.getElementById('loginBtn'); if(b && b.disabled){ b.disabled=false; b.textContent='Sign in'; } }, 12000);
+    </script>
+  </section>
+</main>
+
+<!-- ============================== DASHBOARD ============================== -->
+<main id="dashView" class="wrap hidden">
+  <section class="card profile">
+    <div class="avatar" id="avatar">S</div>
+    <div><div class="name" id="profileName">Student</div><div class="meta" id="profileMeta">—</div></div>
+  </section>
+
+  <div class="cards" id="statCards"></div>
+
+  <section class="card section">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><h2>Tasks from your teacher</h2><span class="muted" id="tasksSub" style="font-size:.84rem"></span></div>
+    <ul class="tasklist" id="taskList"></ul>
+  </section>
+
+  <section class="card section">
+    <h2>How you're going by topic</h2>
+    <p class="hint">Your best score in each topic.</p>
+    <div id="topics"></div>
+  </section>
+
+  <section class="card section">
+    <h2>All your results</h2>
+    <div class="tablewrap" id="resultsBody" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card section">
+    <h2>Practise something</h2>
+    <div id="toolLinks" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
+  </section>
+</main>
+
+<div class="modal-back" id="modalBack"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+
+<script type="module">
+import { PLATFORM_NAME, COLLECTIONS, isConfigured } from "../../assets/js/portal/config.js";
+import { initPortal, listWhere, loginStudent, logout, normaliseCode } from "../../assets/js/portal/authClient.js";
+import { getEnabledTools, siteUrl, toolTitle, getTool } from "../../assets/js/portal/toolRegistry.js";
+import { normaliseResult, summarise, band } from "../../assets/js/portal/resultUtils.js";
+import { icon } from "../../assets/js/portal/icons.js";
+import { isDemo, mountDemoBanner, DEMO_STUDENT_CODE } from "../../assets/js/portal/demo.js";
+
+const $ = (id) => document.getElementById(id);
+let me = null, results = [], tasks = [];
+
+document.title = `Student Dashboard · ${PLATFORM_NAME}`;
+document.querySelectorAll("[data-platform-name]").forEach((el) => (el.textContent = PLATFORM_NAME));
+if (isDemo()) {
+  mountDemoBanner(`Student code <strong>${DEMO_STUDENT_CODE}</strong> (or any code from the teacher dashboard).`);
+  $("codeInput").value = DEMO_STUDENT_CODE;
+} else if (!isConfigured()) {
+  $("setupBanner").classList.remove("hidden");
+  $("setupBanner").innerHTML = "<strong>Not connected to Firebase yet.</strong> Paste your project's details into <code>assets/js/portal/config.js</code> — or <a href=\"?demo\">look around in demo mode</a>.";
+}
+
+function esc(s) { return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function say(text, type) { const m = $("loginMsg"); m.className = `msg show ${type}`; m.textContent = text; }
+
+initPortal();
+$("codeInput").addEventListener("input", (e) => (e.target.value = normaliseCode(e.target.value)));
+["codeInput", "pinInput"].forEach((id) => $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") $("loginBtn").click(); }));
+$("loginBtn").addEventListener("click", doLogin);
+$("signoutBtn").addEventListener("click", async () => { await logout(); location.reload(); });
+clearTimeout(window.__loginSafety);
+$("loginBtn").disabled = false; $("loginBtn").textContent = "Sign in";
+
+async function doLogin() {
+  const code = normaliseCode($("codeInput").value);
+  if (!code) { say("Type your student code first.", "bad"); return; }
+  const btn = $("loginBtn");
+  btn.disabled = true; btn.innerHTML = '<span class="btn-spin"></span>Signing in…';
+  const res = await loginStudent(code, $("pinInput").value);
+  if (!res.ok) {
+    btn.disabled = false; btn.textContent = "Sign in";
+    if (/pin/i.test(res.error || "")) $("pinField").classList.remove("hidden");
+    say(res.error, "bad"); return;
+  }
+  me = res.profile;
+  btn.innerHTML = '<span class="btn-spin"></span>Loading…';
+  await Promise.all([loadResults(), loadTasks()]);
+  show();
+}
+
+async function loadResults() {
+  results = (await listWhere(COLLECTIONS.achievements, [["studentCode", me.studentCode]])).map(normaliseResult).sort((a, b) => b.time - a.time);
+}
+async function loadTasks() {
+  // The rules only allow this exact query: my teacher, my class, active tasks.
+  try {
+    tasks = (await listWhere(COLLECTIONS.tasks, [["teacherCode", me.teacherCode], ["className", me.className], ["active", true]]))
+      .sort((a, b) => (a.dueAt || Infinity) - (b.dueAt || Infinity));
+  } catch (e) { console.warn("Tasks unavailable:", e); tasks = []; }
+}
+function isDone(t) { return results.some((r) => r.toolId === t.toolId && (!t.assignedAt || !r.time || r.time >= t.assignedAt)); }
+// Quizzes opened from here carry ?code=… so quizSignIn.js signs the student straight in.
+function withCode(url) { const u = new URL(url); u.searchParams.set("code", me.studentCode); return u.href; }
+function linkFor(t) { return withCode(siteUrl(t.launchUrl || (getTool(t.toolId) || {}).path)); }
+
+function show() {
+  $("loginView").classList.add("hidden"); $("dashView").classList.remove("hidden");
+  $("whoChip").classList.remove("hidden"); $("signoutBtn").classList.remove("hidden");
+  $("whoChip").textContent = `${me.name} · ${me.className}`;
+  $("avatar").textContent = me.name.split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+  $("profileName").textContent = me.name;
+  $("profileMeta").textContent = [me.className && `Class ${me.className}`, me.teacherName].filter(Boolean).join(" · ");
+
+  const s = summarise(results);
+  const pending = tasks.filter((t) => !isDone(t));
+  $("statCards").innerHTML = `
+    <div class="card stat"><div class="label">Results</div><div class="value">${s.attempts}</div></div>
+    <div class="card stat"><div class="label">Average</div><div class="value">${s.averagePercent}%</div></div>
+    <div class="card stat"><div class="label">Best</div><div class="value">${s.bestPercent}%</div></div>
+    <div class="card stat"><div class="label">Tasks to do</div><div class="value">${pending.length}</div></div>`;
+
+  $("tasksSub").textContent = tasks.length ? `${tasks.length - pending.length} of ${tasks.length} done` : "";
+  $("taskList").innerHTML = tasks.length ? tasks.map(taskRow).join("") : `<li class="muted" style="border:0">No tasks right now.</li>`;
+
+  const topics = new Map();
+  results.forEach((r) => { const k = r.topic || r.tool; topics.set(k, Math.max(topics.get(k) || 0, r.percent)); });
+  $("topics").innerHTML = topics.size ? [...topics.entries()].sort((a, b) => b[1] - a[1]).map(([t, best]) =>
+    `<div class="topic-row"><span class="t" title="${esc(t)}">${esc(t)}</span><span class="track"><i style="width:${Math.max(4, best)}%;background:var(--${best >= 70 ? "ok" : best >= 50 ? "mid" : "bad"})"></i></span><span class="v">${best}%</span></div>`).join("")
+    : `<div class="empty">Finish a quiz while signed in and your topics appear here.</div>`;
+
+  $("resultsBody").innerHTML = results.length ? `<table><thead><tr><th>Activity</th><th>Topic</th><th>Score</th><th>%</th><th>Date</th></tr></thead><tbody>` +
+    results.map((r) => `<tr><td>${esc(r.tool)}</td><td>${esc(r.topic || "—")}</td><td>${r.score}/${r.total}</td><td><span class="pct ${band(r.percent)}">${r.percent}%</span></td><td>${esc(r.dateLabel)}</td></tr>`).join("") + `</tbody></table>`
+    : `<div class="empty"><div class="big">No results yet</div>They'll show up here after your first quiz.</div>`;
+
+  $("toolLinks").innerHTML = getEnabledTools().map((t) => `<a class="btn" href="${esc(withCode(siteUrl(t.path)))}">${icon("play")}${esc(t.title)}</a>`).join("") || `<span class="muted">Nothing here yet.</span>`;
+
+  if (pending.length) openTaskPopup(pending);
+}
+
+function dueChip(t, done) {
+  if (done) return "";
+  if (!t.dueAt) return "";
+  const days = (t.dueAt - Date.now()) / 86400000;
+  const label = new Date(t.dueAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  return `<span class="due ${days < 0 ? "late" : days <= 3 ? "soon" : ""}">${days < 0 ? "Was due " : "Due "}${label}</span>`;
+}
+function taskRow(t) {
+  const done = isDone(t);
+  return `<li><span class="tick ${done ? "done" : ""}">${done ? "✓" : ""}</span>
+    <span class="body"><div class="ttl">${esc(t.title || toolTitle(t.toolId))}</div><div class="sub">${done ? "Done — nice work" : "Not started yet"}</div></span>
+    ${dueChip(t, done)}
+    ${done ? "" : `<a class="btn primary sm" href="${esc(linkFor(t))}">Start</a>`}</li>`;
+}
+function openTaskPopup(pending) {
+  const back = $("modalBack"), modal = $("modal");
+  modal.className = "modal";
+  modal.innerHTML = `<div class="modal-head"><h2>${icon("clipboard")}You have ${pending.length} task${pending.length === 1 ? "" : "s"} to do</h2><button class="x" type="button" data-close aria-label="Close">✕</button></div>
+    <div class="modal-body"><p class="hint">Your teacher has set ${pending.length === 1 ? "this" : "these"} for you.</p><ul class="tasklist">${pending.map(taskRow).join("")}</ul></div>
+    <div class="modal-foot"><button class="btn" type="button" data-close>Later</button></div>`;
+  back.classList.add("show");
+  const close = () => back.classList.remove("show");
+  modal.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", close));
+  back.addEventListener("click", (e) => { if (e.target === back) close(); });
+}
+</script>
+</body>
+</html>

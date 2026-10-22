@@ -295,6 +295,7 @@ body[data-plane="figure"] #svg{ cursor:default; }
   <h1>Gradient Quiz</h1>
   <span class="levelchip" id="levelChip" hidden><span class="levelchip__dot"></span><span id="levelName">—</span></span>
   <span class="bar__spacer"></span>
+  <span id="signInSlot"></span>
   <button type="button" class="tbtn" id="btnLevels">Change level</button>
   <button type="button" class="tbtn" id="btnRestart">Start again</button>
 </header>
@@ -1822,5 +1823,23 @@ drawPlane();
 
 })();
 </script>
+
+<!-- Maths Hub portal: student sign-in, and saving each finished level to the
+     student's dashboard. The quiz already calls window.MMTSave(...) when a
+     level ends; this passes the score on. toolId matches
+     assets/js/portal/toolRegistry.js. -->
+<script>
+  window.MMTSave = function (r) {
+    if (!window.PlatformSave) return;
+    PlatformSave({
+      toolId: "rise-and-run-quiz",
+      title: "Rise & Run: Gradient Quiz (" + r.level + ")",
+      topic: "Linear relationships",
+      score: r.score,
+      total: r.total
+    });
+  };
+</script>
+<script src="../../../../assets/js/portal/quizSignIn.js"></script>
 </body>
 </html>

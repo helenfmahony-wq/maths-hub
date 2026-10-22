@@ -84,6 +84,23 @@ nav a {
 }
 nav a:hover, nav a.current { color: var(--primary); }
 
+/* Log in button (top right of every page) — opens the student/teacher portal */
+.login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--primary);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14.5px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  transition: background 0.15s;
+}
+.login-btn:hover { background: var(--primary-dark); }
+.login-btn svg { width: 17px; height: 17px; stroke: currentColor; }
+
 /* ---------- Hero (homepage, large) ---------- */
 .hero {
   background: var(--hero-grad);

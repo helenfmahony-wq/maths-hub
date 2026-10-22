@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/portal.css"/>
+<style>
+  .hero{max-width:720px;margin:10vh auto 0;padding:0 22px;text-align:center}
+  .hero h1{font-size:2rem;margin:0 0 8px}
+  .hero p{color:var(--muted);margin:0 0 28px}
+  .doors{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;text-align:left}
+  .door{display:block;padding:22px;text-decoration:none;color:inherit;transition:border-color .12s,transform .12s}
+  .door:hover{border-color:var(--line-2);transform:translateY(-1px)}
+  .door h2{margin:0 0 4px;font-size:1.1rem}
+  .door p{margin:0;color:var(--muted);font-size:.9rem;text-align:left}
+</style>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="../index.html" title="Back to the home page" data-platform-name>Platform</a></header>
+<main class="hero">
+  <h1 data-platform-name>Platform</h1>
+  <p>Sign in with the code your teacher gave you.</p>
+  <div class="doors">
+    <a class="card door" href="student/index.html"><h2>I'm a student →</h2><p>See your tasks and results.</p></a>
+    <a class="card door" href="teacher/index.html"><h2>I'm a teacher →</h2><p>Manage classes, set tasks and see results.</p></a>
+  </div>
+  <p style="margin-top:26px;font-size:.9rem">Just looking? <a href="teacher/index.html?demo">Try the demo</a> — made-up classes and results, nothing saved online.</p>
+</main>
+<script type="module">
+  import { PLATFORM_NAME } from "../assets/js/portal/config.js";
+  document.title = PLATFORM_NAME;
+  document.querySelectorAll("[data-platform-name]").forEach((el) => (el.textContent = PLATFORM_NAME));
+</script>
+</body>
+</html>
