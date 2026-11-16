@@ -1,0 +1,876 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Variation Explorer</title>
+<script>window.VE_MODE = "locked";</script>
+<style>body{margin:0}[hidden]{display:none!important}</style></head><body>
+<title>Variation Explorer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a classroom tool. Tabs on top, then a two-pane bench: the model on the left, the numbers and graph on the right. */
+:root {
+  --bg: #f4f7fa; --panel: #ffffff; --ink: #0b3d6b; --muted: #5c7a93; --line: #d3dee8;
+  --direct: #1f7a8c; --direct-soft: #d6ecef; --inverse: #c8553d; --inverse-soft: #f6ddd6;
+  --good: #2e7d32; --bad: #b3261e; --grid: #e3eaf1;
+  --f-body: "Lexend", "Segoe UI", system-ui, sans-serif;
+  --f-num: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1822; --panel: #15222f; --ink: #dce8f3; --muted: #93a9bd; --line: #2a3b4c;
+  --direct: #4fb6c8; --direct-soft: #17404a; --inverse: #ec8a73; --inverse-soft: #4a2820;
+  --good: #7bc77f; --bad: #f2948c; --grid: #22323f; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1822; --panel: #15222f; --ink: #dce8f3; --muted: #93a9bd; --line: #2a3b4c;
+  --direct: #4fb6c8; --direct-soft: #17404a; --inverse: #ec8a73; --inverse-soft: #4a2820;
+  --good: #7bc77f; --bad: #f2948c; --grid: #22323f; color-scheme: dark; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header h1 { font-size: 1.7rem; margin: 0; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+header p { margin: 4px 0 0; color: var(--muted); max-width: 65ch; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 16px; }
+.tab { font: inherit; font-weight: 500; border: 1.5px solid var(--line); background: var(--panel); color: var(--ink);
+  padding: 8px 16px; border-radius: 999px; cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--direct); outline-offset: 2px; }
+.bench { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 820px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.panel h2 { font-size: 1.05rem; margin: 0 0 10px; }
+.controls { display: grid; gap: 12px; margin-bottom: 12px; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { font: inherit; font-size: 0.9rem; border: 1.5px solid var(--line); background: transparent; color: var(--ink);
+  padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.seg button.on-direct { background: var(--direct); border-color: var(--direct); color: #fff; }
+.seg button.on-inverse { background: var(--inverse); border-color: var(--inverse); color: #fff; }
+label.row { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) 3.5em; align-items: center; gap: 10px; font-size: 0.92rem; }
+label.row output { font-family: var(--f-num); text-align: right; }
+input[type=range] { width: 100%; accent-color: var(--ink); }
+svg { display: block; width: 100%; height: auto; }
+.readout { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+.readout div { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.readout small { display: block; color: var(--muted); font-size: 0.75rem; letter-spacing: 0.03em; text-transform: uppercase; }
+.readout b { font-family: var(--f-num); font-size: 1.15rem; font-weight: 500; }
+.readout .hl { border-color: currentColor; border-width: 2px; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { font: inherit; font-weight: 500; border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; background: var(--ink); color: var(--panel); }
+.btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.tablewrap { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; font-family: var(--f-num); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+th, td { border: 1px solid var(--line); padding: 4px 10px; text-align: center; min-width: 3.2em; }
+th { font-family: var(--f-body); font-weight: 600; text-align: left; background: var(--bg); white-space: nowrap; }
+.hint { color: var(--muted); font-size: 0.88rem; margin: 8px 0 0; }
+.rule { font-family: var(--f-num); font-size: 1.1rem; margin-top: 8px; }
+.ctx-q { font-size: 1.05rem; margin: 0 0 10px; }
+.bignums { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 14px 0; }
+.big { border: 2px solid var(--line); border-radius: 10px; padding: 10px 14px; min-width: 9em; }
+.big small { display: block; color: var(--muted); font-size: 0.8rem; }
+.big b { font-family: var(--f-num); font-size: 1.6rem; font-weight: 500; }
+.change { font-weight: 600; font-size: 1rem; min-height: 1.6em; }
+.predict { border: 1.5px dashed var(--line); border-radius: 8px; padding: 10px 12px; margin-top: 10px; }
+.predict p { margin: 0 0 8px; }
+.fb { font-weight: 600; margin-top: 8px; min-height: 1.5em; }
+.fb.ok { color: var(--good); } .fb.no { color: var(--bad); }
+.mystery td input { width: 4.5em; font: inherit; text-align: center; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--ink); }
+td input { width: 4.2em; font: inherit; font-family: var(--f-num); text-align: center; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--ink); padding: 3px 2px; }
+td input.bad { border-color: var(--bad); border-width: 2px; color: var(--bad); }
+.score { font-family: var(--f-num); color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .pt-new { animation: pop .35s ease-out; } @keyframes pop { from { r: 1; } } }
+.guide { position: sticky; top: 0; z-index: 5; background: var(--panel); border: 2px solid var(--ink); border-radius: 12px; padding: 12px 16px 10px; margin-top: 16px; box-shadow: 0 6px 18px rgba(11,61,107,.12); }
+.g-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.g-head strong { font-size: .95rem; }
+.g-head .g-count { color: var(--muted); font-size: .85rem; font-family: var(--f-num); }
+.g-head .g-sp { flex: 1; }
+.g-head button { font: inherit; font-size: .82rem; background: transparent; border: 1px solid var(--line); color: var(--ink); border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+.g-track { height: 6px; background: var(--grid); border-radius: 99px; margin: 8px 0 4px; overflow: hidden; }
+#g-bar { height: 100%; background: var(--good); width: 0; transition: width .4s; }
+.guide.collapsed #g-main { display: none; }
+.g-text { font-size: 1.05rem; margin: 8px 0; }
+.g-tag { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; background: #C8961E; color: #fff; border-radius: 4px; padding: 1px 6px; vertical-align: 2px; }
+.g-tag.q { background: var(--ink); color: var(--panel); }
+.g-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.g-row input { font: inherit; font-family: var(--f-num); width: 7em; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); }
+.g-wait { color: var(--muted); font-style: italic; font-size: .92rem; }
+.g-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(14em, 1fr)); gap: 8px; }
+.g-opt { font: inherit; text-align: left; padding: 8px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); cursor: pointer; }
+.g-opt:hover:not(:disabled) { border-color: var(--ink); }
+.g-opt.right { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--panel)); }
+.g-opt.wrong { border-color: var(--bad); color: var(--bad); opacity: .7; }
+#g-txt { width: 100%; font: inherit; padding: 8px; border: 1.5px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); margin-bottom: 8px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Variation Explorer</h1>
+    <p>Follow the steps in the box below. Each step appears when you finish the one before. Change one quantity and work out what happens to the other. Type your values in and watch the graph form. Look for what stays the same: the ratio y ÷ x or the product x × y.</p>
+  </header>
+
+  <section class="guide" id="guide" aria-live="polite">
+    <div class="g-head"><strong id="g-part"></strong><span class="g-count" id="g-count"></span><span class="g-sp"></span>
+      <button id="g-restart">Start again</button><button id="g-toggle">Hide steps</button></div>
+    <div class="g-track"><div id="g-bar"></div></div>
+    <div id="g-main"><div id="g-body"></div><div class="fb" id="g-fb"></div></div>
+  </section>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-rect" aria-selected="true" data-view="rect">Rectangle model</button>
+    <button class="tab" role="tab" id="tab-tables" aria-selected="false" data-view="tables">Real-life tables</button>
+    <button class="tab" role="tab" id="tab-double" aria-selected="false" data-view="double">Double it!</button>
+    <button class="tab" role="tab" id="tab-mystery" aria-selected="false" data-view="mystery">Mystery tables</button>
+  </div>
+
+  <!-- ===== Rectangle model ===== -->
+  <section id="view-rect" class="bench">
+    <div class="panel">
+      <h2 id="rect-title">Rectangle model</h2>
+      <div class="controls">
+        <label style="display:grid;gap:4px;font-size:.92rem">Choose a model
+          <select id="rect-sit" style="font:inherit;padding:6px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);min-width:0"></select></label>
+        <label class="row" id="k-row"><span id="k-label">Height (k)</span><input type="range" id="k" min="1" max="5" step="1" value="3"><output id="k-out">3</output></label>
+        <label class="row"><span id="x-label">Width, x</span><input type="range" id="x" min="1" max="12" step="0.25" value="1"><output id="x-out">1</output></label>
+        <div style="display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between">
+          <label style="display:flex;gap:8px;align-items:center;font-size:.92rem"><input type="checkbox" id="trace"> Trace the graph as I drag the width</label>
+          <button class="btn ghost" id="reset-rect" title="Width back to 1 and the trace cleared">Reset to start</button>
+        </div>
+      </div>
+      <svg id="rect-svg" viewBox="0 0 400 300" role="img" aria-label="Rectangle on a unit grid"></svg>
+      <p class="hint" id="rect-hint"></p>
+    </div>
+    <div class="panel">
+      <h2>Your table and graph</h2>
+      <p class="hint" style="margin:0 0 10px">Add a value from the slider, then work out y and type it in. Each value you enter is plotted straight away and joined to the others, so the graph builds as you go.</p>
+      <div class="btns">
+        <button class="btn" id="record">Add this width</button>
+        <button class="btn ghost" id="auto">Add whole-number widths</button>
+        <button class="btn ghost" id="check-rect">Check my values</button>
+        <button class="btn ghost" id="show-rule">Show rule</button>
+        <button class="btn ghost" id="clear">Clear</button>
+      </div>
+      <div class="tablewrap"><table id="rect-table"></table></div>
+      <div class="fb" id="rect-fb"></div>
+      <svg id="rect-graph" viewBox="0 0 420 300" role="img" aria-label="Graph of recorded points"></svg>
+      <div class="rule" id="rule" hidden></div>
+    </div>
+  </section>
+
+  <!-- ===== Real-life tables ===== -->
+  <section id="view-tables" class="bench" hidden>
+    <div class="panel">
+      <h2>Real-life tables</h2>
+      <div class="controls">
+        <label class="row" style="grid-template-columns: 6em minmax(0,1fr)"><span>Situation</span>
+          <select id="t-ctx" style="font:inherit;padding:6px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);min-width:0"></select></label>
+      </div>
+      <p class="ctx-q" id="t-text"></p>
+      <p class="hint" style="margin-top:0">Work out each missing value and type it in. Watch the graph form as you go.</p>
+      <div class="tablewrap mystery"><table id="t-table"></table></div>
+      <div class="btns" style="margin-top:12px">
+        <button class="btn" id="t-check">Check my values</button>
+        <button class="btn ghost" id="t-test">Show y ÷ x and x × y</button>
+        <button class="btn ghost" id="t-clear">Clear</button>
+      </div>
+      <div class="fb" id="t-fb"></div>
+    </div>
+    <div class="panel">
+      <h2>Graph</h2>
+      <svg id="t-graph" viewBox="0 0 420 300" role="img" aria-label="Graph of the values entered"></svg>
+      <p class="hint" id="t-hint">Straight line through the origin? Curve that gets closer to the axes? Decide once you have a few points.</p>
+    </div>
+  </section>
+
+  <!-- ===== Double it ===== -->
+  <section id="view-double" class="bench" hidden>
+    <div class="panel">
+      <h2>Double it!</h2>
+      <div class="controls">
+        <label class="row" style="grid-template-columns: 6em minmax(0,1fr)"><span>Situation</span>
+          <select id="ctx" style="font:inherit;padding:6px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);min-width:0"></select></label>
+        <label style="display:flex;gap:8px;align-items:center;font-size:.92rem"><input type="checkbox" id="predict-on" checked> Predict before you see the answer</label>
+      </div>
+      <p class="ctx-q" id="ctx-text"></p>
+      <div class="bignums">
+        <div class="big"><small id="x-name"></small><b id="x-val"></b></div>
+        <div class="big"><small id="y-name"></small><b id="y-val"></b></div>
+      </div>
+      <div class="change" id="change"></div>
+      <div class="btns" id="ops">
+        <button class="btn" data-op="2">× 2</button>
+        <button class="btn" data-op="3">× 3</button>
+        <button class="btn" data-op="0.5">÷ 2</button>
+        <button class="btn ghost" id="reset">Start again</button>
+      </div>
+      <div class="predict" id="predict" hidden>
+        <p id="predict-q"></p>
+        <div class="seg" id="predict-choices"></div>
+        <div class="fb" id="predict-fb"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Graph</h2>
+      <svg id="ctx-graph" viewBox="0 0 420 300" role="img" aria-label="Graph of the situation"></svg>
+      <div class="rule" id="ctx-rule"></div>
+      <p class="hint" id="ctx-k"></p>
+    </div>
+  </section>
+
+  <!-- ===== Mystery tables ===== -->
+  <section id="view-mystery" class="bench" hidden>
+    <div class="panel mystery">
+      <h2>Mystery table</h2>
+      <p class="hint" style="margin-top:0">Is this direct variation, inverse variation or neither? Use the empty rows to test y ÷ x and x × y.</p>
+      <div class="tablewrap"><table id="m-table"></table></div>
+      <div class="controls" style="margin-top:14px">
+        <div class="seg" id="m-type">
+          <button data-t="direct">Direct</button><button data-t="inverse">Inverse</button><button data-t="neither">Neither</button>
+        </div>
+        <label class="row" style="grid-template-columns: 6em 7em"><span>k =</span>
+          <input id="m-k" inputmode="decimal" style="font:inherit;padding:5px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink)"></label>
+      </div>
+      <div class="btns">
+        <button class="btn" id="m-check">Check</button>
+        <button class="btn ghost" id="m-help">Fill in the test rows</button>
+        <button class="btn ghost" id="m-next">Next table</button>
+      </div>
+      <div class="fb" id="m-fb"></div>
+      <p class="score" id="m-score">Score: 0 / 0</p>
+    </div>
+    <div class="panel">
+      <h2>What does the graph look like?</h2>
+      <svg id="m-graph" viewBox="0 0 420 300" role="img" aria-label="Graph of the mystery table"></svg>
+      <button class="btn ghost" id="m-plot" style="margin-top:8px">Plot the points</button>
+      <p class="hint">Direct variation: a straight line through the origin. Inverse variation: a curve that gets closer to both axes. Anything else: neither.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+const $ = (s) => document.querySelector(s);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = (n) => { if (!isFinite(n)) return "–"; const r = Math.round(n * 100) / 100; return String(r); };
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+
+/* ---------- tabs ---------- */
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", b === t));
+  ["rect", "tables", "double", "mystery"].forEach(v => $("#view-" + v).hidden = v !== t.dataset.view);
+  try { localStorage.setItem("ve-tab", t.dataset.view); } catch (e) {}
+  drawAll();
+}));
+
+/* ---------- shared graph ---------- */
+function niceStep(max) { const raw = max / 6; const p = Math.pow(10, Math.floor(Math.log10(raw))); const m = raw / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p; }
+function graph(svg, o) {
+  // o: {xmax, ymax, xlabel, ylabel, color, points:[[x,y]], fn, highlight:[x,y]}
+  svg.innerHTML = "";
+  const W = 420, H = 300, L = 46, R = 14, T = 12, B = 40;
+  const sx = x => L + x / o.xmax * (W - L - R), sy = y => H - B - y / o.ymax * (H - T - B);
+  const xs = niceStep(o.xmax), ys = niceStep(o.ymax);
+  const grid = css("--grid"), muted = css("--muted"), ink = css("--ink");
+  for (let x = 0; x <= o.xmax + 1e-9; x += xs) { el("line", { x1: sx(x), x2: sx(x), y1: sy(0), y2: sy(o.ymax), stroke: grid }, svg);
+    el("text", { x: sx(x), y: H - B + 16, "text-anchor": "middle", "font-size": 11, fill: muted, "font-family": "var(--f-num)" }, svg).textContent = fmt(x); }
+  for (let y = 0; y <= o.ymax + 1e-9; y += ys) { el("line", { x1: sx(0), x2: sx(o.xmax), y1: sy(y), y2: sy(y), stroke: grid }, svg);
+    el("text", { x: L - 6, y: sy(y) + 4, "text-anchor": "end", "font-size": 11, fill: muted, "font-family": "var(--f-num)" }, svg).textContent = fmt(y); }
+  el("line", { x1: sx(0), x2: sx(o.xmax), y1: sy(0), y2: sy(0), stroke: muted, "stroke-width": 1.5 }, svg);
+  el("line", { x1: sx(0), x2: sx(0), y1: sy(0), y2: sy(o.ymax), stroke: muted, "stroke-width": 1.5 }, svg);
+  el("text", { x: (L + W - R) / 2, y: H - 6, "text-anchor": "middle", "font-size": 12, fill: ink }, svg).textContent = o.xlabel;
+  const yl = el("text", { x: 12, y: (T + H - B) / 2, "text-anchor": "middle", "font-size": 12, fill: ink, transform: `rotate(-90 12 ${(T + H - B) / 2})` }, svg); yl.textContent = o.ylabel;
+  const clip = el("clipPath", { id: svg.id + "-clip" }, el("defs", {}, svg)); el("rect", { x: L, y: T, width: W - L - R, height: H - T - B }, clip);
+  if (o.fn) { let d = ""; const x0 = o.fnMin || 0.02; for (let i = 0; i <= 300; i++) { const x = x0 + (o.xmax - x0) * i / 300, y = o.fn(x); if (!isFinite(y)) continue; d += (d ? "L" : "M") + sx(x).toFixed(1) + "," + sy(Math.min(y, o.ymax * 3)).toFixed(1); }
+    el("path", { d, fill: "none", stroke: o.color, "stroke-width": o.join ? 1.6 : 2.5, "stroke-dasharray": o.join ? "6 5" : "none", "clip-path": `url(#${svg.id}-clip)`, opacity: o.join ? 0.6 : 0.85 }, svg); }
+  if (o.join && (o.points || []).length > 1) {
+    const pts = [...o.points].sort((a, b) => a[0] - b[0]);
+    el("polyline", { points: pts.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" "), fill: "none", stroke: o.color, "stroke-width": 2.5, "stroke-linejoin": "round", "clip-path": `url(#${svg.id}-clip)` }, svg);
+  }
+  (o.points || []).forEach((p, i, a) => el("circle", { cx: sx(p[0]), cy: sy(p[1]), r: 5, fill: p[2] === false ? css("--bad") : o.color, stroke: css("--panel"), "stroke-width": 1.5, class: p[3] ? "pt-new" : "" }, svg));
+  if (o.trace && o.trace.length) {
+    const tp = [...o.trace].sort((a, b) => a[0] - b[0]);
+    if (tp.length > 1) el("polyline", { points: tp.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" "), fill: "none", stroke: o.color, "stroke-width": 3, "stroke-linejoin": "round", opacity: 0.55, "clip-path": `url(#${svg.id}-clip)` }, svg);
+    tp.forEach(p => { if (p[1] <= o.ymax) el("circle", { cx: sx(p[0]), cy: sy(p[1]), r: 2.2, fill: o.color, opacity: 0.7 }, svg); });
+  }
+  if (o.highlight) { const [hx, hy] = o.highlight;
+    el("line", { x1: sx(hx), x2: sx(hx), y1: sy(0), y2: sy(hy), stroke: o.color, "stroke-dasharray": "4 4" }, svg);
+    el("line", { x1: sx(0), x2: sx(hx), y1: sy(hy), y2: sy(hy), stroke: o.color, "stroke-dasharray": "4 4" }, svg);
+    el("circle", { cx: sx(hx), cy: sy(hy), r: 7, fill: o.color, stroke: css("--panel"), "stroke-width": 2 }, svg); }
+}
+
+/* ---------- Rectangle model (rectangles + real-life situations) ---------- */
+const range = (a, b, s = 1) => { const o = []; for (let v = a; v <= b + 1e-9; v += s) o.push(Math.round(v * 100) / 100); return o; };
+const RS = [
+  { id: "rect-direct", g: "Rectangles", name: "Rectangle: keep the height fixed", type: "direct", rect: true },
+  { id: "rect-inverse", g: "Rectangles", name: "Rectangle: keep the area fixed", type: "inverse", rect: true },
+  { g: "Direct variation (Lesson 1)", name: "Movie tickets", type: "direct", k: 12, text: "Movie tickets cost $12 each.", xn: "Tickets", yn: "Cost ($)", vals: range(1, 12), xs: [1, 2, 3, 4, 5, 6], pic: "tiles", icon: "ticket", per: "$12", ask: "total cost = ?" },
+  { g: "Direct variation (Lesson 1)", name: "Petrol", type: "direct", k: 2.5, text: "Petrol costs $2.50 per litre.", xn: "Litres", yn: "Cost ($)", vals: range(1, 40), xs: [4, 8, 12, 16, 20, 40], pic: "tank", ask: "cost = ?" },
+  { g: "Direct variation (Lesson 1)", name: "Pancakes", type: "direct", k: 6, text: "1 cup of flour makes 6 pancakes.", xn: "Cups of flour", yn: "Pancakes", vals: range(1, 8), xs: [1, 2, 3, 4, 5, 6], pic: "tiles", icon: "cup", per: "6 pancakes", tag: "6", ask: "pancakes = ?" },
+  { g: "Direct variation (Lesson 1)", name: "Walking at 5 km/h", type: "direct", k: 5, text: "Mia walks at a steady 5 km/h.", xn: "Time (hours)", yn: "Distance (km)", vals: range(0.5, 8, 0.5), xs: [1, 2, 3, 4, 5, 6], pic: "track", ask: "distance = ?" },
+  { g: "Direct variation (Lesson 1)", name: "Streaming video", type: "direct", k: 3, text: "Streaming video uses 3 GB of data per hour.", xn: "Time (hours)", yn: "Data (GB)", vals: range(1, 12), xs: [1, 2, 3, 4, 5, 6], pic: "tiles", icon: "screen", per: "3 GB", ask: "data = ?" },
+  { g: "Direct variation (Lesson 1)", name: "Casual pay", type: "direct", k: 15, text: "A casual worker earns $45 for 3 hours.", xn: "Hours", yn: "Pay ($)", vals: range(1, 12), xs: [1, 2, 3, 4, 6, 8], pic: "tiles", icon: "clock", per: "$15", ask: "pay = ?" },
+  { g: "Inverse variation (Lesson 2)", name: "Chairs in rows", type: "inverse", k: 36, text: "36 chairs are set out in equal rows.", xn: "Rows", yn: "Chairs per row", vals: [1, 2, 3, 4, 6, 9, 12, 18, 36], xs: [1, 2, 3, 4, 6, 9], pic: "chairs" },
+  { g: "Inverse variation (Lesson 2)", name: "Sharing a pizza", type: "inverse", k: 16, text: "A 16-slice party pizza is shared equally.", xn: "People", yn: "Slices each", vals: [1, 2, 4, 8, 16], xs: [1, 2, 4, 8, 16], pic: "pizza" },
+  { g: "Inverse variation (Lesson 2)", name: "Sharing lollies", type: "inverse", k: 30, text: "A bag of 30 lollies is shared equally between friends.", xn: "Friends", yn: "Lollies each", vals: [1, 2, 3, 5, 6, 10, 15, 30], xs: [1, 2, 3, 5, 6, 10], pic: "groups" },
+  { g: "Inverse variation (Lesson 2)", name: "Bus hire", type: "inverse", k: 600, text: "A $600 bus hire is shared equally by the students who go.", xn: "Students", yn: "Cost each ($)", vals: range(5, 60, 5), xs: [10, 15, 20, 25, 30, 40], pic: "share" },
+  { g: "Inverse variation (Lesson 2)", name: "Filling a pool", type: "inverse", k: 12, text: "One hose fills a pool in 12 hours. All hoses run at the same rate.", xn: "Hoses", yn: "Time (hours)", vals: range(1, 12), xs: [1, 2, 3, 4, 6, 12], pic: "hoses" },
+  { g: "Inverse variation (Lesson 2)", name: "Driving 120 km", type: "inverse", k: 120, text: "A family drives 120 km to the coast.", xn: "Speed (km/h)", yn: "Time (hours)", vals: range(10, 120, 10), xs: [20, 30, 40, 60, 80, 100], pic: "drive" },
+];
+const rsel = $("#rect-sit");
+[...new Set(RS.map(s => s.g))].forEach(g => { const og = document.createElement("optgroup"); og.label = g;
+  RS.forEach((s, i) => { if (s.g === g) { const o = document.createElement("option"); o.value = i; o.textContent = s.name; og.appendChild(o); } }); rsel.appendChild(og); });
+
+const R = { si: 0, mode: "direct", k: 3, x: 1, rows: [], rule: false, checked: false, last: null, tracing: false, trace: [] };
+const S = () => RS[R.si];
+const isRect = () => !!S().rect;
+function addTrace() { if (R.tracing && !R.trace.some(p => p[0] === R.x)) R.trace.push([R.x, yOf(R.x)]); }
+const kInput = $("#k"), xInput = $("#x");
+function startX() { if (isRect()) { R.x = 1; xInput.min = 1; xInput.max = 12; xInput.step = 0.25; xInput.value = 1; } else { R.x = S().vals[0]; xInput.min = 0; xInput.max = S().vals.length - 1; xInput.step = 1; xInput.value = 0; } }
+function setSit(i) {
+  R.si = i; const s = S(); R.mode = s.type; R.rows = []; R.rule = false; R.checked = false; R.trace = []; R.last = null;
+  if (s.rect) { if (s.type === "direct") { kInput.min = 1; kInput.max = 5; kInput.step = 1; kInput.value = 3; } else { kInput.min = 6; kInput.max = 24; kInput.step = 6; kInput.value = 12; } R.k = +kInput.value; }
+  else R.k = s.k;
+  $("#k-row").hidden = !s.rect; $("#x-label").textContent = s.rect ? "Width, x" : s.xn;
+  $("#record").textContent = s.rect ? "Add this width" : "Add this value";
+  $("#auto").textContent = s.rect ? "Add whole-number widths" : "Add the usual values";
+  $("#reset-rect").title = s.rect ? "Width back to 1 and the trace cleared" : "Slider back to the start and the trace cleared";
+  startX(); $("#rect-fb").textContent = ""; addTrace(); drawRect(true);
+}
+rsel.addEventListener("change", () => setSit(+rsel.value));
+kInput.addEventListener("input", () => { R.k = +kInput.value; R.rows = []; R.checked = false; R.trace = []; addTrace(); drawRect(true); });
+xInput.addEventListener("input", () => { R.x = isRect() ? +xInput.value : S().vals[+xInput.value]; addTrace(); drawRect(false); });
+$("#reset-rect").addEventListener("click", () => {
+  if (isRect()) { kInput.value = R.mode === "direct" ? 3 : 12; R.k = +kInput.value; }
+  startX(); R.trace = []; addTrace(); R.rule = false; drawRect(false);
+});
+$("#trace").addEventListener("change", e => { R.tracing = e.target.checked; R.trace = []; addTrace(); drawRect(false); });
+const yOf = (x) => R.mode === "direct" ? R.k * x : R.k / x;
+const close = (a, b) => Math.abs(a - b) < 0.011 + 1e-9 * Math.abs(b);
+function addX(x) { if (!R.rows.some(r => r.x === x)) R.rows.push({ x, y: "" }); R.rows.sort((a, b) => a.x - b.x); }
+$("#record").addEventListener("click", () => { addX(R.x); R.checked = false; drawRect(true); focusFirstEmpty(); });
+$("#auto").addEventListener("click", () => { (isRect() ? (R.mode === "direct" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 6, 12]) : S().xs).forEach(addX); R.checked = false; drawRect(true); focusFirstEmpty(); });
+$("#clear").addEventListener("click", () => { R.rows = []; R.rule = false; R.checked = false; R.trace = []; addTrace(); $("#rect-fb").textContent = ""; drawRect(true); });
+$("#show-rule").addEventListener("click", () => { R.rule = !R.rule; drawRectGraph(); });
+$("#check-rect").addEventListener("click", () => {
+  R.checked = true; const filled = R.rows.filter(r => r.y !== "" && isFinite(+r.y)); const wrong = filled.filter(r => !close(+r.y, yOf(r.x)));
+  const fb = $("#rect-fb"), dir = R.mode === "direct";
+  const tip = isRect() ? (dir ? "Area = width × height." : "Height = area ÷ width.")
+    : (dir ? "Work out what 1 gives, then multiply." : "The total stays the same, so divide the total by x.");
+  if (!filled.length) { fb.className = "fb no"; fb.textContent = "Type some values into the y row first."; }
+  else if (wrong.length) { fb.className = "fb no"; fb.textContent = `${wrong.length} value${wrong.length > 1 ? "s" : ""} to fix (shown in red). ` + tip; }
+  else { fb.className = "fb ok"; fb.textContent = `All ${filled.length} correct. ` + (dir ? "What do you notice about y ÷ x?" : "What do you notice about x × y?"); }
+  drawRect(true);
+});
+function focusFirstEmpty() { const i = R.rows.findIndex(r => r.y === ""); if (i >= 0) { const inp = document.getElementById("ry" + i); if (inp) inp.focus(); } }
+$("#rect-table").addEventListener("input", e => {
+  const inp = e.target.closest("input[data-i]"); if (!inp) return;
+  const r = R.rows[+inp.dataset.i]; r.y = inp.value.trim(); R.last = r.x; R.checked = false; inp.classList.remove("bad");
+  updateTestCells(); drawRectGraph(); });
+$("#rect-table").addEventListener("keydown", e => { if (e.key === "Enter") { const n = document.getElementById("ry" + (+e.target.dataset.i + 1)); if (n) n.focus(); } });
+
+function updateTestCells() {
+  R.rows.forEach((r, i) => { const ok = r.y !== "" && isFinite(+r.y) && +r.y > 0;
+    const a = document.getElementById("rr" + i), b = document.getElementById("rp" + i);
+    if (a) a.textContent = ok ? fmt(+r.y / r.x) : ""; if (b) b.textContent = ok ? fmt(r.x * +r.y) : ""; });
+}
+function axes() {
+  const s = S(), dir = R.mode === "direct";
+  if (s.rect) return { xmax: 12, ymax: dir ? R.k * (R.tracing ? 12 : 6) : R.k, xl: "width, x", yl: dir ? "area, y" : "height, y", fnMin: dir ? 0 : 0.5 };
+  const vmax = s.vals[s.vals.length - 1], vmin = s.vals[0];
+  return { xmax: vmax, ymax: dir ? s.k * vmax : s.k / vmin, xl: s.xn.toLowerCase(), yl: s.yn.toLowerCase(), fnMin: dir ? 0 : vmin * 0.8 };
+}
+function drawRectGraph() {
+  const dir = R.mode === "direct", col = css(dir ? "--direct" : "--inverse"), a = axes(), s = S();
+  const pts = R.rows.filter(r => r.y !== "" && isFinite(+r.y)).map(r => [r.x, +r.y, R.checked ? close(+r.y, yOf(r.x)) : true, r.x === R.last]);
+  graph($("#rect-graph"), { xmax: a.xmax, ymax: a.ymax, xlabel: a.xl, ylabel: a.yl, color: col,
+    points: pts, join: true, fn: R.rule ? yOf : null, fnMin: a.fnMin,
+    trace: R.tracing ? R.trace : null, highlight: R.tracing ? [R.x, yOf(R.x)] : null });
+  const r = $("#rule"); r.hidden = !R.rule; r.style.color = col;
+  r.textContent = s.rect
+    ? (dir ? `y = ${R.k}x   (direct variation: a straight line through the origin, gradient ${R.k})` : `y = ${R.k} / x   (inverse variation: x × y is always ${R.k})`)
+    : (dir ? `y = ${R.k}x   (direct: ${s.yn.toLowerCase()} = ${R.k} × ${s.xn.toLowerCase()}, so y ÷ x is always ${R.k})` : `y = ${R.k} / x   (inverse: ${s.xn.toLowerCase()} × ${s.yn.toLowerCase()} is always ${R.k})`);
+  $("#show-rule").textContent = R.rule ? "Hide rule" : "Show rule";
+}
+
+/* ---- pictures for the real-life situations (400 x 300) ---- */
+function tx(svg, x, y, txt, o = {}) { const t = el("text", { x, y, "font-size": o.size || 12, fill: o.fill || css("--ink"), "text-anchor": o.anchor || "middle", "font-weight": o.bold ? 600 : 400, "font-family": o.num ? "var(--f-num)" : "var(--f-body)" }, svg); t.textContent = txt; return t; }
+function icon(svg, kind, x, y, w, h, col, soft, per) {
+  const ink = css("--ink"), panel = css("--panel");
+  if (kind === "ticket") { el("rect", { x, y: y + 8, width: w, height: h - 24, rx: 5, fill: soft, stroke: col, "stroke-width": 2 }, svg);
+    el("circle", { cx: x, cy: y + 8 + (h - 24) / 2, r: 6, fill: panel, stroke: col, "stroke-width": 2 }, svg); el("circle", { cx: x + w, cy: y + 8 + (h - 24) / 2, r: 6, fill: panel, stroke: col, "stroke-width": 2 }, svg);
+    tx(svg, x + w / 2, y + 8 + (h - 24) / 2 - 2, "ADMIT 1", { size: 8, fill: col, bold: true }); }
+  if (kind === "cup") { el("path", { d: `M${x + w * .2},${y + 6} L${x + w * .8},${y + 6} L${x + w * .72},${y + 26} L${x + w * .28},${y + 26} Z`, fill: soft, stroke: col, "stroke-width": 2 }, svg);
+    for (let i = 0; i < 6; i++) el("ellipse", { cx: x + w / 2, cy: y + h - 20 - i * 5, rx: w * .38, ry: 3.2, fill: "#E7B66B", stroke: "#B9853A", "stroke-width": 1 }, svg); }
+  if (kind === "screen") { el("rect", { x: x + 2, y: y + 10, width: w - 4, height: h - 32, rx: 4, fill: soft, stroke: col, "stroke-width": 2 }, svg);
+    const cx = x + w / 2, cy = y + 10 + (h - 32) / 2; el("path", { d: `M${cx - 6},${cy - 8} L${cx + 9},${cy} L${cx - 6},${cy + 8} Z`, fill: col }, svg); }
+  if (kind === "clock") { const cx = x + w / 2, cy = y + (h - 14) / 2 + 2, r = Math.min(w, h - 16) / 2 - 2; el("circle", { cx, cy, r, fill: soft, stroke: col, "stroke-width": 2 }, svg);
+    el("line", { x1: cx, y1: cy, x2: cx, y2: cy - r * .65, stroke: ink, "stroke-width": 2 }, svg); el("line", { x1: cx, y1: cy, x2: cx + r * .45, y2: cy, stroke: ink, "stroke-width": 2 }, svg); }
+  tx(svg, x + w / 2, y + h - 2, per, { size: 11, fill: col, bold: true });
+}
+function drawSituation(svg, s, x, col, soft) {
+  const ink = css("--ink"), muted = css("--muted"), line = css("--line"), W = 400;
+  if (s.pic === "tiles") {
+    const n = x, per = 6, w = 54, h = 74, gx = 10, gy = 12, rows = Math.ceil(n / per);
+    const x0 = (W - Math.min(n, per) * (w + gx) + gx) / 2, y0 = rows > 1 ? 18 : 60;
+    for (let i = 0; i < n; i++) icon(svg, s.icon, x0 + (i % per) * (w + gx), y0 + Math.floor(i / per) * (h + gy), w, h, col, soft, s.tag || s.per);
+    tx(svg, W / 2, 285, `${fmt(n)} × ${s.per} each   →   ${s.ask}`, { size: 14, fill: col, bold: true });
+  }
+  if (s.pic === "tank") {
+    const tkx = 140, ty = 20, tw = 120, th = 230, cap = 40, fh = th * x / cap;
+    el("rect", { x: tkx, y: ty, width: tw, height: th, rx: 10, fill: "none", stroke: muted, "stroke-width": 2 }, svg);
+    el("rect", { x: tkx + 2, y: ty + th - fh, width: tw - 4, height: fh, rx: 8, fill: soft, stroke: col, "stroke-width": 2 }, svg);
+    for (let l = 0; l <= cap; l += 5) { const yy = ty + th - th * l / cap; el("line", { x1: tkx + tw, x2: tkx + tw + 8, y1: yy, y2: yy, stroke: muted }, svg); tx(svg, tkx + tw + 12, yy + 4, l + " L", { size: 10, fill: muted, anchor: "start", num: true }); }
+    tx(svg, tkx + tw / 2, ty + th - fh / 2 + 5, fmt(x) + " L", { size: 16, fill: col, bold: true, num: true });
+    tx(svg, 70, 120, "$2.50", { size: 18, fill: col, bold: true }); tx(svg, 70, 140, "per litre", { size: 12, fill: muted });
+    tx(svg, W / 2, 285, `${fmt(x)} litres at $2.50 each   →   ${s.ask}`, { size: 14, fill: col, bold: true });
+  }
+  if (s.pic === "track") {
+    const x0 = 30, x1 = 370, yl = 150, hmax = 8, u = (x1 - x0) / hmax;
+    el("line", { x1: x0, x2: x1, y1: yl, y2: yl, stroke: line, "stroke-width": 8, "stroke-linecap": "round" }, svg);
+    el("line", { x1: x0, x2: x0 + x * u, y1: yl, y2: yl, stroke: col, "stroke-width": 8, "stroke-linecap": "round" }, svg);
+    for (let hh = 0; hh <= hmax; hh++) { el("line", { x1: x0 + hh * u, x2: x0 + hh * u, y1: yl - 10, y2: yl + 10, stroke: muted }, svg); tx(svg, x0 + hh * u, yl + 26, hh + " h", { size: 10, fill: muted, num: true }); }
+    for (let hh = 0; hh < Math.floor(x); hh++) tx(svg, x0 + (hh + 0.5) * u, yl - 16, "5 km", { size: 10, fill: col, bold: true });
+    if (x % 1) tx(svg, x0 + (Math.floor(x) + 0.25) * u, yl - 16, "2.5", { size: 10, fill: col, bold: true });
+    const wx = x0 + x * u; el("circle", { cx: wx, cy: yl - 44, r: 7, fill: col }, svg); el("line", { x1: wx, x2: wx, y1: yl - 37, y2: yl - 14, stroke: col, "stroke-width": 3 }, svg);
+    tx(svg, W / 2, 70, `Mia has walked for ${fmt(x)} hour${x === 1 ? "" : "s"}`, { size: 14, fill: ink });
+    tx(svg, W / 2, 285, `${fmt(x)} hours at 5 km each hour   →   ${s.ask}`, { size: 14, fill: col, bold: true });
+  }
+  if (s.pic === "chairs") {
+    const rows = x, per = s.k / x, aw = 360, ah = 220, c = Math.min(aw / per, ah / rows, 30), sz = c * 0.72;
+    const x0 = (W - per * c) / 2, y0 = 20 + (ah - rows * c) / 2;
+    for (let r = 0; r < rows; r++) for (let j = 0; j < per; j++) el("rect", { x: x0 + j * c + (c - sz) / 2, y: y0 + r * c + (c - sz) / 2, width: sz, height: sz, rx: sz * 0.2, fill: soft, stroke: col, "stroke-width": 1.5 }, svg);
+    tx(svg, W / 2, 285, `36 chairs in ${rows} row${rows > 1 ? "s" : ""}   →   chairs per row = ?`, { size: 14, fill: col, bold: true });
+  }
+  if (s.pic === "pizza") {
+    const cx = 200, cy = 135, r = 115, n = s.k, each = n / x;
+    for (let i = 0; i < n; i++) { const a0 = -Math.PI / 2 + i * 2 * Math.PI / n, a1 = a0 + 2 * Math.PI / n, p = Math.floor(i / each);
+      el("path", { d: `M${cx},${cy} L${cx + r * Math.cos(a0)},${cy + r * Math.sin(a0)} A${r},${r} 0 0 1 ${cx + r * Math.cos(a1)},${cy + r * Math.sin(a1)} Z`, fill: p % 2 ? soft : "#F3D9A4", stroke: "#B9853A", "stroke-width": 1 }, svg); }
+    if (x > 1) for (let p = 0; p < x; p++) { const a = -Math.PI / 2 + p * each * 2 * Math.PI / n; el("line", { x1: cx, y1: cy, x2: cx + r * Math.cos(a), y2: cy + r * Math.sin(a), stroke: col, "stroke-width": 3.5 }, svg); }
+    el("circle", { cx, cy, r, fill: "none", stroke: col, "stroke-width": 3 }, svg);
+    tx(svg, W / 2, 285, `16 slices shared by ${x} ${x === 1 ? "person" : "people"}   →   slices each = ?`, { size: 14, fill: col, bold: true });
+  }
+  if (s.pic === "groups") {
+    const g = x, each = s.k / g, cols = Math.ceil(Math.sqrt(g * 1.6)), rows = Math.ceil(g / cols), bw = 380 / cols - 8, bh = 230 / rows - 8;
+    for (let i = 0; i < g; i++) { const bx = 10 + (i % cols) * (bw + 8), by = 14 + Math.floor(i / cols) * (bh + 8);
+      el("rect", { x: bx, y: by, width: bw, height: bh, rx: 8, fill: "none", stroke: col, "stroke-width": 1.5, "stroke-dasharray": "5 4" }, svg);
+      const dc = Math.ceil(Math.sqrt(each * bw / bh)), dr = Math.ceil(each / dc), ds = Math.min(bw / (dc + 0.5), bh / (dr + 0.5), 26);
+      for (let j = 0; j < each; j++) el("circle", { cx: bx + (bw - dc * ds) / 2 + (j % dc + 0.5) * ds, cy: by + (bh - dr * ds) / 2 + (Math.floor(j / dc) + 0.5) * ds, r: ds * 0.36, fill: ["#E06C75", "#E5C07B", "#61AFEF", "#98C379", "#C678DD"][j % 5] }, svg); }
+    tx(svg, W / 2, 285, `30 lollies shared by ${g} friend${g > 1 ? "s" : ""}   →   lollies each = ?`, { size: 14, fill: col, bold: true });
+  }
+  if (s.pic === "share") {
+    const bx = 20, by = 110, bw = 360, bh = 60;
+    tx(svg, W / 2, 80, "The bus costs $600 in total", { size: 15, fill: ink, bold: true });
+    el("rect", { x: bx, y: by, width: bw, height: bh, rx: 6, fill: soft, stroke: col, "stroke-width": 2 }, svg);
+    for (let i = 1; i < x; i++) el("line", { x1: bx + i * bw / x, x2: bx + i * bw / x, y1: by, y2: by + bh, stroke: col, "stroke-width": x > 30 ? 0.8 : 1.4 }, svg);
+    el("rect", { x: bx, y: by, width: bw / x, height: bh, fill: col, opacity: 0.55 }, svg);
+    tx(svg, bx + bw / x / 2 + (x > 20 ? 30 : 0), by + bh + 22, "one student’s share", { size: 11, fill: col, bold: true, anchor: x > 20 ? "start" : "middle" });
+    tx(svg, W / 2, 285, `$600 shared by ${x} students   →   cost each = ?`, { size: 14, fill: col, bold: true });
+  }
+  if (s.pic === "hoses") {
+    const per = Math.min(x, 12), hx0 = (W - per * 30) / 2;
+    for (let i = 0; i < per; i++) { const hx = hx0 + i * 30 + 15; el("rect", { x: hx - 5, y: 18, width: 10, height: 16, rx: 2, fill: col }, svg); el("path", { d: `M${hx},34 q-4,14 0,26`, stroke: "#61AFEF", "stroke-width": 3, fill: "none" }, svg); }
+    el("rect", { x: 60, y: 62, width: 280, height: 80, rx: 6, fill: "#D9EEFB", stroke: "#61AFEF", "stroke-width": 2 }, svg);
+    tx(svg, 200, 108, "the same pool every time", { size: 12, fill: "#2B6A92" });
+    const t0 = 40, t1 = 360, u = (t1 - t0) / 12, ty = 200, tm = s.k / x;
+    el("rect", { x: t0, y: ty - 12, width: tm * u, height: 24, rx: 4, fill: soft, stroke: col, "stroke-width": 2 }, svg);
+    for (let hh = 0; hh <= 12; hh += 2) { el("line", { x1: t0 + hh * u, x2: t0 + hh * u, y1: ty + 14, y2: ty + 20, stroke: muted }, svg); tx(svg, t0 + hh * u, ty + 32, hh + " h", { size: 10, fill: muted, num: true }); }
+    tx(svg, t0, ty - 20, "time to fill", { size: 11, fill: col, anchor: "start", bold: true });
+    tx(svg, W / 2, 285, `${x} hose${x > 1 ? "s" : ""} filling the pool   →   time = ?`, { size: 14, fill: col, bold: true });
+  }
+  if (s.pic === "drive") {
+    el("line", { x1: 30, x2: 370, y1: 80, y2: 80, stroke: line, "stroke-width": 14, "stroke-linecap": "round" }, svg);
+    el("line", { x1: 30, x2: 370, y1: 80, y2: 80, stroke: css("--panel"), "stroke-width": 1.5, "stroke-dasharray": "10 8" }, svg);
+    tx(svg, 30, 60, "home", { size: 11, fill: muted, anchor: "start" }); tx(svg, 370, 60, "coast: 120 km", { size: 11, fill: muted, anchor: "end" });
+    el("rect", { x: 40, y: 66, width: 34, height: 16, rx: 4, fill: col }, svg); el("circle", { cx: 48, cy: 84, r: 4, fill: ink }, svg); el("circle", { cx: 66, cy: 84, r: 4, fill: ink }, svg);
+    tx(svg, W / 2, 130, `Speed: ${x} km/h`, { size: 16, fill: col, bold: true, num: true });
+    const t0 = 40, t1 = 360, u = (t1 - t0) / 12, ty = 200, tm = s.k / x;
+    el("rect", { x: t0, y: ty - 12, width: Math.min(tm, 12) * u, height: 24, rx: 4, fill: soft, stroke: col, "stroke-width": 2 }, svg);
+    for (let hh = 0; hh <= 12; hh += 2) { el("line", { x1: t0 + hh * u, x2: t0 + hh * u, y1: ty + 14, y2: ty + 20, stroke: muted }, svg); tx(svg, t0 + hh * u, ty + 32, hh + " h", { size: 10, fill: muted, num: true }); }
+    tx(svg, t0, ty - 20, "time for the trip", { size: 11, fill: col, anchor: "start", bold: true });
+    tx(svg, W / 2, 285, `120 km at ${x} km/h   →   time = ?`, { size: 14, fill: col, bold: true });
+  }
+}
+
+function drawRect(rebuildTable) {
+  const s = S(), dir = R.mode === "direct", col = css(dir ? "--direct" : "--inverse"), soft = css(dir ? "--direct-soft" : "--inverse-soft");
+  $("#rect-title").textContent = s.rect ? "Rectangle model" : s.name;
+  $("#k-label").textContent = dir ? "Height (k)" : "Area (k)";
+  $("#k-out").textContent = R.k; $("#x-out").textContent = fmt(R.x);
+  const y = yOf(R.x);
+  const svg = $("#rect-svg"); svg.innerHTML = "";
+  const ink = css("--ink");
+  if (!s.rect) {
+    $("#rect-svg").setAttribute("aria-label", `Picture of ${s.name.toLowerCase()} for ${s.xn.toLowerCase()} = ${fmt(R.x)}`);
+    drawSituation(svg, s, R.x, col, soft);
+    $("#rect-hint").textContent = s.text + " Drag the slider, then work out the " + s.yn.toLowerCase().replace(/ \(.*\)/, "") + " and type it into the table.";
+  } else {
+    $("#rect-svg").setAttribute("aria-label", "Rectangle on a unit grid");
+    const maxW = 12, maxH = dir ? 6 : R.k;
+    const W = 400, H = 300, pad = 20; const u = Math.min((W - 2 * pad) / maxW, (H - 2 * pad - 14) / maxH);
+    const ox = pad, oy = H - pad - 10;
+    const gridC = css("--grid");
+    const gw = Math.floor((W - 2 * pad) / u), gh = Math.floor((H - 2 * pad - 10) / u);
+    for (let i = 0; i <= gw; i++) el("line", { x1: ox + i * u, x2: ox + i * u, y1: oy, y2: oy - gh * u, stroke: gridC }, svg);
+    for (let j = 0; j <= gh; j++) el("line", { x1: ox, x2: ox + gw * u, y1: oy - j * u, y2: oy - j * u, stroke: gridC }, svg);
+    const rh = dir ? R.k : y;
+    el("rect", { x: ox, y: oy - rh * u, width: R.x * u, height: rh * u, fill: soft, stroke: col, "stroke-width": 2.5 }, svg);
+    for (let i = 1; i < R.x; i++) el("line", { x1: ox + i * u, x2: ox + i * u, y1: oy, y2: oy - rh * u, stroke: col, "stroke-width": 0.6, opacity: 0.6 }, svg);
+    for (let j = 1; j < rh; j++) el("line", { x1: ox, x2: ox + R.x * u, y1: oy - j * u, y2: oy - j * u, stroke: col, "stroke-width": 0.6, opacity: 0.6 }, svg);
+    el("text", { x: ox + R.x * u / 2, y: oy + 16, "text-anchor": "middle", "font-size": 12, fill: ink, "font-family": "var(--f-num)" }, svg).textContent = "x = " + fmt(R.x);
+    el("text", { x: ox + R.x * u + 6, y: oy - rh * u / 2 + 4, "font-size": 12, fill: ink, "font-family": "var(--f-num)" }, svg).textContent = dir ? "height " + R.k : "height = ?";
+    el("text", { x: W - pad, y: pad + 4, "text-anchor": "end", "font-size": 13, fill: col, "font-weight": 600 }, svg).textContent = dir ? "area = ? squares" : "area = " + R.k + " squares";
+    $("#rect-hint").textContent = dir
+      ? "The height stays at " + R.k + ". Drag the width, then work out the area (y) and type it into the table."
+      : "The area stays at " + R.k + " squares. Drag the width, then work out the height (y) that keeps the area the same and type it in.";
+  }
+  if (rebuildTable) {
+    const t = $("#rect-table"), xh = s.rect ? "x (width)" : `x: ${s.xn}`, yh = s.rect ? `y (${dir ? "area" : "height"})` : `y: ${s.yn}`;
+    if (!R.rows.length) t.innerHTML = `<tr><th>Your table</th><td style="font-family:var(--f-body);color:var(--muted);text-align:left">Press “${s.rect ? "Add this width" : "Add this value"}” to start.</td></tr>`;
+    else t.innerHTML = `<tr><th>${xh}</th>${R.rows.map(r => `<td>${fmt(r.x)}</td>`).join("")}</tr>`
+      + `<tr><th>${yh}</th>${R.rows.map((r, i) => `<td><input id="ry${i}" data-i="${i}" inputmode="decimal" value="${r.y}" class="${R.checked && r.y !== "" && !close(+r.y, yOf(r.x)) ? "bad" : ""}" aria-label="y for x = ${fmt(r.x)}"></td>`).join("")}</tr>`
+      + `<tr><th>y ÷ x</th>${R.rows.map((r, i) => `<td id="rr${i}"></td>`).join("")}</tr><tr><th>x × y</th>${R.rows.map((r, i) => `<td id="rp${i}"></td>`).join("")}</tr>`;
+    updateTestCells();
+  }
+  drawRectGraph();
+}
+
+/* ---------- Real-life tables ---------- */
+const TCTX = [
+  { g: "Direct variation (Lesson 1)", name: "Movie tickets", type: "direct", k: 12, text: "Movie tickets cost $12 each.", xn: "Tickets", yn: "Cost ($)", xs: [1, 2, 3, 4, 5, 6] },
+  { g: "Direct variation (Lesson 1)", name: "Petrol", type: "direct", k: 2.5, text: "Petrol costs $2.50 per litre.", xn: "Litres", yn: "Cost ($)", xs: [4, 8, 12, 16, 20, 40] },
+  { g: "Direct variation (Lesson 1)", name: "Pancakes", type: "direct", k: 6, text: "1 cup of flour makes 6 pancakes.", xn: "Cups of flour", yn: "Pancakes", xs: [1, 2, 3, 4, 5, 6] },
+  { g: "Direct variation (Lesson 1)", name: "Walking at 5 km/h", type: "direct", k: 5, text: "Mia walks at a steady 5 km/h.", xn: "Time (hours)", yn: "Distance (km)", xs: [1, 2, 3, 4, 5, 6] },
+  { g: "Direct variation (Lesson 1)", name: "Streaming video", type: "direct", k: 3, text: "Streaming video uses 3 GB of data per hour.", xn: "Time (hours)", yn: "Data (GB)", xs: [1, 2, 3, 4, 5, 6] },
+  { g: "Direct variation (Lesson 1)", name: "Casual pay", type: "direct", k: 15, text: "A casual worker earns $45 for 3 hours.", xn: "Hours", yn: "Pay ($)", xs: [1, 2, 3, 4, 6, 8] },
+  { g: "Inverse variation (Lesson 2)", name: "Chairs in rows", type: "inverse", k: 36, text: "36 chairs are set out in equal rows.", xn: "Rows", yn: "Chairs per row", xs: [1, 2, 3, 4, 6, 9] },
+  { g: "Inverse variation (Lesson 2)", name: "Sharing a pizza", type: "inverse", k: 16, text: "A 16-slice party pizza is shared equally.", xn: "People", yn: "Slices each", xs: [1, 2, 4, 8, 16] },
+  { g: "Inverse variation (Lesson 2)", name: "Sharing lollies", type: "inverse", k: 30, text: "A bag of 30 lollies is shared equally between friends.", xn: "Friends", yn: "Lollies each", xs: [1, 2, 3, 5, 6, 10] },
+  { g: "Inverse variation (Lesson 2)", name: "Bus hire", type: "inverse", k: 600, text: "A $600 bus hire is shared equally by the students who go.", xn: "Students", yn: "Cost each ($)", xs: [10, 15, 20, 25, 30, 40] },
+  { g: "Inverse variation (Lesson 2)", name: "Filling a pool", type: "inverse", k: 12, text: "One hose fills a pool in 12 hours. All hoses run at the same rate.", xn: "Hoses", yn: "Time (hours)", xs: [1, 2, 3, 4, 6, 12] },
+  { g: "Inverse variation (Lesson 2)", name: "Driving 120 km", type: "inverse", k: 120, text: "A family drives 120 km to the coast.", xn: "Speed (km/h)", yn: "Time (hours)", xs: [20, 30, 40, 60, 80, 100] },
+];
+const T = { i: 0, ys: [], checked: false, test: false, last: null };
+const tsel = $("#t-ctx");
+[...new Set(TCTX.map(c => c.g))].forEach(g => { const og = document.createElement("optgroup"); og.label = g;
+  TCTX.forEach((c, i) => { if (c.g === g) { const o = document.createElement("option"); o.value = i; o.textContent = c.name; og.appendChild(o); } }); tsel.appendChild(og); });
+tsel.addEventListener("change", () => { T.i = +tsel.value; resetTable(); });
+const tY = (c, x) => c.type === "direct" ? c.k * x : c.k / x;
+function resetTable() { const c = TCTX[T.i]; T.ys = c.xs.map(() => ""); T.checked = false; T.test = false; T.last = null; $("#t-fb").textContent = ""; buildTable(); }
+function buildTable() {
+  const c = TCTX[T.i]; $("#t-text").textContent = c.text;
+  $("#t-table").innerHTML = `<tr><th>${c.xn}</th>${c.xs.map(x => `<td>${fmt(x)}</td>`).join("")}</tr>`
+    + `<tr><th>${c.yn}</th>${c.xs.map((x, i) => `<td><input id="ty${i}" data-i="${i}" inputmode="decimal" value="${T.ys[i]}" class="${T.checked && T.ys[i] !== "" && !close(+T.ys[i], tY(c, x)) ? "bad" : ""}" aria-label="${c.yn} for ${fmt(x)}"></td>`).join("")}</tr>`
+    + (T.test ? `<tr><th>y ÷ x</th>${c.xs.map((x, i) => `<td id="tr${i}"></td>`).join("")}</tr><tr><th>x × y</th>${c.xs.map((x, i) => `<td id="tp${i}"></td>`).join("")}</tr>` : "");
+  updateTableTests(); drawTableGraph();
+}
+function updateTableTests() { if (!T.test) return; const c = TCTX[T.i];
+  c.xs.forEach((x, i) => { const v = T.ys[i], ok = v !== "" && isFinite(+v); document.getElementById("tr" + i).textContent = ok ? fmt(+v / x) : ""; document.getElementById("tp" + i).textContent = ok ? fmt(x * +v) : ""; }); }
+function drawTableGraph() {
+  const c = TCTX[T.i], col = css(c.type === "direct" ? "--direct" : "--inverse");
+  const pts = c.xs.map((x, i) => [x, T.ys[i]]).filter(p => p[1] !== "" && isFinite(+p[1])).map(p => [p[0], +p[1], T.checked ? close(+p[1], tY(c, p[0])) : true, p[0] === T.last]);
+  const xmax = Math.max(...c.xs) * 1.1, ymax = Math.max(...c.xs.map(x => tY(c, x))) * 1.1;
+  graph($("#t-graph"), { xmax, ymax, xlabel: c.xn.toLowerCase(), ylabel: c.yn.toLowerCase(), color: col, points: pts, join: true });
+}
+$("#t-table").addEventListener("input", e => { const inp = e.target.closest("input[data-i]"); if (!inp) return;
+  const i = +inp.dataset.i; T.ys[i] = inp.value.trim(); T.last = TCTX[T.i].xs[i]; T.checked = false; inp.classList.remove("bad"); updateTableTests(); drawTableGraph(); });
+$("#t-table").addEventListener("keydown", e => { if (e.key === "Enter") { const n = document.getElementById("ty" + (+e.target.dataset.i + 1)); if (n) n.focus(); } });
+$("#t-clear").addEventListener("click", resetTable);
+$("#t-test").addEventListener("click", () => { T.test = !T.test; $("#t-test").textContent = T.test ? "Hide y ÷ x and x × y" : "Show y ÷ x and x × y"; buildTable(); });
+$("#t-check").addEventListener("click", () => { const c = TCTX[T.i]; T.checked = true;
+  const filled = c.xs.map((x, i) => [x, T.ys[i]]).filter(p => p[1] !== "" && isFinite(+p[1])); const wrong = filled.filter(p => !close(+p[1], tY(c, p[0])));
+  const fb = $("#t-fb");
+  if (!filled.length) { fb.className = "fb no"; fb.textContent = "Type some values into the table first."; }
+  else if (wrong.length) { fb.className = "fb no"; fb.textContent = `${wrong.length} value${wrong.length > 1 ? "s" : ""} to fix (shown in red). Look at how the wrong point bends the graph.`; }
+  else if (filled.length < c.xs.length) { fb.className = "fb ok"; fb.textContent = `All ${filled.length} correct so far. Keep going.`; }
+  else { fb.className = "fb ok"; fb.textContent = c.type === "direct" ? `All correct. A straight line through the origin: direct variation, y = ${c.k}x.` : `All correct. A curve, and x × y is always ${c.k}: inverse variation, y = ${c.k}/x.`; }
+  buildTable(); });
+
+/* ---------- Double it ---------- */
+const CTX = [
+  { name: "Petrol", type: "direct", k: 2, x0: 5, text: "Petrol costs $2 per litre.", xn: "Litres", yn: "Cost ($)", xl: "litres", yl: "cost ($)", unitK: "the price, $2 per litre" },
+  { name: "Pancakes", type: "direct", k: 6, x0: 1, text: "1 cup of flour makes 6 pancakes.", xn: "Cups of flour", yn: "Pancakes", xl: "cups", yl: "pancakes", unitK: "6 pancakes per cup" },
+  { name: "Streaming video", type: "direct", k: 3, x0: 1, text: "Streaming video uses 3 GB per hour.", xn: "Time (hours)", yn: "Data (GB)", xl: "time (h)", yl: "data (GB)", unitK: "3 GB per hour" },
+  { name: "Sharing lollies", type: "inverse", k: 24, x0: 2, text: "24 lollies are shared equally between friends.", xn: "Friends", yn: "Lollies each", xl: "friends", yl: "lollies each", unitK: "the 24 lollies in the bag" },
+  { name: "Chairs in rows", type: "inverse", k: 24, x0: 2, text: "24 chairs are set out in equal rows.", xn: "Rows", yn: "Chairs per row", xl: "rows", yl: "chairs per row", unitK: "the 24 chairs" },
+  { name: "Bus hire", type: "inverse", k: 600, x0: 10, text: "A $600 bus hire is shared equally by students.", xn: "Students", yn: "Cost each ($)", xl: "students", yl: "cost each ($)", unitK: "the $600 total cost" },
+  { name: "Filling a pool", type: "inverse", k: 12, x0: 1, text: "One hose fills a pool in 12 hours.", xn: "Hoses", yn: "Time (hours)", xl: "hoses", yl: "time (h)", unitK: "12 hose-hours of water" },
+  { name: "Movie tickets", type: "direct", k: 8, x0: 2, text: "Movie tickets cost $8 each.", xn: "Tickets bought", yn: "Total cost ($)", xl: "tickets", yl: "cost ($)", unitK: "$8 per ticket" },
+  { name: "Car at 60 km/h", type: "direct", k: 60, x0: 1, text: "A car travels at a constant 60 km/h.", xn: "Time (hours)", yn: "Distance (km)", xl: "time (h)", yl: "distance (km)", unitK: "the speed, 60 km/h" },
+  { name: "Casual pay", type: "direct", k: 15, x0: 3, text: "A casual worker earns $45 for 3 hours.", xn: "Hours worked", yn: "Pay ($)", xl: "hours", yl: "pay ($)", unitK: "the pay rate, $15 per hour" },
+  { name: "Sharing a pizza", type: "inverse", k: 12, x0: 2, text: "A 12-slice pizza is shared equally.", xn: "People sharing", yn: "Slices each", xl: "people", yl: "slices each", unitK: "the 12 slices in the pizza" },
+  { name: "Painting a wall", type: "inverse", k: 8, x0: 2, text: "It takes 2 painters 4 hours to paint a wall.", xn: "Painters", yn: "Hours to finish", xl: "painters", yl: "hours", unitK: "8 painter-hours of work" },
+  { name: "Driving 120 km", type: "inverse", k: 120, x0: 30, text: "A family drives 120 km to the coast.", xn: "Speed (km/h)", yn: "Time (hours)", xl: "speed (km/h)", yl: "time (h)", unitK: "the 120 km distance" },
+];
+const D = { i: 0, x: 0, hist: [], pending: null };
+const sel = $("#ctx");
+[["direct", "Direct variation (Lesson 1)"], ["inverse", "Inverse variation (Lesson 2)"]].forEach(([t, g]) => { const og = document.createElement("optgroup"); og.label = g;
+  CTX.forEach((c, i) => { if (c.type === t) { const o = document.createElement("option"); o.value = i; o.textContent = c.name; og.appendChild(o); } }); sel.appendChild(og); });
+D.i = +sel.value;
+sel.addEventListener("change", () => { D.i = +sel.value; resetCtx(); });
+function resetCtx() { const c = CTX[D.i]; D.x = c.x0; D.hist = [[D.x, yC(D.x)]]; D.pending = null; $("#change").textContent = ""; $("#predict").hidden = true; drawCtx(); }
+const yC = (x) => { const c = CTX[D.i]; return c.type === "direct" ? c.k * x : c.k / x; };
+$("#reset").addEventListener("click", resetCtx);
+$("#ops").addEventListener("click", e => { const b = e.target.closest("button[data-op]"); if (!b) return; const m = +b.dataset.op;
+  if ($("#predict-on").checked) askPredict(m); else applyOp(m); });
+const opName = (m) => m === 2 ? "doubled" : m === 3 ? "tripled" : "halved";
+const opSym = (m) => m === 0.5 ? "÷ 2" : "× " + m;
+function askPredict(m) {
+  const c = CTX[D.i]; D.pending = m; $("#predict").hidden = false; $("#predict-fb").textContent = ""; $("#predict-fb").className = "fb";
+  $("#predict-q").textContent = `If the ${c.xn.toLowerCase().replace(/ \(.*\)/, "")} is ${opName(m)}, what happens to the ${c.yn.toLowerCase().replace(/ \(.*\)/, "")}?`;
+  const opts = [...new Set([m, 1 / m, 1])];
+  $("#predict-choices").innerHTML = opts.map(v => `<button data-v="${v}">${v === 1 ? "It stays the same" : v === 0.5 ? "It halves" : v === 2 ? "It doubles" : v === 3 ? "It triples" : "It is divided by 3"}</button>`).join("");
+}
+$("#predict-choices").addEventListener("click", e => { const b = e.target.closest("button"); if (!b || D.pending == null) return;
+  const m = D.pending, c = CTX[D.i], right = c.type === "direct" ? m : 1 / m, ok = Math.abs(+b.dataset.v - right) < 1e-9;
+  const fb = $("#predict-fb"); fb.className = "fb " + (ok ? "ok" : "no");
+  fb.textContent = ok ? "Correct. Watch the numbers change." : "Not quite. Watch what really happens.";
+  D.pending = null; setTimeout(() => applyOp(m), 450); });
+function applyOp(m) {
+  const c = CTX[D.i], nx = D.x * m;
+  const maxX = c.x0 * 12, minX = c.x0 / 4;
+  if (nx > maxX || nx < minX) { $("#change").textContent = "That goes off the graph. Press “Start again”."; return; }
+  const oy = yC(D.x); D.x = nx; const ny = yC(D.x); D.hist.push([D.x, ny]);
+  const ym = ny / oy; const ys = Math.abs(ym - 2) < 1e-9 ? "× 2" : Math.abs(ym - 3) < 1e-9 ? "× 3" : Math.abs(ym - 0.5) < 1e-9 ? "÷ 2" : "÷ 3";
+  $("#change").innerHTML = `<span style="color:${css(c.type === "direct" ? "--direct" : "--inverse")}">x ${opSym(m)}  →  y ${ys}</span>`;
+  drawCtx();
+}
+function drawCtx() {
+  const c = CTX[D.i], col = css(c.type === "direct" ? "--direct" : "--inverse");
+  $("#ctx-text").textContent = c.text; $("#x-name").textContent = c.xn; $("#y-name").textContent = c.yn;
+  $("#x-val").textContent = fmt(D.x); $("#y-val").textContent = fmt(yC(D.x));
+  const xmax = c.x0 * 6 > 12 ? c.x0 * 6 : 12; const xm = c.type === "inverse" ? Math.max(12, c.x0 * 6) : Math.max(8, c.x0 * 4);
+  const ymax = c.type === "direct" ? c.k * xm : c.k / (c.x0 / 2);
+  graph($("#ctx-graph"), { xmax: xm, ymax, xlabel: c.xl, ylabel: c.yl, color: col, points: D.hist, fn: yC, fnMin: c.type === "inverse" ? c.x0 / 4 : 0, highlight: [D.x, yC(D.x)] });
+  $("#ctx-rule").style.color = col;
+  $("#ctx-rule").textContent = c.type === "direct" ? `y = ${c.k}x   (direct: y ÷ x = ${c.k})` : `y = ${c.k} / x   (inverse: x × y = ${c.k})`;
+  $("#ctx-k").textContent = `The constant of variation, k = ${c.k}, is ${c.unitK}.`;
+}
+
+/* ---------- Mystery tables ---------- */
+const M = { data: null, type: null, k: null, choice: null, right: 0, total: 0, plotted: false, helped: false };
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+function newMystery() {
+  const t = ["direct", "inverse", "neither"][rnd(0, 2)]; let xs, ys, k = null;
+  if (t === "direct") { k = [2, 3, 4, 5, 6, 1.5, 2.5, 7][rnd(0, 7)]; const s = rnd(1, 2); xs = [1, 2, 3, 4, 5, 6, 8, 10].filter(() => true).sort(() => Math.random() - .5).slice(0, 4).sort((a, b) => a - b); ys = xs.map(x => k * x); }
+  else if (t === "inverse") { k = [12, 24, 30, 36, 48, 60][rnd(0, 5)]; const divs = []; for (let d = 1; d <= k; d++) if (k % d === 0) divs.push(d);
+    xs = divs.sort(() => Math.random() - .5).slice(0, 4).sort((a, b) => a - b); ys = xs.map(x => k / x); }
+  else { const kind = rnd(0, 2); xs = [1, 2, 3, 4];
+    if (kind === 0) { const m = rnd(2, 5), c = rnd(1, 6); ys = xs.map(x => m * x + c); }
+    else if (kind === 1) { const c = rnd(14, 24), m = rnd(2, 3); ys = xs.map(x => c - m * x); }
+    else { ys = xs.map(x => x * x + rnd(0, 1) * 0 ); } }
+  M.data = { xs, ys }; M.type = t; M.k = k; M.choice = null; M.plotted = false; M.helped = false;
+  $("#m-k").value = ""; $("#m-fb").textContent = ""; $("#m-fb").className = "fb";
+  drawMystery();
+}
+function drawMystery() {
+  const { xs, ys } = M.data;
+  $("#m-table").innerHTML = `<tr><th>x</th>${xs.map(v => `<td>${fmt(v)}</td>`).join("")}</tr><tr><th>y</th>${ys.map(v => `<td>${fmt(v)}</td>`).join("")}</tr>`
+    + `<tr><th>y ÷ x</th>${xs.map((v, i) => `<td>${M.helped ? fmt(ys[i] / v) : `<input id="mr${i}" aria-label="y divided by x, column ${i + 1}">`}</td>`).join("")}</tr>`
+    + `<tr><th>x × y</th>${xs.map((v, i) => `<td>${M.helped ? fmt(ys[i] * v) : `<input id="mp${i}" aria-label="x times y, column ${i + 1}">`}</td>`).join("")}</tr>`;
+  document.querySelectorAll("#m-type button").forEach(b => b.className = M.choice === b.dataset.t ? (b.dataset.t === "inverse" ? "on-inverse" : "on-direct") : "");
+  const xmax = Math.max(...xs) * 1.15, ymax = Math.max(...ys) * 1.15;
+  graph($("#m-graph"), { xmax: Math.ceil(xmax), ymax: Math.ceil(ymax), xlabel: "x", ylabel: "y", color: css("--ink"), points: M.plotted ? xs.map((x, i) => [x, ys[i]]) : [] });
+}
+$("#m-type").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; M.choice = b.dataset.t; drawMystery(); });
+$("#m-help").addEventListener("click", () => { M.helped = true; drawMystery(); });
+$("#m-plot").addEventListener("click", () => { M.plotted = true; drawMystery(); });
+$("#m-next").addEventListener("click", newMystery);
+$("#m-check").addEventListener("click", () => {
+  const fb = $("#m-fb");
+  if (!M.choice) { fb.className = "fb no"; fb.textContent = "Choose Direct, Inverse or Neither first."; return; }
+  M.total++;
+  const typeOK = M.choice === M.type; let msg;
+  if (!typeOK) { msg = M.type === "neither" ? "Not quite. Neither y ÷ x nor x × y stays the same, so this is neither."
+      : `Not quite. ${M.type === "direct" ? "y ÷ x" : "x × y"} is always ${M.k}, so this is ${M.type} variation.`; fb.className = "fb no"; }
+  else if (M.type === "neither") { M.right++; msg = "Correct. Neither the ratio nor the product stays the same."; fb.className = "fb ok"; }
+  else { const kv = parseFloat($("#m-k").value);
+    if (Math.abs(kv - M.k) < 1e-6) { M.right++; msg = `Correct, and k = ${M.k}. The rule is y = ${M.type === "direct" ? M.k + "x" : M.k + " / x"}.`; fb.className = "fb ok"; }
+    else { msg = `Right type. Now find k: ${M.type === "direct" ? "divide y by x" : "multiply x by y"}. (k = ${M.k})`; fb.className = "fb no"; } }
+  fb.textContent = msg; $("#m-score").textContent = `Score: ${M.right} / ${M.total}`;
+});
+
+/* ---------- Guided activity: one step at a time ---------- */
+const tabNow = () => (document.querySelector('.tab[aria-selected="true"]') || {}).dataset?.view;
+const sitName = () => RS[R.si].name;
+const rowsOK = (n) => R.rows.length >= n && R.rows.every(r => r.y !== "" && close(+r.y, yOf(r.x)));
+const lastRatio = () => { const h = D.hist; return h.length >= 2 ? h[h.length - 1][0] / h[h.length - 2][0] : null; };
+const P1 = "Part 1 · Keep the height fixed", P2 = "Part 2 · Keep the area fixed", P3 = "Part 3 · Real-life pictures", P4 = "Part 4 · Double it!", P5 = "Part 5 · Mystery tables", P6 = "Part 6 · Pull it together";
+const STEPS = [
+  { part: P1, kind: "do", text: "Click the **Rectangle model** tab at the top.", done: () => tabNow() === "rect" },
+  { part: P1, kind: "do", text: "In **Choose a model**, pick **Rectangle: keep the height fixed**. Leave the height at **3**.", done: () => tabNow() === "rect" && R.si === 0 && R.k === 3 },
+  { part: P1, kind: "do", text: "Drag the **Width** slider until the width is **4**.", done: () => R.si === 0 && R.k === 3 && R.x === 4 },
+  { part: P1, kind: "num", text: "Count the squares. What is the **area** of the rectangle now?", ans: 12, suffix: "squares", hint: "Area = width × height = 4 × 3." },
+  { part: P1, kind: "do", text: "Click **Add whole-number widths**. Type the area for every width into the y row. Keep going until they are all correct (use **Check my values**).", done: () => R.si === 0 && R.k === 3 && rowsOK(6), hint: "Area = width × height. The height is 3, so multiply each width by 3." },
+  { part: P1, kind: "choice", text: "Look at your table. When the width **doubles** from 2 to 4, what happens to the area?", opts: ["It doubles", "It halves", "It goes up by 2", "It stays the same"], correct: 0, hint: "The area went from 6 to 12. How many times bigger is 12 than 6?" },
+  { part: P1, kind: "num", text: "Look at the **y ÷ x** row. What number do you get every time?", ans: 3, hint: "Try 6 ÷ 2, or 12 ÷ 4." },
+  { part: P1, kind: "choice", text: "Where can you see that number in the rectangle?", opts: ["It is the height", "It is the width", "It is the area", "It is the number of rectangles"], correct: 0, hint: "Look at the label on the side of the rectangle." },
+  { part: P1, kind: "choice", text: "What does the graph look like?", opts: ["A straight line through (0, 0)", "A straight line that starts higher up", "A curve that gets closer to the x-axis", "A curve that gets steeper"], correct: 0, hint: "Look at where the line would start if the width was 0." },
+  { part: P1, kind: "num", text: "**Predict:** if the height was **5**, what would the rule be?", prefix: "y =", suffix: "x", ans: 5, hint: "With a height of 3 the rule is y = 3x." },
+  { part: P1, kind: "do", text: "Now move the **height** slider to **5** to check your prediction. Click **Show rule** if you like.", done: () => R.si === 0 && R.k === 5 },
+  { part: P2, kind: "do", text: "In **Choose a model**, pick **Rectangle: keep the area fixed**. Leave the area at **12**.", done: () => R.si === 1 && R.k === 12 },
+  { part: P2, kind: "do", text: "Click **Add whole-number widths**. Type the **height** for every width. Keep going until they are all correct.", done: () => R.si === 1 && R.k === 12 && rowsOK(6), hint: "The area must stay 12. Height = 12 ÷ width." },
+  { part: P2, kind: "choice", text: "When the width **doubles** from 2 to 4, what happens to the height?", opts: ["It halves", "It doubles", "It goes down by 2", "It stays the same"], correct: 0, hint: "The height went from 6 to 3." },
+  { part: P2, kind: "num", text: "Look at the **x × y** row. What number do you get every time?", ans: 12, hint: "Try 2 × 6, or 4 × 3." },
+  { part: P2, kind: "choice", text: "What does that number mean for the rectangle?", opts: ["It is the area", "It is the height", "It is the width", "It is the perimeter"], correct: 0, hint: "Width × height gives you …" },
+  { part: P2, kind: "do", text: "Tick **Trace the graph as I drag the width**. Then drag the width slowly from **1** all the way to **12**.", done: () => R.si === 1 && R.tracing && R.trace.some(p => p[0] <= 2) && R.trace.some(p => p[0] >= 11), hint: "Press Reset to start, then drag the Width slider slowly to the right." },
+  { part: P2, kind: "choice", text: "Could the height ever be **0**?", opts: ["No. The area would be 0, not 12", "Yes, when the width is 12", "Yes, when the width is very big", "Yes, at the end of the graph"], correct: 0, hint: "If the height was 0, what would the area be?" },
+  { part: P2, kind: "num", text: "What is the rule for this rectangle?", prefix: "y =", suffix: "÷ x", ans: 12, hint: "x × y is always 12, so y = 12 ÷ x." },
+  { part: P3, kind: "do", text: "In **Choose a model**, pick **Movie tickets**. Drag the slider and watch the picture.", done: () => sitName() === "Movie tickets" },
+  { part: P3, kind: "do", text: "Drag the slider to **5** tickets.", done: () => sitName() === "Movie tickets" && R.x === 5 },
+  { part: P3, kind: "num", text: "How much do **5** tickets cost?", prefix: "$", ans: 60, hint: "Each ticket picture shows $12." },
+  { part: P3, kind: "choice", text: "For movie tickets, k = 12. What does the **12** mean?", opts: ["The price of one ticket", "The number of tickets", "The total cost", "The number of people"], correct: 0, hint: "Look at the label under each ticket." },
+  { part: P3, kind: "do", text: "In **Choose a model**, pick **Sharing a pizza**. Drag the slider and watch how the pizza is cut up.", done: () => sitName() === "Sharing a pizza" && R.x > 1 },
+  { part: P3, kind: "choice", text: "As you move the slider, what **stays the same**?", opts: ["The total number of slices", "The slices each person gets", "The number of people", "Nothing stays the same"], correct: 0, hint: "Count all the slices in the whole pizza each time." },
+  { part: P3, kind: "do", text: "Click **Add the usual values**. Fill in the slices each, until they are all correct.", done: () => sitName() === "Sharing a pizza" && rowsOK(5), hint: "16 slices shared by 4 people is 16 ÷ 4." },
+  { part: P3, kind: "num", text: "What is **x × y** for the pizza every time?", ans: 16, hint: "Try 4 people × 4 slices each." },
+  { part: P3, kind: "choice", text: "The slider only stops at 1, 2, 4, 8 and 16 people. Why?", opts: ["Those numbers share 16 slices evenly", "A pizza can only feed 16 people", "The slider is broken", "Pizzas always have 8 slices"], correct: 0, hint: "What happens if 3 people share 16 slices?" },
+  { part: P4, kind: "do", text: "Click the **Double it!** tab. Make sure **Predict before you see the answer** is ticked.", done: () => tabNow() === "double" && $("#predict-on").checked },
+  { part: P4, kind: "do", text: "Choose a **direct** situation (such as Petrol). Press **× 2**, make your prediction, and watch.", done: () => tabNow() === "double" && CTX[D.i].type === "direct" && Math.abs(lastRatio() - 2) < 1e-9 },
+  { part: P4, kind: "choice", text: "In **direct** variation, when x is doubled, y is …", opts: ["doubled", "halved", "the same", "tripled"], correct: 0, hint: "Look at the change message under the numbers." },
+  { part: P4, kind: "do", text: "Now choose an **inverse** situation (such as Bus hire). Press **× 3**, make your prediction, and watch.", done: () => tabNow() === "double" && CTX[D.i].type === "inverse" && Math.abs(lastRatio() - 3) < 1e-9 },
+  { part: P4, kind: "choice", text: "In **inverse** variation, when x is tripled, y is …", opts: ["divided by 3", "tripled", "the same", "doubled"], correct: 0, hint: "Look at what happened to the cost each." },
+  { part: P5, kind: "do", text: "Click the **Mystery tables** tab. Decide whether each table is direct, inverse or neither, type k, and click **Check**. Then click **Next table**. Do **5 tables**.", done: (st) => tabNow() === "mystery" && M.total - (st.base ?? M.total) >= 5, enter: (st) => { st.base = M.total; }, progress: (st) => `${Math.max(0, M.total - (st.base ?? M.total))} of 5 tables checked` },
+  { part: P5, kind: "choice", text: "A table has **y ÷ x = 4, 4, 4, 4**. What type of variation is it?", opts: ["Direct", "Inverse", "Neither"], correct: 0, hint: "Which test stays the same for direct variation?" },
+  { part: P5, kind: "choice", text: "x: 1, 2, 3, 4   y: 5, 7, 9, 11. What type is it?", opts: ["Neither", "Direct", "Inverse"], correct: 0, hint: "Work out y ÷ x and x × y. Does either one stay the same?" },
+  { part: P6, kind: "choice", text: "Ali says: “As x goes up, y goes down, so it must be **inverse** variation.” Is Ali right?", opts: ["Not always. Water draining from a tank goes down, but it is neither", "Yes, that is what inverse means", "Yes, but only if the graph is a straight line", "No, inverse means y goes up"], correct: 0, hint: "For inverse, x × y has to stay the same." },
+  { part: P6, kind: "num", text: "y varies **inversely** with x, and y = 6 when x = 4. What is k?", prefix: "k =", ans: 24, hint: "For inverse variation, k = x × y." },
+  { part: P6, kind: "text", text: "Make up your own **inverse** situation. Say what stays the same (k).", min: 5 },
+];
+const G = { on: true, i: 0, answers: {}, tries: {}, st: {}, busy: false };
+const GKEY = "ve-guide-v2";
+// Fisher–Yates shuffle (unbiased). Re-shuffles if the correct answer would stay in the first slot.
+function shuffle(a) { do { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } } while (a[0] === 0 && Math.random() < 0.75); return a; }
+function gSave() {
+  const data = { on: G.on, i: G.i, answers: G.answers, tries: G.tries, st: G.st };
+  if (window.VE_MODE === "guest" || window.VE_MODE === "locked") return; // guests: nothing is saved
+  // Hook for saving to the student's account (e.g. Firebase): define window.veOnProgress(data) in the host page.
+  try { if (typeof window.veOnProgress === "function") window.veOnProgress({ ...data, step: G.i, total: STEPS.length }); } catch (e) {}
+}
+const md = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+function gAdvance(msg) {
+  if (G.busy) return; G.busy = true; const fb = $("#g-fb"); fb.className = "fb ok"; fb.textContent = msg || "Correct!";
+  setTimeout(() => { G.i++; G.busy = false; gSave(); gRender(); }, 900);
+}
+function gWrong(st) { G.tries[G.i] = (G.tries[G.i] || 0) + 1; gSave(); const fb = $("#g-fb"); fb.className = "fb no"; fb.textContent = "Not quite. " + (st.hint || "Have another look."); }
+function gRender() {
+  const box = $("#guide"), body = $("#g-body");
+  box.classList.toggle("collapsed", !G.on); $("#g-toggle").textContent = G.on ? "Hide steps" : "Show steps";
+  $("#g-bar").style.width = Math.round(100 * Math.min(G.i, STEPS.length) / STEPS.length) + "%";
+  if (G.i >= STEPS.length) {
+    $("#g-part").textContent = "All done!"; $("#g-count").textContent = `${STEPS.length} of ${STEPS.length}`;
+    const extra = Object.values(G.tries).reduce((a, b) => a + b, 0);
+    body.innerHTML = `<p class="g-text">Well done. You have finished every step. ${extra ? `You needed ${extra} extra tr${extra === 1 ? "y" : "ies"} along the way.` : "You got every question right first time."} You can keep exploring any tab.</p>`;
+    $("#g-fb").textContent = ""; return;
+  }
+  const st = STEPS[G.i], ss = (G.st[G.i] = G.st[G.i] || {});
+  if (st.enter && !ss.entered) { st.enter(ss); ss.entered = true; gSave(); }
+  $("#g-part").textContent = st.part; $("#g-count").textContent = `Step ${G.i + 1} of ${STEPS.length}`;
+  let h = `<p class="g-text">${st.kind === "do" ? '<span class="g-tag">Do this</span> ' : '<span class="g-tag q">Question</span> '}${md(st.text)}</p>`;
+  if (st.kind === "do") h += `<div class="g-row"><span class="g-wait" id="g-wait">${st.progress ? st.progress(ss) : "Waiting for you to do this on screen…"}</span>${st.hint ? '<button class="btn ghost" id="g-hint">Hint</button>' : ""}</div>`;
+  if (st.kind === "num") h += `<div class="g-row">${st.prefix ? `<span>${md(st.prefix)}</span>` : ""}<input id="g-in" inputmode="decimal" aria-label="Your answer">${st.suffix ? `<span>${md(st.suffix)}</span>` : ""}<button class="btn" id="g-check">Check</button></div>`;
+  if (st.kind === "choice") { const order = ss.order || (ss.order = shuffle(st.opts.map((_, i) => i))); gSave();
+    h += `<div class="g-choices">${order.map(i => `<button class="g-opt" data-i="${i}">${md(st.opts[i])}</button>`).join("")}</div>`; }
+  if (st.kind === "text") h += `<textarea id="g-txt" rows="3" aria-label="Your answer">${G.answers[G.i] || ""}</textarea><div class="g-row"><button class="btn" id="g-save">Save and finish</button></div>`;
+  body.innerHTML = h; $("#g-fb").textContent = ""; $("#g-fb").className = "fb";
+  const inp = $("#g-in"); if (inp) { inp.addEventListener("keydown", e => { if (e.key === "Enter") $("#g-check").click(); }); }
+}
+$("#guide").addEventListener("click", e => {
+  const st = STEPS[G.i]; if (!st || G.busy) return;
+  if (e.target.id === "g-check") { const v = $("#g-in").value.trim(); if (v === "") return; G.answers[G.i] = v;
+    if (isFinite(+v) && close(+v, st.ans)) gAdvance("Correct!"); else gWrong(st); }
+  const opt = e.target.closest(".g-opt"); if (opt) { G.answers[G.i] = st.opts[+opt.dataset.i];
+    if (+opt.dataset.i === st.correct) { opt.classList.add("right"); gAdvance("Correct!"); } else { opt.classList.add("wrong"); opt.disabled = true; gWrong(st); } }
+  if (e.target.id === "g-hint") { const fb = $("#g-fb"); fb.className = "fb"; fb.textContent = "Hint: " + st.hint; }
+  if (e.target.id === "g-save") { const v = $("#g-txt").value.trim(); G.answers[G.i] = v;
+    if (v.split(/\s+/).filter(Boolean).length < (st.min || 1)) { const fb = $("#g-fb"); fb.className = "fb no"; fb.textContent = "Write a full sentence: what is the situation, and what stays the same?"; }
+    else gAdvance("Well done! Share this answer with your teacher."); }
+});
+$("#g-toggle").addEventListener("click", () => { G.on = !G.on; gSave(); gRender(); });
+$("#g-restart").addEventListener("click", (e) => {
+  const b = e.currentTarget; if (b.dataset.sure !== "1") { b.dataset.sure = "1"; b.textContent = "Sure? Click again"; setTimeout(() => { b.dataset.sure = ""; b.textContent = "Start again"; }, 3000); return; }
+  b.dataset.sure = ""; b.textContent = "Start again"; Object.assign(G, { i: 0, answers: {}, tries: {}, st: {}, busy: false }); gSave(); gRender(); });
+setInterval(() => {
+  if (window.VE_MODE === "locked") return;
+  const st = STEPS[G.i]; if (!st || st.kind !== "do" || G.busy) return; const ss = G.st[G.i] || {};
+  if (st.progress) { const w = $("#g-wait"); if (w) w.textContent = st.progress(ss); }
+  try { if (st.done(ss)) gAdvance("Done!"); } catch (e) {}
+}, 400);
+gRender();
+// API for the sign-in page: load a student's saved progress, or start fresh (guests).
+window.veGuide = {
+  load(data) { Object.assign(G, { i: 0, answers: {}, tries: {}, st: {}, on: true }, data || {}, { busy: false }); gRender(); },
+  fresh() { Object.assign(G, { i: 0, answers: {}, tries: {}, st: {}, on: true, busy: false }); gRender(); },
+  total: STEPS.length,
+};
+
+function drawAll() { drawRect(true); drawTableGraph(); drawCtx(); drawMystery(); }
+setSit(0); resetTable(); resetCtx(); newMystery();
+try { const t = localStorage.getItem("ve-tab"); if (t && t !== "rect") document.querySelector(`.tab[data-view="${t}"]`).click(); } catch (e) {}
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", drawAll);
+new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+</script>
+
+<style>
+#who { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; margin-top: 12px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); font-size: .92rem; }
+#who.guest { background: #FFF4D6; border-color: #C8961E; color: #6B4B00; }
+#who .who-actions { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#who-switch { font: inherit; font-size: .85rem; background: transparent; border: 1px solid currentColor; color: inherit; border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+</style>
+<div id="who" hidden>
+  <span id="who-text"></span>
+  <span class="who-actions"><span id="signInSlot"></span><button type="button" id="who-switch">Switch student</button></span>
+</div>
+<script>
+// Hooks the guided steps up to the Maths Hub student sign-in (assets/js/portal/quizSignIn.js).
+// Signed in: progress is reported after every step, the "Submit my work" button saves the
+// score so far, and finishing all steps saves the final score. Only scores are saved.
+// Guests: nothing is saved anywhere.
+(function () {
+  var TOOL = { toolId: "variation-explorer", title: "Variation Explorer", topic: "Variation and rates of change" };
+  var KEY = "ve-guide-v2:";
+  var who = document.getElementById("who"), whoText = document.getElementById("who-text");
+  var wrap = document.querySelector(".wrap");
+  wrap.insertBefore(who, document.getElementById("guide"));
+  document.getElementById("who-switch").addEventListener("click", function () { location.reload(); });
+  var me = null, saved = false;
+
+  function score(d) { var s = 0, n = Math.min(d.i, d.total); for (var k = 0; k < n; k++) if (!(d.tries && d.tries[k])) s++; return s; }
+  function keep(d) { try { localStorage.setItem(KEY + me, JSON.stringify({ data: d, saved: saved })); } catch (e) {} }
+
+  window.veOnProgress = function (d) {
+    if (window.VE_MODE !== "student" || !me) return;
+    var answered = Math.min(d.i, d.total), s = score(d);
+    if (answered < d.total) saved = false;
+    keep(d);
+    PlatformProgress(Object.assign({ score: s, answered: answered, total: d.total }, TOOL));
+    if (answered >= d.total && !saved) {
+      saved = true; keep(d);
+      PlatformSave(Object.assign({ score: s, total: d.total }, TOOL));
+    }
+  };
+
+  window.addEventListener("platform-auth", function (e) {
+    var mode = e.detail.mode, st = e.detail.student || {};
+    who.hidden = false;
+    if (mode === "signed-in") {
+      me = String(st.studentCode || st.id || st.name || "student");
+      var rec = null; try { rec = JSON.parse(localStorage.getItem(KEY + me) || "null"); } catch (x) {}
+      saved = !!(rec && rec.saved);
+      window.VE_MODE = "student";
+      window.veGuide.load(rec && rec.data);
+      var d = (rec && rec.data) || { i: 0, tries: {} }, total = window.veGuide.total;
+      PlatformProgress(Object.assign({ score: score({ i: d.i || 0, tries: d.tries, total: total }), answered: Math.min(d.i || 0, total), total: total }, TOOL));
+      who.className = "";
+      whoText.innerHTML = "Your progress is saved as you go. Press <b>Submit my work</b> if you need to stop early.";
+    } else {
+      me = null; window.VE_MODE = "guest";
+      window.veGuide.fresh();
+      who.className = "guest";
+      whoText.innerHTML = "<b>Guest mode:</b> your work will not be saved. Ask your teacher for a student code.";
+    }
+  });
+})();
+</script>
+
+<!-- Student sign-in, guest option and "Submit my work" button. Keep this last before </body>. -->
+<script src="../../../../assets/js/portal/quizSignIn.js"></script>
+</body></html>

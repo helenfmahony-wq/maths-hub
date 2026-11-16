@@ -27,6 +27,14 @@ export const TOOLS = Object.freeze([
     enabled: true,
   },
   {
+    toolId: "variation-explorer",
+    title: "Variation Explorer",
+    topic: "Variation and rates of change",
+    stage: "Stage 5",
+    path: "tools/number-algebra/variation-and-rates-of-change/variation-explorer/index.html",
+    enabled: true,
+  },
+  {
     // The copy-me example in portal/quiz-template.html. Also used by demo mode.
     toolId: "times-tables",
     title: "Times Tables Check-in (sample)",

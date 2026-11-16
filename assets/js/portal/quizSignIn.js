@@ -7,7 +7,7 @@
  *
  * (adjust the ../ to reach assets/ from where the quiz lives).
  *
- * It shows a "Student code" box when the page opens, with a Skip button so a
+ * It shows a "Student code" box when the page opens, with a Continue as guest button so a
  * quiz still works for a guest. Every quiz then makes TWO kinds of call:
  *
  * 1. After EVERY question is answered (and with answered: 0 when an attempt
@@ -59,11 +59,11 @@
     '<div class="ps-back" id="psBack" role="dialog" aria-modal="true" aria-labelledby="psTitle">' +
     '<div class="ps-card">' +
     '<h2 id="psTitle">Student sign in</h2>' +
-    "<p>Type your student code so your result is saved for your teacher. No code? Press <b>Skip</b> — you can still do the quiz.</p>" +
+    "<p>Type your student code so your result is saved for your teacher. No code? Press <b>Continue as guest</b> — you can still do the quiz, but nothing is saved.</p>" +
     '<label for="psCode">Student code</label>' +
     '<input id="psCode" autocomplete="off" spellcheck="false">' +
     '<div id="psPinWrap" style="display:none;margin-top:12px"><label for="psPin">PIN</label><input id="psPin" autocomplete="off" inputmode="numeric"></div>' +
-    '<div class="ps-row"><button class="ps-btn go" id="psGo" type="button">Start</button><button class="ps-btn" id="psSkip" type="button">Skip</button></div>' +
+    '<div class="ps-row"><button class="ps-btn go" id="psGo" type="button">Start</button><button class="ps-btn" id="psSkip" type="button">Continue as guest</button></div>' +
     '<div class="ps-msg" id="psMsg"></div>' +
     "</div></div>" +
     '<div class="ps-toast" id="psToast"></div>';
@@ -94,6 +94,11 @@
   function close() { $("psBack").style.display = "none"; }
   function open() { say(""); $("psBack").style.display = "flex"; setTimeout(function () { $("psCode").focus(); }, 50); }
   function name() { return student ? (student.name || student.studentCode) : ""; }
+
+  // Tells the page who is using it: listen for "platform-auth" (detail: { mode, student }).
+  function announce() {
+    try { window.dispatchEvent(new CustomEvent("platform-auth", { detail: { mode: mode, student: student } })); } catch (e) { /* ignore */ }
+  }
 
   var chip = null;
   function paintChip() {
@@ -139,13 +144,13 @@
   function go() {
     var code = String($("psCode").value || "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
     $("psCode").value = code;
-    if (!code) { say("Type your code, or press Skip.", "#b42318"); return; }
+    if (!code) { say("Type your code, or press Continue as guest.", "#b42318"); return; }
     say("Checking…");
     load().then(function (c) {
-      if (!c) { say("Sign-in isn't available here — press Skip to carry on.", "#b42318"); return; }
+      if (!c) { say("Sign-in isn't available here — press Continue as guest to carry on.", "#b42318"); return; }
       return c.signIn(code, $("psPin").value).then(function (r) {
         if (r && r.ok) {
-          mode = "signed-in"; student = r.profile; paintChip();
+          mode = "signed-in"; student = r.profile; paintChip(); announce();
           say("Signed in as " + name(), "#25633a");
           setTimeout(close, 450);
         } else {
@@ -157,7 +162,7 @@
   }
 
   $("psGo").addEventListener("click", go);
-  $("psSkip").addEventListener("click", function () { mode = "guest"; student = null; paintChip(); close(); });
+  $("psSkip").addEventListener("click", function () { mode = "guest"; student = null; paintChip(); close(); announce(); });
   [$("psCode"), $("psPin")].forEach(function (el) {
     el.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); go(); } });
   });

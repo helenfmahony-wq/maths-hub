@@ -103,6 +103,7 @@ When Stage 6 tools are added, give them a top-level `tools/stage-6/<course>/<top
 |---|---|---|
 | Equation Models | tools/number-algebra/equations/equation-models/ | 4 |
 | Rise & Run (+ quiz.html) | tools/number-algebra/linear-relationships/rise-and-run/ | 5 |
+| Variation Explorer (saves to portal) | tools/number-algebra/variation-and-rates-of-change/variation-explorer/ | 5 |
 | Which Is Bigger? | tools/measurement-space/numbers-of-any-magnitude/which-is-bigger/ | 5 |
 | Quadrilateral Lab | tools/measurement-space/properties-of-geometrical-figures/quadrilateral-lab/ | 4 |
 | Chance Lab | tools/statistics-probability/probability/chance-lab/ | 4 |
