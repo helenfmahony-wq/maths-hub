@@ -109,6 +109,7 @@ When Stage 6 tools are added, give them a top-level `tools/stage-6/<course>/<top
 | Chance Lab | tools/statistics-probability/probability/chance-lab/ | 4 |
 | Hi-Low Predictions | tools/statistics-probability/probability/hi-low-predictions/ | 4 |
 | Egg Roulette Lab | tools/statistics-probability/probability/egg-roulette-lab/ | 5 |
+| Class Data Grapher (saves to portal) | tools/statistics-probability/data-analysis/class-data-grapher/ | 4 |
 | Quartiles & IQR Explorer | tools/statistics-probability/data-analysis/quartiles-iqr-explorer/ | 5 |
 
 ## Adding a new tool

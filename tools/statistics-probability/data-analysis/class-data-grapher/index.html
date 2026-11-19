@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Class Data Grapher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f3ef;
+    --surface: #fcfcfb;
+    --surface-2: #f0efe9;
+    --border: #dcdad2;
+    --text: #0b0b0b;
+    --text-2: #52514e;
+    --muted: #8a8880;
+    --grid: #e6e4dc;
+    --series-1: #2a78d6;
+    --accent: #2a78d6;
+    --accent-ink: #ffffff;
+    --mode: #eb6834;
+    --good: #0b7a3e;
+    --good-bg: #e3f4ea;
+    --bad: #b3261e;
+    --bad-bg: #fbe9e7;
+    --mark: #fff1a8;
+    --c1:#2a78d6; --c2:#eb6834; --c3:#1baf7a; --c4:#eda100; --c5:#e87ba4; --c6:#008300;
+    --c7:#6250d6; --c8:#e34948; --c9:#0f8b8d; --c10:#8a5a2b; --c11:#7a7a7a; --c12:#b8327a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #121211;
+      --surface: #1a1a19;
+      --surface-2: #232321;
+      --border: #3a3936;
+      --text: #f0efec;
+      --text-2: #c3c2b7;
+      --muted: #8f8d85;
+      --grid: #2e2d2a;
+      --series-1: #3987e5;
+      --accent: #3987e5;
+      --mode: #d95926;
+      --good: #6fd39a;
+      --good-bg: #183323;
+      --bad: #ff8a80;
+      --bad-bg: #3a1c1a;
+      --mark: #5a4d10;
+      --c1:#3987e5; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181; --c6:#0ca30c;
+      --c7:#9085e9; --c8:#e66767; --c9:#2aa5a7; --c10:#b07a45; --c11:#9a9a9a; --c12:#d0549a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Lexend", system-ui, sans-serif; font-size: 16px; line-height: 1.45;
+  }
+  header {
+    padding: 18px 24px 14px; display: flex; flex-wrap: wrap; gap: 14px 24px;
+    align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border); background: var(--surface);
+  }
+  h1 { font-size: 1.45rem; margin: 0; font-weight: 700; }
+  h1 span { color: var(--accent); }
+  .picker { display: flex; align-items: center; gap: 10px; }
+  .picker label { font-weight: 600; }
+  .head-right { display: flex; align-items: center; gap: 12px 18px; flex-wrap: wrap; }
+  .back-link { color: var(--text-2); font-size: .9rem; text-decoration: none; }
+  .back-link:hover { color: var(--accent); text-decoration: underline; }
+  .save-note { font-weight: 500; font-size: .92rem; margin-top: 6px; }
+  select, input[type=text], input[type=number] {
+    font: inherit; padding: 9px 12px; border-radius: 10px; border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--text); min-width: 0;
+  }
+  select:focus, input:focus { outline: 3px solid color-mix(in srgb, var(--accent) 35%, transparent); border-color: var(--accent); }
+  #varSelect { font-weight: 600; font-size: 1.05rem; min-width: 260px; }
+  @media (max-width: 520px) { .picker { flex-wrap: wrap; } #varSelect { min-width: 0; width: 100%; } }
+  main {
+    display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 20px;
+    padding: 20px 24px 40px; max-width: 1400px; margin: 0 auto;
+  }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } #chartPanel { order: -1; } }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px 18px 16px; margin-bottom: 16px;
+  }
+  .card h2 { margin: 0 0 6px; font-size: 1.12rem; display: flex; align-items: center; gap: 10px; }
+  .num {
+    display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink); font-size: .95rem; flex: none;
+  }
+  .card.locked { opacity: .55; }
+  .card p { margin: 6px 0 10px; color: var(--text-2); }
+  .type-note {
+    font-size: .92rem; color: var(--text-2); background: var(--surface-2);
+    border-radius: 10px; padding: 9px 12px; margin: 0 0 12px;
+  }
+  .type-note b { color: var(--text); }
+  .opt-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+  button {
+    font: inherit; cursor: pointer; border-radius: 10px; border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--text); padding: 8px 14px; font-weight: 500;
+  }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+  button.opt { padding: 10px 16px; font-weight: 600; }
+  button.opt:active { transform: scale(.97); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.primary:disabled { opacity: .45; cursor: not-allowed; }
+  button.small { padding: 5px 10px; font-size: .88rem; }
+  button.danger { color: var(--bad); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row input { flex: 1 1 120px; }
+  .unit { color: var(--text-2); font-weight: 500; }
+  .warn { color: var(--bad); font-size: .9rem; min-height: 1.2em; margin-top: 6px; }
+  .entries { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 8px; max-height: 150px; overflow: auto; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; background: var(--surface-2);
+    border-radius: 999px; padding: 3px 4px 3px 10px; font-size: .9rem;
+  }
+  .chip small { color: var(--muted); }
+  .chip button { border: none; background: transparent; padding: 0 6px; font-size: 1rem; color: var(--muted); line-height: 1; }
+  .chip button:hover { color: var(--bad); }
+  .count-line { font-size: .92rem; color: var(--text-2); display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  table.freq { width: 100%; border-collapse: collapse; margin: 10px 0 4px; font-size: .92rem; }
+  table.freq th, table.freq td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+  table.freq th { color: var(--text-2); font-weight: 600; }
+  table.freq td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  table.freq th.n { text-align: right; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-weight: 600; font-size: .95rem; margin-bottom: 4px; }
+  .field input { width: 100%; }
+  details.hint { margin: 4px 0 12px; font-size: .92rem; color: var(--text-2); }
+  details.hint summary { cursor: pointer; color: var(--accent); font-weight: 500; }
+  .msg { font-size: .93rem; border-radius: 10px; padding: 8px 12px; margin-top: 10px; }
+  .msg.good { background: var(--good-bg); color: var(--good); }
+  .msg.bad { background: var(--bad-bg); color: var(--bad); }
+  .q { padding: 12px 0; border-top: 1px solid var(--border); }
+  .q:first-of-type { border-top: none; padding-top: 4px; }
+  .q-text { font-weight: 500; margin-bottom: 8px; }
+  .q .row select, .q .row input { flex: 1 1 140px; }
+  /* glossary term */
+  .term {
+    position: relative; background: var(--mark); border-radius: 4px; padding: 0 4px;
+    font-weight: 700; cursor: help; border-bottom: 2px dotted var(--text-2);
+  }
+  .term .tip {
+    visibility: hidden; opacity: 0; position: absolute; left: 50%; bottom: calc(100% + 8px);
+    transform: translateX(-50%); width: max-content; max-width: 240px;
+    background: var(--text); color: var(--surface); font-weight: 400; font-size: .88rem;
+    padding: 8px 11px; border-radius: 8px; z-index: 10; transition: opacity .15s; line-height: 1.35;
+    pointer-events: none; white-space: normal; text-align: left;
+  }
+  .term .tip::after {
+    content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 6px solid transparent; border-top-color: var(--text);
+  }
+  .term:hover .tip, .term:focus .tip { visibility: visible; opacity: 1; }
+  .done-banner {
+    background: var(--good-bg); color: var(--good); border-radius: 12px; padding: 12px 14px;
+    font-weight: 600; margin-top: 12px;
+  }
+  /* chart panel */
+  #chartPanel { position: sticky; top: 16px; align-self: start; }
+  @media (max-width: 900px) { #chartPanel { position: static; } }
+  .chart-card { padding: 16px; }
+  .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .chart-head .kind { font-weight: 600; color: var(--text-2); font-size: .95rem; }
+  .seg { display: inline-flex; background: var(--surface-2); border-radius: 12px; padding: 3px; gap: 2px; }
+  .seg button { border: none; background: transparent; padding: 7px 14px; border-radius: 9px; font-weight: 600; color: var(--text-2); }
+  .seg button[aria-pressed=true] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  #chartWrap { position: relative; }
+  #chart svg { width: 100%; height: auto; display: block; font-family: "Lexend", system-ui, sans-serif; }
+  .empty {
+    display: grid; place-items: center; text-align: center; min-height: 380px;
+    color: var(--muted); border: 2px dashed var(--border); border-radius: 12px; padding: 20px;
+  }
+  .empty .big { font-size: 2.6rem; margin-bottom: 6px; }
+  #tooltip {
+    position: absolute; pointer-events: none; background: var(--text); color: var(--surface);
+    padding: 7px 11px; border-radius: 8px; font-size: .88rem; white-space: nowrap;
+    transform: translate(-50%, calc(-100% - 12px)); opacity: 0; transition: opacity .1s; z-index: 5;
+  }
+  .legend-note { font-size: .85rem; color: var(--muted); margin-top: 6px; }
+  svg .tick { fill: var(--text-2); font-size: 13px; }
+  svg .axis-title { fill: var(--text); font-size: 15px; font-weight: 600; }
+  svg .chart-title { fill: var(--text); font-size: 19px; font-weight: 700; }
+  svg .placeholder { fill: var(--muted); font-style: italic; font-weight: 500; }
+  svg .gridline { stroke: var(--grid); stroke-width: 1; }
+  svg .axis { stroke: var(--text-2); stroke-width: 1.5; }
+  svg .mode-tag { fill: var(--mode); font-size: 13px; font-weight: 700; }
+  svg .legend-text { fill: var(--text); font-size: 14px; }
+  svg .legend-count { fill: var(--text-2); font-size: 13px; }
+  svg .hit { fill: transparent; cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <a class="back-link" href="../../../../student-practice.html">← Student Practice</a>
+    <h1>Class Data <span>Grapher</span></h1>
+  </div>
+  <div class="head-right">
+    <div class="picker">
+      <label for="varSelect">Choose data to graph:</label>
+      <select id="varSelect"></select>
+    </div>
+    <span id="signInSlot"></span>
+  </div>
+</header>
+
+<main>
+  <section id="leftPanel" aria-label="Data entry and questions">
+    <div class="card" id="step1"></div>
+    <div class="card" id="step2"></div>
+    <div class="card" id="step3"></div>
+  </section>
+
+  <section id="chartPanel" aria-label="Graph">
+    <div class="card chart-card">
+      <div class="chart-head">
+        <div class="kind" id="chartKind"></div>
+        <div id="chartToggle"></div>
+      </div>
+      <div id="chartWrap">
+        <div id="chart"></div>
+        <div id="tooltip" role="status"></div>
+      </div>
+      <div class="legend-note" id="chartNote"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const VARS = {
+  height:    { name: 'Height', type: 'measure', unit: 'cm', noun: 'height', plural: 'heights', min: 100, max: 220 },
+  pets:      { name: 'Number of pets', type: 'count', noun: 'number of pets', plural: 'numbers of pets', min: 0, max: 30 },
+  month:     { name: 'Birth month', type: 'cat', options: MONTHS, noun: 'birth month', allowOther: false },
+  eye:       { name: 'Eye colour', type: 'cat', options: ['Brown','Blue','Green','Hazel','Grey'], noun: 'eye colour', allowOther: true },
+  reaction:  { name: 'Reaction time', type: 'measure', units: ['seconds', 'cm'], unitNames: { seconds: 'seconds (s)', cm: 'cm (ruler drop)' }, noun: 'reaction time', plural: 'reaction times' },
+  transport: { name: 'How did you get to school today?', type: 'cat', options: ['Bus','Car','Walk','Bike'], noun: 'way of getting to school', allowOther: true },
+  arm:       { name: 'Arm span', type: 'measure', unit: 'cm', noun: 'arm span', plural: 'arm spans', min: 100, max: 230 },
+  hand:      { name: 'Hand span', type: 'measure', unit: 'cm', noun: 'hand span', plural: 'hand spans', min: 10, max: 30 },
+};
+const ORDER = ['height','pets','month','eye','reaction','transport','arm','hand'];
+const TYPE_TEXT = {
+  cat: '<b>Categorical data</b>: the answers are sorted into groups (categories), so we show it as a <b>column graph</b> or a <b>pie chart</b>.',
+  count: '<b>Numerical data (counting)</b>: the answers are whole numbers you get by counting, so we show it as a <b>column graph</b> or a <b>pie chart</b>.',
+  measure: '<b>Numerical data (measurement)</b>: the answers are measured with an instrument (a ruler, a tape measure or a stopwatch), so we show it as a <b>line graph</b>.',
+};
+const STORE_KEY = 'classDataGrapher.v1';
+// Work is kept in this browser, separately for each signed-in student (and once for guests),
+// so two students sharing a computer never see or submit each other's work.
+let storeKey = STORE_KEY;
+let store = {};
+let cur = 'eye';
+function loadStore(key) {
+  storeKey = key;
+  try { store = JSON.parse(localStorage.getItem(storeKey)) || {}; } catch (e) { store = {}; }
+  cur = 'eye';
+  try { const c = localStorage.getItem(storeKey + '.cur'); if (c && VARS[c]) cur = c; } catch (e) {}
+}
+loadStore(STORE_KEY);
+
+function persist() {
+  try { localStorage.setItem(storeKey, JSON.stringify(store)); localStorage.setItem(storeKey + '.cur', cur); } catch (e) {}
+}
+function save() { persist(); report(); }
+function resetAnswers(s) { s.answers = {}; s.first = {}; s.saved = false; }
+
+/* ---------- Maths Hub portal: progress, "Submit my work" and saving ----------
+   Each data set is marked out of 4: 1 for labelling the graph, plus 1 for each of the
+   3 questions answered correctly on the first try. Progress is reported after every step
+   (this powers the Submit my work button), and the score is saved when all 3 questions
+   are correct. Only the score is saved, never the class data. */
+const TOOL = { toolId: 'class-data-grapher', topic: 'Data classification, visualisation and analysis' };
+const MARKS = 4;
+let authMode = 'pending';
+function marks() {
+  const s = S();
+  const labelled = s.stage >= 3 ? 1 : 0;
+  const first = s.first || {};
+  const ids = questions().map(q => q.id).filter(id => first[id] !== undefined);
+  return { score: labelled + ids.filter(id => first[id]).length, answered: labelled + ids.length };
+}
+function allCorrect() {
+  const s = S(), qs = questions();
+  return s.stage >= 3 && qs.length > 0 && qs.every(q => s.answers[q.id] && s.answers[q.id].correct);
+}
+function report() {
+  if (authMode === 'pending' || !window.PlatformProgress) return;
+  const s = S(), m = marks();
+  const info = Object.assign({ title: 'Class Data Grapher: ' + V().name, total: MARKS }, TOOL);
+  if (s.saved) { PlatformProgress(Object.assign({ score: 0, answered: 0 }, info)); return; }
+  PlatformProgress(Object.assign({ score: m.score, answered: m.answered }, info));
+  if (allCorrect()) {
+    s.saved = true; persist();
+    PlatformSave(Object.assign({ score: m.score }, info)).then(r => {
+      s.savedOk = !!(r && r.saved); persist();
+      const n = document.getElementById('saveNote'); if (n) n.innerHTML = saveNoteText();
+    });
+  }
+}
+function saveNoteText() {
+  const s = S();
+  if (!s.saved) return '';
+  const m = marks();
+  return s.savedOk
+    ? `Score ${m.score} out of ${MARKS}, saved for your teacher. ✓`
+    : `Score ${m.score} out of ${MARKS}. Not saved: you’re in guest mode, so tell your teacher your score.`;
+}
+window.addEventListener('platform-auth', e => {
+  const d = e.detail || {}, st = d.student || {};
+  authMode = d.mode;
+  loadStore(d.mode === 'signed-in' ? STORE_KEY + ':' + String(st.studentCode || st.name || 'student') : STORE_KEY);
+  sel.value = cur;
+  renderAll();
+  report();
+});
+function V() { return VARS[cur]; }
+function S() {
+  if (!store[cur]) {
+    const v = V();
+    store[cur] = { data: [], labels: { title: '', x: '', y: '' }, chart: 'column', stage: 1,
+                   unit: v.units ? v.units[0] : v.unit, answers: {} };
+  }
+  return store[cur];
+}
+function unit() { const s = S(); return s.unit || V().unit || ''; }
+function unitShort() { const u = unit(); return u === 'seconds' ? 's' : u; }
+function esc(t) { return String(t).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+function fmt(n) { return Number.isInteger(n) ? String(n) : String(Math.round(n * 1000) / 1000); }
+function titleCase(t) { return t.trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
+function chartType() { return V().type === 'measure' ? 'line' : S().chart; }
+function term(word, tip) { return `<span class="term" tabindex="0">${word}<span class="tip">${tip}</span></span>`; }
+function listWords(a) { return a.length <= 1 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+function times(n) { return n === 1 ? '1 time' : n + ' times'; }
+
+/* ---------- frequencies ---------- */
+function freq() {
+  const v = V(), s = S();
+  if (v.type === 'count') {
+    const vals = s.data.map(Number);
+    if (!vals.length) return [];
+    const mx = Math.max(...vals);
+    const out = [];
+    for (let i = 0; i <= mx; i++) out.push({ k: String(i), c: vals.filter(x => x === i).length });
+    return out;
+  }
+  const order = [...v.options];
+  s.data.forEach(x => { if (!order.includes(x)) order.push(x); });
+  return order.map(k => ({ k, c: s.data.filter(d => d === k).length })).filter(d => d.c > 0);
+}
+function stats() {
+  const f = freq().filter(d => d.c > 0);
+  if (!f.length) return null;
+  const mx = Math.max(...f.map(d => d.c)), mn = Math.min(...f.map(d => d.c));
+  return { f, mx, mn, modes: f.filter(d => d.c === mx).map(d => d.k), leasts: f.filter(d => d.c === mn).map(d => d.k) };
+}
+function label(k) {
+  if (V().type !== 'count') return k;
+  return k + (k === '1' ? ' pet' : ' pets');
+}
+
+/* ---------- selector ---------- */
+const sel = document.getElementById('varSelect');
+ORDER.forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = VARS[k].name; sel.appendChild(o); });
+sel.value = cur;
+sel.addEventListener('change', () => { cur = sel.value; renderAll(); save(); });
+
+/* ---------- step 1: entry ---------- */
+function renderStep1() {
+  const v = V(), s = S();
+  const el = document.getElementById('step1');
+  let entry = '';
+  if (v.type === 'cat') {
+    entry = `<p>Click a button once for each student.</p>
+      <div class="opt-grid">${v.options.map(o => `<button class="opt" data-add="${esc(o)}">${esc(o)}</button>`).join('')}</div>
+      ${v.allowOther ? `<div class="row"><input type="text" id="otherInput" placeholder="Something else? Type it here" maxlength="20"><button id="otherBtn">Add</button></div>` : ''}`;
+  } else {
+    const isCount = v.type === 'count';
+    let unitBit = '';
+    if (v.units) {
+      unitBit = `<select id="unitSelect" aria-label="Unit">${v.units.map(u => `<option value="${u}" ${u === s.unit ? 'selected' : ''}>${v.unitNames[u]}</option>`).join('')}</select>`;
+    } else if (v.unit) {
+      unitBit = `<span class="unit">${v.unit}</span>`;
+    }
+    entry = `<p>Type one student's ${isCount ? 'answer' : 'measurement'}, then press <b>Enter</b> or click <b>Add</b>.</p>
+      <div class="row">
+        <input type="number" id="numInput" ${isCount ? 'min="0" step="1"' : 'min="0" step="any"'} placeholder="${isCount ? 'e.g. 2' : 'e.g. ' + exampleVal()}" inputmode="decimal">
+        ${unitBit}
+        <button class="primary" id="numBtn">Add</button>
+      </div>
+      <div class="warn" id="numWarn"></div>`;
+  }
+  el.innerHTML = `
+    <h2><span class="num">1</span> Enter your class data</h2>
+    <div class="type-note">${TYPE_TEXT[v.type]}</div>
+    ${entry}
+    <div id="entryList"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" id="finishBtn">I've finished entering my data →</button>
+    </div>`;
+
+  el.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => addValue(b.dataset.add)));
+  const oi = el.querySelector('#otherInput');
+  if (oi) {
+    const go = () => { const t = titleCase(oi.value); if (t) { addValue(t); oi.value = ''; oi.focus(); } };
+    el.querySelector('#otherBtn').addEventListener('click', go);
+    oi.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  }
+  const ni = el.querySelector('#numInput');
+  if (ni) {
+    const go = () => {
+      const w = el.querySelector('#numWarn');
+      const raw = ni.value.trim();
+      if (raw === '') { w.textContent = 'Type a number first.'; return; }
+      const n = Number(raw);
+      if (!isFinite(n) || n < 0) { w.textContent = 'That needs to be a number that is 0 or more.'; return; }
+      if (v.type === 'count' && !Number.isInteger(n)) { w.textContent = 'Counting data is always a whole number. You can’t have half a pet!'; return; }
+      const r = rangeFor();
+      w.textContent = (r && (n < r[0] || n > r[1])) ? `Added, but double-check it: ${fmt(n)} ${unitShort()} is unusual for a ${v.noun}.` : '';
+      addValue(n);
+      ni.value = ''; ni.focus();
+    };
+    el.querySelector('#numBtn').addEventListener('click', go);
+    ni.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  }
+  const us = el.querySelector('#unitSelect');
+  if (us) us.addEventListener('change', () => { s.unit = us.value; resetAnswers(s); save(); renderStep3(); renderChart(); });
+  el.querySelector('#finishBtn').addEventListener('click', () => {
+    if (s.data.length < 2) return;
+    if (s.stage < 2) s.stage = 2;
+    save(); renderStep2(); renderStep3();
+    document.getElementById('step2').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const t = document.getElementById('lblTitle'); if (t) setTimeout(() => t.focus({ preventScroll: true }), 350);
+  });
+  renderList();
+}
+function exampleVal() {
+  if (cur === 'reaction') return unit() === 'cm' ? '14' : '0.25';
+  if (cur === 'hand') return '18';
+  return '155';
+}
+function rangeFor() {
+  const v = V();
+  if (cur === 'reaction') return unit() === 'cm' ? [1, 40] : [0.05, 1.5];
+  if (v.min !== undefined) return [v.min, v.max];
+  return null;
+}
+function addValue(x) {
+  const s = S();
+  s.data.push(x);
+  resetAnswers(s);
+  save(); renderList(); renderChart(); if (s.stage >= 3) renderStep3();
+}
+let clearArmed = false;
+function renderList() {
+  const v = V(), s = S();
+  const el = document.getElementById('entryList');
+  const n = s.data.length;
+  const chips = s.data.map((d, i) => `<span class="chip"><small>#${i + 1}</small> ${esc(v.type === 'measure' ? fmt(d) + ' ' + unitShort() : d)}<button data-del="${i}" aria-label="Remove entry ${i + 1}">×</button></span>`).join('');
+  let table = '';
+  if (n && v.type !== 'measure') {
+    const f = freq();
+    table = `<table class="freq"><thead><tr><th>${esc(v.name)}</th><th class="n">Tally</th><th class="n">Frequency</th></tr></thead><tbody>
+      ${f.map(d => `<tr><td>${esc(label(d.k))}</td><td class="n" style="letter-spacing:1px">${tally(d.c)}</td><td class="n">${d.c}</td></tr>`).join('')}
+      <tr><td><b>Total</b></td><td></td><td class="n"><b>${n}</b></td></tr></tbody></table>`;
+  }
+  el.innerHTML = `
+    <div class="count-line"><span><b>${n}</b> ${n === 1 ? 'student' : 'students'} entered</span>
+      ${n ? `<span class="row"><button class="small" id="undoBtn">↶ Undo last</button><button class="small danger" id="clearBtn">${clearArmed ? 'Click again to clear' : 'Clear all'}</button></span>` : ''}
+    </div>
+    ${n ? `<div class="entries">${chips}</div>` : ''}
+    ${table}`;
+  el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
+    s.data.splice(Number(b.dataset.del), 1); resetAnswers(s); save(); renderList(); renderChart(); if (s.stage >= 3) renderStep3();
+  }));
+  const u = el.querySelector('#undoBtn');
+  if (u) u.addEventListener('click', () => { s.data.pop(); resetAnswers(s); save(); renderList(); renderChart(); if (s.stage >= 3) renderStep3(); });
+  const c = el.querySelector('#clearBtn');
+  if (c) c.addEventListener('click', () => {
+    if (!clearArmed) { clearArmed = true; renderList(); setTimeout(() => { clearArmed = false; if (document.getElementById('clearBtn')) renderList(); }, 3000); return; }
+    clearArmed = false;
+    store[cur] = undefined; delete store[cur]; save(); renderAll();
+  });
+  const fb = document.getElementById('finishBtn');
+  if (fb) { fb.disabled = n < 2; fb.title = n < 2 ? 'Enter at least 2 pieces of data first' : ''; }
+}
+function tally(c) {
+  let out = '';
+  for (let i = 0; i < Math.floor(c / 5); i++) out += '<s>||||</s> ';
+  out += '|'.repeat(c % 5);
+  return out;
+}
+
+/* ---------- step 2: labels ---------- */
+function renderStep2() {
+  const v = V(), s = S();
+  const el = document.getElementById('step2');
+  if (s.stage < 2) {
+    el.className = 'card locked';
+    el.innerHTML = `<h2><span class="num">2</span> Label your graph</h2><p>Finish entering your data first.</p>`;
+    return;
+  }
+  el.className = 'card';
+  const ct = chartType();
+  const pie = ct === 'pie';
+  const hint = v.type === 'measure'
+    ? `The <b>x-axis</b> (across the bottom) shows each student, so something like “Student number”. The <b>y-axis</b> (up the side) shows the ${v.noun}. Remember to put the <b>units</b> in brackets, e.g. “${v.name} (${unitShort()})”.`
+    : pie
+      ? `A pie chart doesn’t have axes. It needs a clear <b>title</b> that says what the whole circle shows, e.g. “${v.name} of students in our class”.`
+      : `The <b>x-axis</b> (across the bottom) shows the groups: the ${v.noun}. The <b>y-axis</b> (up the side) shows how many students, which is called the <b>frequency</b>.`;
+  el.innerHTML = `
+    <h2><span class="num">2</span> Label your graph</h2>
+    <p>A graph needs labels so anyone can tell what it shows. Type them below and watch your graph update.</p>
+    <div class="field"><label for="lblTitle">Graph title</label><input type="text" id="lblTitle" maxlength="60" value="${esc(s.labels.title)}" placeholder="What does this graph show?"></div>
+    ${pie ? '' : `
+    <div class="field"><label for="lblX">x-axis label (across the bottom)</label><input type="text" id="lblX" maxlength="40" value="${esc(s.labels.x)}"></div>
+    <div class="field"><label for="lblY">y-axis label (up the side)</label><input type="text" id="lblY" maxlength="40" value="${esc(s.labels.y)}"></div>`}
+    <details class="hint"><summary>Need a hint?</summary><p style="margin:6px 0 0">${hint}</p></details>
+    <button class="primary" id="labelsDone">Check my labels</button>
+    <div id="labelMsg"></div>`;
+  ['Title', 'X', 'Y'].forEach(k => {
+    const i = el.querySelector('#lbl' + k);
+    if (i) i.addEventListener('input', () => { s.labels[k.toLowerCase()] = i.value; save(); renderChart(); });
+  });
+  el.querySelector('#labelsDone').addEventListener('click', checkLabels);
+}
+function checkLabels() {
+  const v = V(), s = S();
+  const pie = chartType() === 'pie';
+  const missing = [];
+  if (!s.labels.title.trim()) missing.push('a title');
+  if (!pie && !s.labels.x.trim()) missing.push('an x-axis label');
+  if (!pie && !s.labels.y.trim()) missing.push('a y-axis label');
+  const m = document.getElementById('labelMsg');
+  if (missing.length) { m.innerHTML = `<div class="msg bad">Your graph still needs ${listWords(missing)}.</div>`; return; }
+  let extra = '';
+  if (v.type === 'measure') {
+    const y = s.labels.y.toLowerCase(), u = unitShort().toLowerCase();
+    const hasUnit = y.includes(u) || (u === 's' && y.includes('second')) || (u === 'cm' && y.includes('centimetre'));
+    if (!hasUnit) extra = ` <br>Tip: add the units to your y-axis label, e.g. “${esc(v.name)} (${unitShort()})”.`;
+  }
+  m.innerHTML = `<div class="msg good">Great labelling! Now answer the questions below.${extra}</div>`;
+  if (s.stage < 3) { s.stage = 3; save(); }
+  renderStep3();
+  setTimeout(() => document.getElementById('step3').scrollIntoView({ behavior: 'smooth', block: 'start' }), 250);
+}
+
+/* ---------- step 3: questions ---------- */
+function near(a, b) { return Math.abs(Number(a) - Math.round(b * 1000) / 1000) < 0.0051; }
+function questions() {
+  const v = V(), s = S();
+  if (!s.data.length) return [];
+  if (v.type === 'measure') {
+    const vals = s.data.map(Number), mx = Math.max(...vals), mn = Math.min(...vals), u = unitShort();
+    const rng = Math.round((mx - mn) * 1000) / 1000;
+    return [
+      { id: 'max', q: `What is the <strong>largest</strong> ${v.noun} in the class?`, kind: 'number', unit: u,
+        ok: x => near(x, mx), hint: 'Find the highest point on the line graph. Hover over it to check.', good: `Correct! The largest ${v.noun} is ${fmt(mx)} ${u}.` },
+      { id: 'min', q: `What is the <strong>smallest</strong> ${v.noun} in the class?`, kind: 'number', unit: u,
+        ok: x => near(x, mn), hint: 'Find the lowest point on the line graph. Hover over it to check.', good: `Correct! The smallest ${v.noun} is ${fmt(mn)} ${u}.` },
+      { id: 'range', q: `What is the ${term('range', 'The range is how spread out the data is: the largest value take away the smallest value.')} of the ${v.plural}?`, kind: 'number', unit: u,
+        ok: x => near(x, rng), hint: `Range = largest − smallest. Use your answers above: ${fmt(mx)} − ${fmt(mn)} = ?`, good: `Correct! ${fmt(mx)} − ${fmt(mn)} = ${fmt(rng)} ${u}.` },
+    ];
+  }
+  const st = stats();
+  const n = s.data.length;
+  const opts = st.f.map(d => d.k);
+  const leastWord = v.type === 'cat' ? 'least represented' : 'least common';
+  const tie = (ks, c) => `Correct! It’s a tie: ${listWords(ks.map(label))} each appear ${times(c)}, so any of them is right.`;
+  return [
+    { id: 'least', q: `What is the <strong>${leastWord}</strong> ${v.noun}?`, kind: 'select', options: opts,
+      ok: x => st.leasts.includes(x), hint: chartType() === 'pie' ? 'Look for the smallest slice of the pie.' : 'Look for the shortest column.',
+      good: st.leasts.length > 1 ? tie(st.leasts, st.mn) : `Correct! ${label(st.leasts[0])} appears the least: only ${times(st.mn)}.` },
+    { id: 'mode', q: `What is the ${term('modal', `The modal ${v.noun} is the ${v.noun} that occurs most.`)} ${v.noun}?`, kind: 'select', options: opts,
+      ok: x => st.modes.includes(x), hint: chartType() === 'pie' ? 'Modal means “occurs most”. Look for the biggest slice.' : 'Modal means “occurs most”. Look for the tallest column.',
+      good: st.modes.length > 1 ? tie(st.modes, st.mx) + ' (When there’s a tie, the data has more than one mode.)' : `Correct! ${label(st.modes[0])} is the mode. It occurs most, ${times(st.mx)}. It’s now highlighted on your graph.` },
+    { id: 'total', q: `How many students are shown in the graph altogether?`, kind: 'number', unit: '',
+      ok: x => Number(x) === n, hint: chartType() === 'pie' ? 'Add up the numbers for every slice. Hover over each slice to see its number.' : 'Add up the heights of all the columns.',
+      good: `Correct! ${n} students altogether.` },
+  ];
+}
+function renderStep3() {
+  const v = V(), s = S();
+  const el = document.getElementById('step3');
+  if (s.stage < 3) {
+    el.className = 'card locked';
+    el.innerHTML = `<h2><span class="num">3</span> Answer the questions</h2><p>Label your graph first.</p>`;
+    return;
+  }
+  el.className = 'card';
+  const qs = questions();
+  el.innerHTML = `<h2><span class="num">3</span> Answer the questions</h2>
+    <p>Use your graph to answer. Each question you get right on your first try earns a mark. Hover over the <span class="term" style="cursor:default">highlighted words</span> to see what they mean.</p>
+    ${qs.map((q, i) => {
+      const a = s.answers[q.id] || {};
+      const input = q.kind === 'select'
+        ? `<select id="ans_${q.id}"><option value="">Choose…</option>${q.options.map(o => `<option value="${esc(o)}" ${a.value === o ? 'selected' : ''}>${esc(label(o))}</option>`).join('')}</select>`
+        : `<input type="number" step="any" id="ans_${q.id}" value="${a.value !== undefined ? esc(a.value) : ''}" placeholder="Your answer">${q.unit ? `<span class="unit">${q.unit}</span>` : ''}`;
+      return `<div class="q"><div class="q-text">${i + 1}. ${q.q}</div>
+        <div class="row">${input}<button data-check="${q.id}">Check</button></div>
+        <div id="fb_${q.id}">${a.value !== undefined && a.value !== '' ? feedback(q, a) : ''}</div></div>`;
+    }).join('')}
+    <div id="allDone"></div>`;
+  qs.forEach(q => {
+    const inp = el.querySelector('#ans_' + q.id);
+    const go = () => {
+      const val = inp.value;
+      const fbEl = el.querySelector('#fb_' + q.id);
+      if (val === '') { fbEl.innerHTML = `<div class="msg bad">Choose or type an answer first.</div>`; return; }
+      s.answers[q.id] = { value: val, correct: q.ok(val) };
+      if (!s.first) s.first = {};
+      if (s.first[q.id] === undefined) s.first[q.id] = s.answers[q.id].correct;
+      save();
+      fbEl.innerHTML = feedback(q, s.answers[q.id]);
+      if (q.id === 'mode') renderChart();
+      checkAllDone(qs);
+    };
+    el.querySelector(`[data-check="${q.id}"]`).addEventListener('click', go);
+    if (q.kind === 'number') inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  });
+  checkAllDone(qs);
+}
+function feedback(q, a) {
+  return a.correct ? `<div class="msg good">✓ ${q.good}</div>` : `<div class="msg bad">Not quite. ${q.hint}</div>`;
+}
+function checkAllDone(qs) {
+  const s = S();
+  const d = document.getElementById('allDone');
+  if (!d) return;
+  const all = qs.length && qs.every(q => s.answers[q.id] && s.answers[q.id].correct);
+  d.innerHTML = all ? `<div class="done-banner">🎉 Well done! You’ve finished ${esc(V().name.toLowerCase())}. Choose another set of data from the menu at the top.<div class="save-note" id="saveNote">${saveNoteText()}</div></div>` : '';
+}
+
+/* ---------- chart ---------- */
+const W = 680, H = 460;
+function renderChart() {
+  const v = V(), s = S();
+  const ct = chartType();
+  document.getElementById('chartKind').textContent =
+    ct === 'line' ? 'Line graph · measurement data' : (ct === 'pie' ? 'Pie chart' : 'Column graph') + (v.type === 'cat' ? ' · categorical data' : ' · counting data');
+  const tg = document.getElementById('chartToggle');
+  if (v.type === 'measure') tg.innerHTML = '';
+  else {
+    tg.innerHTML = `<div class="seg" role="group" aria-label="Graph type">
+      <button data-ct="column" aria-pressed="${s.chart === 'column'}">Column graph</button>
+      <button data-ct="pie" aria-pressed="${s.chart === 'pie'}">Pie chart</button></div>`;
+    tg.querySelectorAll('[data-ct]').forEach(b => b.addEventListener('click', () => {
+      if (s.chart === b.dataset.ct) return;
+      s.chart = b.dataset.ct; save(); renderChart(); renderStep2(); if (s.stage >= 3) renderStep3();
+    }));
+  }
+  const c = document.getElementById('chart');
+  const note = document.getElementById('chartNote');
+  if (!s.data.length) {
+    c.innerHTML = `<div class="empty"><div><div class="big">📊</div><b>Your graph will appear here.</b><br>Add your first piece of data on the left.</div></div>`;
+    note.textContent = '';
+    return;
+  }
+  c.innerHTML = ct === 'line' ? lineSVG() : ct === 'pie' ? pieSVG() : columnSVG();
+  note.textContent = ct === 'line'
+    ? 'Hover over a point to see the measurement.'
+    : 'Hover over the graph to see the exact numbers.';
+  attachTips();
+}
+function titleEl(s) {
+  const t = s.labels.title.trim();
+  return t ? `<text class="chart-title" x="${W / 2}" y="30" text-anchor="middle">${esc(t)}</text>`
+           : `<text class="chart-title placeholder" x="${W / 2}" y="30" text-anchor="middle">Graph title goes here</text>`;
+}
+function axisTitles(s, M) {
+  const x = s.labels.x.trim(), y = s.labels.y.trim();
+  const cx = M.l + (W - M.l - M.r) / 2, cy = M.t + (H - M.t - M.b) / 2;
+  return `<text class="axis-title ${x ? '' : 'placeholder'}" x="${cx}" y="${H - 12}" text-anchor="middle">${esc(x || 'x-axis label')}</text>
+    <text class="axis-title ${y ? '' : 'placeholder'}" transform="translate(18 ${cy}) rotate(-90)" text-anchor="middle">${esc(y || 'y-axis label')}</text>`;
+}
+function barPath(x, y, w, h, r) {
+  if (h <= 0) return '';
+  r = Math.min(r, h, w / 2);
+  return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+}
+function columnSVG() {
+  const v = V(), s = S();
+  const f = freq();
+  const st = stats();
+  const showMode = s.answers.mode && s.answers.mode.correct;
+  const M = { l: 70, r: 20, t: 56, b: 0 };
+  const longest = Math.max(...f.map(d => label(d.k).length));
+  const rotate = f.length > 6 || (f.length > 3 && longest > 8);
+  M.b = rotate ? 70 + Math.min(longest, 12) * 4 : 70;
+  const pw = W - M.l - M.r, ph = H - M.t - M.b;
+  const maxC = Math.max(1, ...f.map(d => d.c));
+  const step = maxC <= 10 ? 1 : maxC <= 20 ? 2 : 5;
+  const yMax = Math.ceil(maxC / step) * step + (maxC % step === 0 && maxC >= 4 ? 0 : 0);
+  const Y = c => M.t + ph - (c / yMax) * ph;
+  let g = '';
+  for (let t = 0; t <= yMax; t += step) {
+    g += `<line class="gridline" x1="${M.l}" x2="${W - M.r}" y1="${Y(t)}" y2="${Y(t)}"/>
+      <text class="tick" x="${M.l - 10}" y="${Y(t) + 4}" text-anchor="end">${t}</text>`;
+  }
+  const band = pw / f.length, bw = Math.min(band * 0.62, 88);
+  let bars = '', xl = '', hits = '';
+  f.forEach((d, i) => {
+    const x = M.l + band * i + (band - bw) / 2;
+    const y = Y(d.c), h = M.t + ph - y;
+    const isMode = showMode && st.modes.includes(d.k);
+    bars += `<path d="${barPath(x, y, bw, h, 4)}" fill="${isMode ? 'var(--mode)' : 'var(--series-1)'}"/>`;
+    if (isMode) bars += `<text class="mode-tag" x="${x + bw / 2}" y="${y - 8}" text-anchor="middle">★ Mode</text>`;
+    const cx = M.l + band * i + band / 2;
+    xl += rotate
+      ? `<text class="tick" transform="translate(${cx + 4} ${M.t + ph + 16}) rotate(-40)" text-anchor="end">${esc(label(d.k))}</text>`
+      : `<text class="tick" x="${cx}" y="${M.t + ph + 22}" text-anchor="middle">${esc(label(d.k))}</text>`;
+    hits += `<rect class="hit" x="${M.l + band * i}" y="${M.t}" width="${band}" height="${ph}" data-tip="${esc(label(d.k))}: ${d.c} ${d.c === 1 ? 'student' : 'students'}" data-tx="${cx}" data-ty="${y}"/>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Column graph of ${esc(v.name)}">
+    ${titleEl(s)}${g}${bars}
+    <line class="axis" x1="${M.l}" x2="${W - M.r}" y1="${M.t + ph}" y2="${M.t + ph}"/>
+    <line class="axis" x1="${M.l}" x2="${M.l}" y1="${M.t}" y2="${M.t + ph}"/>
+    ${xl}${axisTitles(s, M)}${hits}</svg>`;
+}
+function pieSVG() {
+  const v = V(), s = S();
+  const f = freq().filter(d => d.c > 0);
+  const st = stats();
+  const showMode = s.answers.mode && s.answers.mode.correct;
+  const n = s.data.length;
+  const cx = 230, cy = 258, r = 165;
+  let a0 = -Math.PI / 2, slices = '';
+  const allOrder = V().type === 'count' ? freq().map(d => d.k) : [...v.options, ...f.map(d => d.k).filter(k => !v.options.includes(k))];
+  const col = k => `var(--c${(allOrder.indexOf(k) % 12) + 1})`;
+  f.forEach(d => {
+    const frac = d.c / n, a1 = a0 + frac * Math.PI * 2;
+    const mid = (a0 + a1) / 2;
+    const tx = cx + Math.cos(mid) * r * 0.62, ty = cy + Math.sin(mid) * r * 0.62;
+    const tip = `${esc(label(d.k))}: ${d.c} ${d.c === 1 ? 'student' : 'students'} (${Math.round(frac * 100)}%)`;
+    if (f.length === 1) {
+      slices += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${col(d.k)}" stroke="var(--surface)" stroke-width="2" data-tip="${tip}" data-tx="${cx}" data-ty="${cy}" style="cursor:pointer"/>`;
+    } else {
+      const large = a1 - a0 > Math.PI ? 1 : 0;
+      const p = `M${cx},${cy}L${cx + Math.cos(a0) * r},${cy + Math.sin(a0) * r}A${r},${r} 0 ${large} 1 ${cx + Math.cos(a1) * r},${cy + Math.sin(a1) * r}Z`;
+      const isMode = showMode && st.modes.includes(d.k);
+      const off = isMode ? 10 : 0;
+      slices += `<path d="${p}" transform="translate(${Math.cos(mid) * off} ${Math.sin(mid) * off})" fill="${col(d.k)}" stroke="var(--surface)" stroke-width="2" data-tip="${tip}" data-tx="${tx}" data-ty="${ty}" style="cursor:pointer"/>`;
+    }
+    a0 = a1;
+  });
+  const lx = 440, rowH = Math.min(30, (H - 90) / f.length);
+  let ly = cy - (rowH * f.length) / 2 + rowH / 2;
+  let legend = '';
+  f.forEach(d => {
+    const isMode = showMode && st.modes.includes(d.k);
+    legend += `<rect x="${lx}" y="${ly - 8}" width="16" height="16" rx="4" fill="${col(d.k)}"/>
+      <text class="legend-text" x="${lx + 24}" y="${ly + 5}">${esc(label(d.k))} <tspan class="legend-count">(${d.c})</tspan>${isMode ? ' <tspan class="mode-tag">★ Mode</tspan>' : ''}</text>`;
+    ly += rowH;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Pie chart of ${esc(v.name)}">
+    ${titleEl(s)}${slices}${legend}</svg>`;
+}
+function niceScale(lo, hi) {
+  if (lo === hi) { const pad = Math.abs(lo) * 0.1 || 1; lo -= pad; hi += pad; }
+  const raw = (hi - lo) / 6;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / mag;
+  const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+  return { lo: Math.floor(lo / step) * step, hi: Math.ceil(hi / step) * step, step };
+}
+function lineSVG() {
+  const v = V(), s = S();
+  const vals = s.data.map(Number);
+  const n = vals.length;
+  const M = { l: 78, r: 24, t: 56, b: 72 };
+  const pw = W - M.l - M.r, ph = H - M.t - M.b;
+  const sc = niceScale(Math.min(...vals), Math.max(...vals));
+  const dec = Math.max(0, -Math.floor(Math.log10(sc.step)));
+  const X = i => n === 1 ? M.l + pw / 2 : M.l + 24 + (i / (n - 1)) * (pw - 48);
+  const Y = y => M.t + ph - ((y - sc.lo) / (sc.hi - sc.lo)) * ph;
+  let g = '';
+  for (let t = sc.lo; t <= sc.hi + sc.step / 2; t += sc.step) {
+    g += `<line class="gridline" x1="${M.l}" x2="${W - M.r}" y1="${Y(t)}" y2="${Y(t)}"/>
+      <text class="tick" x="${M.l - 10}" y="${Y(t) + 4}" text-anchor="end">${t.toFixed(dec)}</text>`;
+  }
+  const every = Math.ceil(n / 16);
+  let xl = '';
+  vals.forEach((_, i) => { if (i % every === 0 || i === n - 1) xl += `<text class="tick" x="${X(i)}" y="${M.t + ph + 22}" text-anchor="middle">${i + 1}</text>`; });
+  const path = vals.map((y, i) => `${i ? 'L' : 'M'}${X(i)},${Y(y)}`).join('');
+  const mx = Math.max(...vals), mn = Math.min(...vals);
+  const showMax = s.answers.max && s.answers.max.correct, showMin = s.answers.min && s.answers.min.correct;
+  let pts = '', hits = '';
+  vals.forEach((y, i) => {
+    pts += `<circle cx="${X(i)}" cy="${Y(y)}" r="5" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2"/>`;
+    hits += `<circle class="hit" cx="${X(i)}" cy="${Y(y)}" r="14" data-tip="Student ${i + 1}: ${fmt(y)} ${unitShort()}" data-tx="${X(i)}" data-ty="${Y(y)}"/>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Line graph of ${esc(v.name)}">
+    ${titleEl(s)}${g}
+    <line class="axis" x1="${M.l}" x2="${W - M.r}" y1="${M.t + ph}" y2="${M.t + ph}"/>
+    <line class="axis" x1="${M.l}" x2="${M.l}" y1="${M.t}" y2="${M.t + ph}"/>
+    <path d="${path}" fill="none" stroke="var(--series-1)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts}${xl}${axisTitles(s, M)}${hits}</svg>`;
+}
+function attachTips() {
+  const svg = document.querySelector('#chart svg');
+  const tip = document.getElementById('tooltip');
+  if (!svg) return;
+  const show = el => {
+    const r = svg.getBoundingClientRect(), k = r.width / W;
+    tip.textContent = el.getAttribute('data-tip');
+    tip.style.left = (Number(el.dataset.tx) * k) + 'px';
+    tip.style.top = (Number(el.dataset.ty) * k) + 'px';
+    tip.style.opacity = 1;
+  };
+  svg.querySelectorAll('[data-tip]').forEach(el => {
+    el.addEventListener('mouseenter', () => show(el));
+    el.addEventListener('click', () => show(el));
+    el.addEventListener('mouseleave', () => { tip.style.opacity = 0; });
+  });
+}
+window.addEventListener('resize', () => { document.getElementById('tooltip').style.opacity = 0; });
+
+function renderAll() { clearArmed = false; S(); renderStep1(); renderStep2(); renderStep3(); renderChart(); }
+renderAll();
+</script>
+
+<!-- Maths Hub student sign-in, guest option and "Submit my work" button. Keep this last before </body>. -->
+<script src="../../../../assets/js/portal/quizSignIn.js"></script>
+</body>
+</html>

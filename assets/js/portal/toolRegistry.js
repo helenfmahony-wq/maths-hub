@@ -35,6 +35,14 @@ export const TOOLS = Object.freeze([
     enabled: true,
   },
   {
+    toolId: "class-data-grapher",
+    title: "Class Data Grapher",
+    topic: "Data classification, visualisation and analysis",
+    stage: "Stage 4",
+    path: "tools/statistics-probability/data-analysis/class-data-grapher/index.html",
+    enabled: true,
+  },
+  {
     // The copy-me example in portal/quiz-template.html. Also used by demo mode.
     toolId: "times-tables",
     title: "Times Tables Check-in (sample)",
